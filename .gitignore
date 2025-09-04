@@ -53,3 +53,25 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Raspberry Pi Pico build artifacts
+build/
+*.uf2
+*.bin
+*.hex
+*.elf
+*.map
+*.lst
+
+# CMake build directories
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Pico SDK specific
+pico_sdk_import.cmake
+
+# VSCode Pico SDK settings
+.vscode/
+.vscode/c_cpp_properties.json
