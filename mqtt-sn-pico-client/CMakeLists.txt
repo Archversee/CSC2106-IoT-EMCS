@@ -37,32 +37,31 @@ endif()
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(mqtt-sn-pico-client C CXX ASM)
+project(mqtt_sn_pico_client C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
-add_executable(mqtt-sn-pico-client mqtt-sn-pico-client.c )
+# Add drivers subdirectory
+add_subdirectory(drivers)
+add_subdirectory(fs)
 
-pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
-pico_set_program_version(mqtt-sn-pico-client "0.1")
-
-# Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(mqtt-sn-pico-client 0)
-pico_enable_stdio_usb(mqtt-sn-pico-client 1)
-
-
-# Add the standard include files to the build
-target_include_directories(mqtt-sn-pico-client PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+# MQTT-SN Pico Client executable
+add_executable(mqtt_sn_pico_client
+    main.c
 )
 
-# Add the standard library to the build
-target_link_libraries(mqtt-sn-pico-client
+target_link_libraries(mqtt_sn_pico_client
     pico_stdlib
-    pico_cyw43_arch_lwip_poll
-    hardware_timer
+    hardware_spi
+    hardware_gpio
+    microsd_driver
+    fs_lib
 )
 
-pico_add_extra_outputs(mqtt-sn-pico-client)
+# Enable USB output, disable UART output
+pico_enable_stdio_usb(mqtt_sn_pico_client 1)
+pico_enable_stdio_uart(mqtt_sn_pico_client 0)
+
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(mqtt_sn_pico_client)
