@@ -25,39 +25,43 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
-# Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
 
-project(mqtt-sn-pico-client C CXX ASM)
+# Pull in Raspberry Pi Pico SDK (must be before project)
+if(NOT DEFINED PICO_SDK_PATH)
+    if(DEFINED ENV{PICO_SDK_PATH})
+        set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+    else()
+        message(FATAL_ERROR "PICO_SDK_PATH is not set. Please set it to the pico-sdk directory.")
+    endif()
+endif()
+
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+project(mqtt_sn_pico_client C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# Add drivers subdirectory
+add_subdirectory(drivers)
+add_subdirectory(fs)
 
-add_executable(mqtt-sn-pico-client mqtt-sn-pico-client.c )
-
-pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
-pico_set_program_version(mqtt-sn-pico-client "0.1")
-
-# Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(mqtt-sn-pico-client 1)
-pico_enable_stdio_usb(mqtt-sn-pico-client 0)
-
-# Add the standard library to the build
-target_link_libraries(mqtt-sn-pico-client
-        pico_stdlib)
-
-# Add the standard include files to the build
-target_include_directories(mqtt-sn-pico-client PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+# MQTT-SN Pico Client executable
+add_executable(mqtt_sn_pico_client
+    main.c
 )
 
-# Add any user requested libraries
-target_link_libraries(mqtt-sn-pico-client 
-        hardware_timer
-        pico_cyw43_arch_lwip_poll
-        )
+target_link_libraries(mqtt_sn_pico_client
+    pico_stdlib
+    hardware_spi
+    hardware_gpio
+    microsd_driver
+    fs_lib
+)
 
-pico_add_extra_outputs(mqtt-sn-pico-client)
+# Enable USB output, disable UART output
+pico_enable_stdio_usb(mqtt_sn_pico_client 1)
+pico_enable_stdio_uart(mqtt_sn_pico_client 0)
 
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(mqtt_sn_pico_client)

@@ -75,3 +75,23 @@ pico_sdk_import.cmake
 # VSCode Pico SDK settings
 .vscode/
 .vscode/c_cpp_properties.json
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test output files
+test_output/
+*.test
+
+# MQTT-SN specific
+*.dat
+*.cache
