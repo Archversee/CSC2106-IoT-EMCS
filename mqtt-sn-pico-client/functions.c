@@ -79,6 +79,39 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
     pbuf_free(p);
 }
 
+// PUBLISH  QOS 0 to Predefined Topic ID
+void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, u16_t topic_id, const char *payload) {
+    if (!payload) return;
+    size_t payload_len = strlen(payload);
+    u16_t packet_len = 7 + payload_len;
+
+    if (packet_len > 255) {
+        printf("PUBLISH payload too long\n");
+        return;
+    }
+
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
+    if (!p) return;
+
+    uint8_t *data = (uint8_t *)p->payload;
+    data[0] = (uint8_t)packet_len;
+    data[1] = 0x0C;                     // PUBLISH
+    data[2] = 0x01;                     // Flags: Predefined Topic (Paho convention)
+    data[3] = (topic_id >> 8) & 0xFF;   // Topic ID high
+    data[4] = topic_id & 0xFF;          // Topic ID low
+    data[5] = 0x00;                     // MsgId high = 0
+    data[6] = 0x00;                     // MsgId low = 0  0 for QoS 0
+    memcpy(&data[7], payload, payload_len);
+
+    err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
+    if (err == ERR_OK) {
+        printf("Sent PUBLISH to Topic ID %d: '%s'\n", topic_id, payload);
+    } else {
+        printf("Failed to send PUBLISH: %d\n", err);
+    }
+    pbuf_free(p);
+}
+
 // Callback for when UDP data is received
 void udp_recv_callback(void *arg, struct udp_pcb *pcb,
                        struct pbuf *p, const ip_addr_t *addr, u16_t port) {
@@ -101,14 +134,20 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb,
             if (length >= 7) {
                 uint16_t topic_id = (data[3] << 8) | data[4];
                 int payload_len = length - 7;
-                if (payload_len > 0) {
-                    printf("Received on Topic ID %d: ", topic_id);
-                    for (int i = 0; i < payload_len; i++) {
-                        putchar(data[7 + i]);
+                if (topic_id == 1 && payload_len > 0) { //IF Topic ID 1 (pico/cmd)
+                    // Null-terminate for string comparison
+                    char payload[64];
+                    int copy_len = (payload_len < 63) ? payload_len : 63;
+                    memcpy(payload, &data[7], copy_len);
+                    payload[copy_len] = '\0';
+
+                    printf("Command received: %s\n", payload);
+
+                    if (strcmp(payload, "led on") == 0) {
+                        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+                    } else if (strcmp(payload, "led off") == 0) {
+                        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
                     }
-                    printf("\n");
-                } else {
-                    printf("Received empty message on Topic ID %d\n", topic_id);
                 }
             }
         }

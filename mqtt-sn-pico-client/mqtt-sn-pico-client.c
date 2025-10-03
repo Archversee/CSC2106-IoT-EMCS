@@ -12,6 +12,11 @@
 int main() {
     stdio_init_all();
 
+    // Initialize button
+    gpio_init(MESSAGEBUTTON_PIN);
+    gpio_set_dir(MESSAGEBUTTON_PIN, GPIO_IN);
+    gpio_pull_up(MESSAGEBUTTON_PIN);
+
     if (cyw43_arch_init()) {
         printf("Wi-Fi init failed\n");
         return -1;
@@ -64,9 +69,20 @@ int main() {
     }
 
     uint32_t last_ping = to_ms_since_boot(get_absolute_time());
+    bool last_button_state = gpio_get(MESSAGEBUTTON_PIN);
 
     while (true) {
         cyw43_arch_poll();
+
+        // Check button press (active LOW)
+        bool current_button = gpio_get(MESSAGEBUTTON_PIN);
+        if (last_button_state && !current_button) {
+            // Button pressed (falling edge)
+            printf("Button pressed! Publishing message...\n");
+            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, "Hello from pico W!");
+            sleep_ms(200); // Debounce
+        }
+        last_button_state = current_button;
 
         uint32_t now = to_ms_since_boot(get_absolute_time());
         if (now - last_ping >= PING_INTERVAL_MS) {
