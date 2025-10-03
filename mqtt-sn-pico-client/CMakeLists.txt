@@ -25,8 +25,17 @@ endif()
 # ====================================================================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+if(NOT DEFINED PICO_SDK_PATH)
+    if(DEFINED ENV{PICO_SDK_PATH})
+        set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+    else()
+        message(FATAL_ERROR "PICO_SDK_PATH is not set. Please set it to the pico-sdk directory.")
+    endif()
+endif()
+
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(mqtt-sn-pico-client C CXX ASM)
 
@@ -34,30 +43,26 @@ project(mqtt-sn-pico-client C CXX ASM)
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
-
 add_executable(mqtt-sn-pico-client mqtt-sn-pico-client.c )
 
 pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
 pico_set_program_version(mqtt-sn-pico-client "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(mqtt-sn-pico-client 1)
-pico_enable_stdio_usb(mqtt-sn-pico-client 0)
+pico_enable_stdio_uart(mqtt-sn-pico-client 0)
+pico_enable_stdio_usb(mqtt-sn-pico-client 1)
 
-# Add the standard library to the build
-target_link_libraries(mqtt-sn-pico-client
-        pico_stdlib)
 
 # Add the standard include files to the build
 target_include_directories(mqtt-sn-pico-client PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
-# Add any user requested libraries
-target_link_libraries(mqtt-sn-pico-client 
-        hardware_timer
-        pico_cyw43_arch_lwip_poll
-        )
+# Add the standard library to the build
+target_link_libraries(mqtt-sn-pico-client
+    pico_stdlib
+    pico_cyw43_arch_lwip_poll
+    hardware_timer
+)
 
 pico_add_extra_outputs(mqtt-sn-pico-client)
-
