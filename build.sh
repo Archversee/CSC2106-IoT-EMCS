@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PICO_CLIENT_DIR="$PROJECT_DIR/mqtt-sn-pico-client"
 BUILD_DIR="$PICO_CLIENT_DIR/build"
-GATEWAY_DIR="$PROJECT_DIR/paho.mqtt-sn.embedded-c/MQTTSNGateway"
+GATEWAY_DIR="$PROJECT_DIR/paho.mqtt-sn.embedded-c-master/MQTTSNGateway"
 
 print_header() {
     echo -e "${BLUE}================================================${NC}"
