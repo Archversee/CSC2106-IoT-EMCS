@@ -6,6 +6,13 @@ A comprehensive exFAT filesystem driver for Raspberry Pi Pico W, designed for IN
 
 This driver provides full read/write access to exFAT formatted microSD cards, including automatic file versioning, comprehensive logging, and robust error handling. It's specifically designed for IoT applications requiring reliable data storage and debugging capabilities.
 
+## Knowledege Prerequisites
+- Basic understanding of C programming
+- Familiarity with SPI communication protocol
+- Understanding of filesystem concepts, particularly exFAT [link](https://learn.microsoft.com/en-us/windows/win32/fileio/exfat-specification)
+- Experience with Raspberry Pi Pico W and its SDK [link](https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf)
+- Read the book for raspberry pi linux development by our lord and savior Jeremey Singer [link](https://github.com/arm-university/Operating-Systems-Foundations-with-Linux-on-the-Raspberry-Pi)
+
 ## Driver Information
 
 - **Driver ID**: `MICROSD_DRV_v1.0.0`
@@ -17,6 +24,8 @@ This driver provides full read/write access to exFAT formatted microSD cards, in
 ## Hardware Configuration
 
 ### Pin Connections (MAKER-PI-PICO Board)
+Datasheet: [link](https://cdn-shop.adafruit.com/product-files/5160/5160_Maker+Pi+Pico+Datasheet.pdf)
+
 ```
 SD Card SPI Interface:
 ├── MISO (GP12) - Master In Slave Out
