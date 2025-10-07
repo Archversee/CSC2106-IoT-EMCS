@@ -14,11 +14,16 @@
 
 #include "../drivers/microsd_driver.h"
 
-/*! Storage layout constants */
-#define METADATA_BASE_ADDRESS (0U)  /*!< Base address for metadata storage */
-#define PACKET_BASE_ADDRESS (1024U) /*!< Base address for packet storage */
-#define MAX_STORED_FILES (10U)      /*!< Maximum number of stored files */
-#define MAX_PACKETS_PER_FILE (100U) /*!< Maximum packets per file */
+/*! Global filesystem info structure */
+static filesystem_info_t g_fs_info = {0};
+static bool g_fs_initialized = false;
+
+/*! Storage layout constants - now using filesystem-based storage */
+#define METADATA_FILE_PREFIX "metadata_" /*!< Prefix for metadata files */
+#define PACKET_FILE_PREFIX "packet_"     /*!< Prefix for packet files */
+#define FILE_EXTENSION ".dat"            /*!< File extension for data files */
+#define MAX_STORED_FILES (10U)           /*!< Maximum number of stored files */
+#define MAX_PACKETS_PER_FILE (100U)      /*!< Maximum packets per file */
 #define METADATA_SIZE (sizeof(file_metadata_t))
 #define PACKET_STORAGE_SIZE (sizeof(data_packet_t))
 
@@ -27,6 +32,69 @@ static uint32_t calculate_crc32(uint8_t const *const p_data, size_t const length
 static bool validate_packet_checksum(data_packet_t const *const p_packet);
 static void generate_packet_checksum(data_packet_t *const p_packet);
 static uint32_t generate_session_id(void);
+static bool init_filesystem(void);
+static void
+get_metadata_filename(uint8_t const file_index, char *const p_filename, size_t const filename_size);
+static void get_packet_filename(uint8_t const file_index,
+                                uint32_t const packet_seq,
+                                char *const p_filename,
+                                size_t const filename_size);
+
+/*!
+ * @brief Initialize filesystem if not already done
+ * @return bool true on success, false on failure
+ */
+static bool init_filesystem(void)
+{
+    if(!g_fs_initialized)
+    {
+        if(microsd_init() && microsd_init_filesystem(&g_fs_info))
+        {
+            g_fs_initialized = true;
+            printf("Filesystem initialized for data frame operations\n");
+        }
+        else
+        {
+            printf("Failed to initialize filesystem for data frame operations\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+/*!
+ * @brief Generate metadata filename
+ * @param[in] file_index    File index (0-9)
+ * @param[out] p_filename   Buffer for filename
+ * @param[in] filename_size Size of filename buffer
+ */
+static void
+get_metadata_filename(uint8_t const file_index, char *const p_filename, size_t const filename_size)
+{
+    snprintf(
+        p_filename, filename_size, "%s%02u%s", METADATA_FILE_PREFIX, file_index, FILE_EXTENSION);
+}
+
+/*!
+ * @brief Generate packet filename
+ * @param[in] file_index    File index (0-9)
+ * @param[in] packet_seq    Packet sequence number
+ * @param[out] p_filename   Buffer for filename
+ * @param[in] filename_size Size of filename buffer
+ */
+static void get_packet_filename(uint8_t const file_index,
+                                uint32_t const packet_seq,
+                                char *const p_filename,
+                                size_t const filename_size)
+{
+    snprintf(p_filename,
+             filename_size,
+             "%s%02u_%04lu%s",
+             PACKET_FILE_PREFIX,
+             file_index,
+             (unsigned long) packet_seq,
+             FILE_EXTENSION);
+}
 
 /*!
  * @brief Calculate CRC32 checksum
@@ -119,49 +187,31 @@ static uint32_t generate_session_id(void)
 }
 
 /*!
- * @brief Calculate storage address for metadata
- * @param[in] file_index    File index (0-9)
- * @return uint32_t         Storage address
- */
-static uint32_t get_metadata_address(uint8_t const file_index)
-{
-    return METADATA_BASE_ADDRESS + (file_index * METADATA_SIZE);
-}
-
-/*!
- * @brief Calculate storage address for packet
- * @param[in] file_index    File index (0-9)
- * @param[in] packet_seq    Packet sequence number
- * @return uint32_t         Storage address
- */
-static uint32_t get_packet_address(uint8_t const file_index, uint32_t const packet_seq)
-{
-    return PACKET_BASE_ADDRESS + (file_index * MAX_PACKETS_PER_FILE * PACKET_STORAGE_SIZE) +
-           (packet_seq * PACKET_STORAGE_SIZE);
-}
-
-/*!
  * @brief Find available file slot
  * @return uint8_t  File index (0-9) or 0xFF if no slot available
  */
 static uint8_t find_available_file_slot(void)
 {
     uint8_t file_index = 0xFFU;
-    file_metadata_t metadata = {0};
+    char filename[64];
+    uint8_t buffer[1];
+    uint32_t bytes_read;
+
+    if(!init_filesystem())
+    {
+        return 0xFFU;
+    }
 
     for(uint8_t i = 0U; i < MAX_STORED_FILES; i++)
     {
-        uint32_t const addr = get_metadata_address(i);
-        uint8_t temp_data;
+        get_metadata_filename(i, filename, sizeof(filename));
 
-        /* Check if slot is empty (first byte is 0) */
-        if(microsd_read_byte(addr, &temp_data))
+        /* Check if metadata file exists by trying to read it */
+        if(!microsd_read_file(&g_fs_info, filename, buffer, sizeof(buffer), &bytes_read))
         {
-            if(0U == temp_data)
-            {
-                file_index = i;
-                break;
-            }
+            /* File doesn't exist, this slot is available */
+            file_index = i;
+            break;
         }
     }
 
@@ -169,7 +219,7 @@ static uint8_t find_available_file_slot(void)
 }
 
 /*!
- * @brief Store metadata to microSD
+ * @brief Store metadata to microSD using exFAT filesystem
  * @param[in] file_index    File index
  * @param[in] p_metadata    Pointer to metadata structure
  * @return bool             true on success, false on failure
@@ -177,24 +227,23 @@ static uint8_t find_available_file_slot(void)
 static bool store_metadata(uint8_t const file_index, file_metadata_t const *const p_metadata)
 {
     bool result = false;
-    uint32_t const addr = get_metadata_address(file_index);
-    uint8_t const *p_data = (uint8_t const *) p_metadata;
-    size_t i;
+    char filename[64];
 
-    if(NULL != p_metadata)
+    if(NULL != p_metadata && init_filesystem())
     {
-        /* Write metadata byte by byte */
-        for(i = 0U; i < sizeof(file_metadata_t); i++)
-        {
-            if(!microsd_write_byte(addr + i, p_data[i]))
-            {
-                break;
-            }
-        }
+        get_metadata_filename(file_index, filename, sizeof(filename));
 
-        if(sizeof(file_metadata_t) == i)
+        /* Write metadata as a file */
+        result = microsd_create_file(
+            &g_fs_info, filename, (uint8_t const *) p_metadata, sizeof(file_metadata_t));
+
+        if(result)
         {
-            result = true;
+            printf("Stored metadata file: %s\n", filename);
+        }
+        else
+        {
+            printf("Failed to store metadata file: %s\n", filename);
         }
     }
 
@@ -202,7 +251,7 @@ static bool store_metadata(uint8_t const file_index, file_metadata_t const *cons
 }
 
 /*!
- * @brief Load metadata from microSD
+ * @brief Load metadata from microSD using exFAT filesystem
  * @param[in]  file_index   File index
  * @param[out] p_metadata   Pointer to metadata structure
  * @return bool             true on success, false on failure
@@ -210,24 +259,25 @@ static bool store_metadata(uint8_t const file_index, file_metadata_t const *cons
 static bool load_metadata(uint8_t const file_index, file_metadata_t *const p_metadata)
 {
     bool result = false;
-    uint32_t const addr = get_metadata_address(file_index);
-    uint8_t *p_data = (uint8_t *) p_metadata;
-    size_t i;
+    char filename[64];
+    uint32_t bytes_read = 0;
 
-    if(NULL != p_metadata)
+    if(NULL != p_metadata && init_filesystem())
     {
-        /* Read metadata byte by byte */
-        for(i = 0U; i < sizeof(file_metadata_t); i++)
-        {
-            if(!microsd_read_byte(addr + i, &p_data[i]))
-            {
-                break;
-            }
-        }
+        get_metadata_filename(file_index, filename, sizeof(filename));
 
-        if(sizeof(file_metadata_t) == i)
+        /* Read metadata from file */
+        result = microsd_read_file(
+            &g_fs_info, filename, (uint8_t *) p_metadata, sizeof(file_metadata_t), &bytes_read);
+
+        if(result && bytes_read == sizeof(file_metadata_t))
         {
-            result = true;
+            printf("Loaded metadata file: %s (%lu bytes)\n", filename, (unsigned long) bytes_read);
+        }
+        else
+        {
+            result = false;
+            printf("Failed to load metadata file: %s\n", filename);
         }
     }
 
@@ -235,7 +285,7 @@ static bool load_metadata(uint8_t const file_index, file_metadata_t *const p_met
 }
 
 /*!
- * @brief Store packet to microSD
+ * @brief Store packet to microSD using exFAT filesystem
  * @param[in] file_index    File index
  * @param[in] p_packet      Pointer to packet structure
  * @return bool             true on success, false on failure
@@ -243,24 +293,23 @@ static bool load_metadata(uint8_t const file_index, file_metadata_t *const p_met
 static bool store_packet(uint8_t const file_index, data_packet_t const *const p_packet)
 {
     bool result = false;
-    uint32_t const addr = get_packet_address(file_index, p_packet->seq);
-    uint8_t const *p_data = (uint8_t const *) p_packet;
-    size_t i;
+    char filename[64];
 
-    if(NULL != p_packet)
+    if(NULL != p_packet && init_filesystem())
     {
-        /* Write packet byte by byte */
-        for(i = 0U; i < sizeof(data_packet_t); i++)
-        {
-            if(!microsd_write_byte(addr + i, p_data[i]))
-            {
-                break;
-            }
-        }
+        get_packet_filename(file_index, p_packet->seq, filename, sizeof(filename));
 
-        if(sizeof(data_packet_t) == i)
+        /* Write packet as a file */
+        result = microsd_create_file(
+            &g_fs_info, filename, (uint8_t const *) p_packet, sizeof(data_packet_t));
+
+        if(result)
         {
-            result = true;
+            printf("Stored packet file: %s\n", filename);
+        }
+        else
+        {
+            printf("Failed to store packet file: %s\n", filename);
         }
     }
 
@@ -268,7 +317,7 @@ static bool store_packet(uint8_t const file_index, data_packet_t const *const p_
 }
 
 /*!
- * @brief Load packet from microSD
+ * @brief Load packet from microSD using exFAT filesystem
  * @param[in]  file_index   File index
  * @param[in]  packet_seq   Packet sequence number
  * @param[out] p_packet     Pointer to packet structure
@@ -278,24 +327,25 @@ static bool
 load_packet(uint8_t const file_index, uint32_t const packet_seq, data_packet_t *const p_packet)
 {
     bool result = false;
-    uint32_t const addr = get_packet_address(file_index, packet_seq);
-    uint8_t *p_data = (uint8_t *) p_packet;
-    size_t i;
+    char filename[64];
+    uint32_t bytes_read = 0;
 
-    if(NULL != p_packet)
+    if(NULL != p_packet && init_filesystem())
     {
-        /* Read packet byte by byte */
-        for(i = 0U; i < sizeof(data_packet_t); i++)
-        {
-            if(!microsd_read_byte(addr + i, &p_data[i]))
-            {
-                break;
-            }
-        }
+        get_packet_filename(file_index, packet_seq, filename, sizeof(filename));
 
-        if(sizeof(data_packet_t) == i)
+        /* Read packet from file */
+        result = microsd_read_file(
+            &g_fs_info, filename, (uint8_t *) p_packet, sizeof(data_packet_t), &bytes_read);
+
+        if(result && bytes_read == sizeof(data_packet_t))
         {
-            result = true;
+            printf("Loaded packet file: %s (%lu bytes)\n", filename, (unsigned long) bytes_read);
+        }
+        else
+        {
+            result = false;
+            printf("Failed to load packet file: %s\n", filename);
         }
     }
 
@@ -313,7 +363,7 @@ void send_file(char const *const p_filename, int const sock, void *const p_recei
     (void) sock;
     (void) p_receiver;
 
-    if(NULL != p_filename)
+    if(NULL != p_filename && init_filesystem())
     {
         /* Find file in storage by filename */
         bool file_found = false;
@@ -382,6 +432,12 @@ int receive_file(int const sock, void *const p_sender)
     /* Unused parameters for Pico implementation */
     (void) sock;
     (void) p_sender;
+
+    if(!init_filesystem())
+    {
+        printf("Failed to initialize filesystem\n");
+        return -1;
+    }
 
     /* Find available file slot */
     file_index = find_available_file_slot();
