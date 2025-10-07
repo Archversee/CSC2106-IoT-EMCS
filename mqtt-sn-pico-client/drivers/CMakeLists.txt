@@ -29,3 +29,21 @@ pico_enable_stdio_uart(microsd_demo 0)
 
 # Create UF2 file
 pico_add_extra_outputs(microsd_demo)
+
+# Large File Test Executable
+add_executable(large_file_test
+    large_file_test.c
+)
+
+target_link_libraries(large_file_test
+    microsd_driver
+    pico_stdlib
+)
+
+# Enable USB output and disable UART output
+pico_enable_stdio_usb(large_file_test 1)
+pico_enable_stdio_uart(large_file_test 0)
+
+# Create UF2 file
+pico_add_extra_outputs(large_file_test)
+

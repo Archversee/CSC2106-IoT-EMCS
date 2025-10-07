@@ -22,8 +22,7 @@
 #define MICROSD_DRIVER_VERSION_PATCH (0U)
 
 /*! Debug logging levels */
-typedef enum
-{
+typedef enum {
     MICROSD_LOG_NONE = 0,
     MICROSD_LOG_ERROR = 1,
     MICROSD_LOG_WARN = 2,
@@ -266,6 +265,40 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info,
                          uint32_t const data_length);
 
 /*!
+ * @brief Create a large file using chunked writing to avoid memory limitations
+ * @param[in] p_fs_info     Pointer to filesystem info structure
+ * @param[in] filename      Filename to create (null-terminated string)
+ * @param[in] p_chunk_data  Pointer to chunk data buffer
+ * @param[in] chunk_size    Size of each chunk in bytes
+ * @param[in] total_size    Total file size in bytes
+ * @param[in] num_chunks    Number of chunks to write
+ * @return bool             true on success, false on failure
+ */
+bool microsd_create_large_file_chunked(filesystem_info_t const *const p_fs_info,
+                                       char const *const filename,
+                                       uint8_t const *const p_chunk_data,
+                                       uint32_t const chunk_size,
+                                       uint32_t const total_size,
+                                       uint32_t const num_chunks);
+
+/*!
+ * @brief Read a large file from the exFAT filesystem using chunked reading
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in] filename          Filename to read (null-terminated string)
+ * @param[out] p_chunk_buffer   Pointer to chunk buffer for reading data
+ * @param[in] chunk_size        Size of chunk buffer in bytes
+ * @param[in] max_file_size     Maximum file size to read (e.g., 128KB limit)
+ * @param[out] p_total_bytes_read Pointer to store total bytes read
+ * @return bool                 true on success, false on failure
+ */
+bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
+                                     char const *const filename,
+                                     uint8_t *const p_chunk_buffer,
+                                     uint32_t const chunk_size,
+                                     uint32_t const max_file_size,
+                                     uint32_t *const p_total_bytes_read);
+
+/*!
  * @brief Read a file from the exFAT filesystem
  * @param[in] p_fs_info     Pointer to filesystem info structure
  * @param[in] filename      Filename to read (null-terminated string)
@@ -279,6 +312,23 @@ bool microsd_read_file(filesystem_info_t const *const p_fs_info,
                        uint8_t *const p_buffer,
                        uint32_t const buffer_size,
                        uint32_t *const p_bytes_read);
+
+/*!
+ * @brief Read a large file using chunked reading to avoid memory limitations
+ * @param[in] p_fs_info     Pointer to filesystem info structure
+ * @param[in] filename      Filename to read (null-terminated string)
+ * @param[out] p_chunk_data Pointer to chunk buffer to store data
+ * @param[in] chunk_size    Size of each chunk in bytes
+ * @param[in] max_size      Maximum file size to read (128KB limit)
+ * @param[out] p_total_read Pointer to store total bytes read
+ * @return bool             true on success, false on failure
+ */
+bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
+                                     char const *const filename,
+                                     uint8_t *const p_chunk_data,
+                                     uint32_t const chunk_size,
+                                     uint32_t const max_size,
+                                     uint32_t *const p_total_read);
 
 /*!
  * @brief Enable/disable logging to file
