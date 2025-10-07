@@ -22,7 +22,8 @@
 #define MICROSD_DRIVER_VERSION_PATCH (0U)
 
 /*! Debug logging levels */
-typedef enum {
+typedef enum
+{
     MICROSD_LOG_NONE = 0,
     MICROSD_LOG_ERROR = 1,
     MICROSD_LOG_WARN = 2,
@@ -31,7 +32,8 @@ typedef enum {
 } microsd_log_level_t;
 
 /*! Driver status structure */
-typedef struct {
+typedef struct
+{
     char driver_id[32];
     char driver_uuid[64];
     uint8_t version_major;
@@ -69,7 +71,8 @@ typedef struct {
 #pragma pack(push, 1)
 
 /*! MBR partition entry structure */
-typedef struct {
+typedef struct
+{
     uint8_t status;         /*!< Partition status (0x80 = bootable, 0x00 = non-bootable) */
     uint8_t first_head;     /*!< First head (CHS addressing) */
     uint8_t first_sector;   /*!< First sector (CHS addressing) */
@@ -83,14 +86,16 @@ typedef struct {
 } mbr_partition_entry_t;
 
 /*! MBR (Master Boot Record) structure */
-typedef struct {
+typedef struct
+{
     uint8_t boot_code[446];              /*!< Boot loader code */
     mbr_partition_entry_t partitions[4]; /*!< Partition table (4 entries) */
     uint16_t signature;                  /*!< MBR signature (0xAA55) */
 } mbr_t;
 
 /*! exFAT boot sector structure */
-typedef struct {
+typedef struct
+{
     uint8_t jump_boot[3];              /*!< Jump instruction */
     uint8_t filesystem_name[8];        /*!< "EXFAT   " */
     uint8_t must_be_zero[53];          /*!< Must be zero */
@@ -124,7 +129,8 @@ typedef struct {
 #define EXFAT_TYPE_FILE_NAME (0xC1)
 
 /*! exFAT file directory entry */
-typedef struct {
+typedef struct
+{
     uint8_t entry_type;                   /*!< Entry type (0x85) */
     uint8_t secondary_count;              /*!< Number of secondary entries */
     uint16_t set_checksum;                /*!< Set checksum */
@@ -142,7 +148,8 @@ typedef struct {
 } exfat_file_entry_t;
 
 /*! exFAT stream extension directory entry */
-typedef struct {
+typedef struct
+{
     uint8_t entry_type;         /*!< Entry type (0xC0) */
     uint8_t general_flags;      /*!< General flags */
     uint8_t reserved1;          /*!< Reserved */
@@ -156,7 +163,8 @@ typedef struct {
 } exfat_stream_entry_t;
 
 /*! exFAT file name directory entry */
-typedef struct {
+typedef struct
+{
     uint8_t entry_type;     /*!< Entry type (0xC1) */
     uint8_t general_flags;  /*!< General flags */
     uint16_t file_name[15]; /*!< File name (UTF-16) */
@@ -165,7 +173,8 @@ typedef struct {
 #pragma pack(pop)
 
 /*! File system information structure */
-typedef struct {
+typedef struct
+{
     bool is_exfat;                /*!< Is exFAT filesystem */
     uint32_t partition_offset;    /*!< Partition start sector (0 for no partitions) */
     uint32_t bytes_per_sector;    /*!< Bytes per sector */
@@ -189,7 +198,7 @@ bool microsd_init(void);
  * @param[out] p_info   Pointer to driver info structure
  * @return bool         true on success, false on failure
  */
-bool microsd_get_driver_info(microsd_driver_info_t* const p_info);
+bool microsd_get_driver_info(microsd_driver_info_t *const p_info);
 
 /*!
  * @brief Set logging level for debugging
@@ -210,8 +219,7 @@ void microsd_print_banner(void);
  * @param[out] p_data   Pointer to store read data
  * @return bool         true on success, false on failure
  */
-bool microsd_read_byte(uint32_t const address,
-                       uint8_t* const p_data);
+bool microsd_read_byte(uint32_t const address, uint8_t *const p_data);
 
 /*!
  * @brief Write single byte to microSD card
@@ -219,8 +227,7 @@ bool microsd_read_byte(uint32_t const address,
  * @param[in] data      Data byte to write
  * @return bool         true on success, false on failure
  */
-bool microsd_write_byte(uint32_t const address,
-                        uint8_t const data);
+bool microsd_write_byte(uint32_t const address, uint8_t const data);
 
 /*!
  * @brief Read block from microSD card
@@ -228,8 +235,7 @@ bool microsd_write_byte(uint32_t const address,
  * @param[out] p_buffer     Pointer to buffer for read data
  * @return bool             true on success, false on failure
  */
-bool microsd_read_block(uint32_t const block_num,
-                        uint8_t* const p_buffer);
+bool microsd_read_block(uint32_t const block_num, uint8_t *const p_buffer);
 
 /*!
  * @brief Write block to microSD card
@@ -237,15 +243,14 @@ bool microsd_read_block(uint32_t const block_num,
  * @param[in] p_buffer      Pointer to data buffer
  * @return bool             true on success, false on failure
  */
-bool microsd_write_block(uint32_t const block_num,
-                         uint8_t const* const p_buffer);
+bool microsd_write_block(uint32_t const block_num, uint8_t const *const p_buffer);
 
 /*!
  * @brief Initialize filesystem information
  * @param[out] p_fs_info    Pointer to filesystem info structure
  * @return bool             true on success, false on failure
  */
-bool microsd_init_filesystem(filesystem_info_t* const p_fs_info);
+bool microsd_init_filesystem(filesystem_info_t *const p_fs_info);
 
 /*!
  * @brief Create a file in the exFAT filesystem
@@ -255,9 +260,9 @@ bool microsd_init_filesystem(filesystem_info_t* const p_fs_info);
  * @param[in] data_length   Length of file data in bytes
  * @return bool             true on success, false on failure
  */
-bool microsd_create_file(filesystem_info_t const* const p_fs_info,
-                         char const* const filename,
-                         uint8_t const* const p_data,
+bool microsd_create_file(filesystem_info_t const *const p_fs_info,
+                         char const *const filename,
+                         uint8_t const *const p_data,
                          uint32_t const data_length);
 
 /*!
@@ -269,11 +274,11 @@ bool microsd_create_file(filesystem_info_t const* const p_fs_info,
  * @param[out] p_bytes_read Pointer to store actual bytes read
  * @return bool             true on success, false on failure
  */
-bool microsd_read_file(filesystem_info_t const* const p_fs_info,
-                       char const* const filename,
-                       uint8_t* const p_buffer,
+bool microsd_read_file(filesystem_info_t const *const p_fs_info,
+                       char const *const filename,
+                       uint8_t *const p_buffer,
                        uint32_t const buffer_size,
-                       uint32_t* const p_bytes_read);
+                       uint32_t *const p_bytes_read);
 
 /*!
  * @brief Enable/disable logging to file
