@@ -22,7 +22,8 @@
 #define MICROSD_DRIVER_VERSION_PATCH (0U)
 
 /*! Debug logging levels */
-typedef enum {
+typedef enum
+{
     MICROSD_LOG_NONE = 0,
     MICROSD_LOG_ERROR = 1,
     MICROSD_LOG_WARN = 2,
@@ -336,5 +337,7 @@ bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
  * @return void
  */
 void microsd_enable_file_logging(bool enable);
+
+uint32_t get_current_time();
 
 #endif /* MICROSD_DRIVER_H */

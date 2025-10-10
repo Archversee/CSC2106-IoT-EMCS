@@ -13,6 +13,7 @@ target_link_libraries(microsd_driver
     hardware_gpio
 )
 
+
 # MicroSD Demo Executable
 add_executable(microsd_demo
     microsd_demo.c
@@ -46,4 +47,3 @@ pico_enable_stdio_uart(large_file_test 0)
 
 # Create UF2 file
 pico_add_extra_outputs(large_file_test)
-
