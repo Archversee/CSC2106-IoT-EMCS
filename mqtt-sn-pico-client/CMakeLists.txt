@@ -42,9 +42,8 @@ project(mqtt-sn-pico-client C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add drivers subdirectory 
-#add_subdirectory(drivers)
-#add_subdirectory(fs)
+# Add drivers subdirectory
+add_subdirectory(drivers)
 
 # MQTT-SN Pico Client executable
 add_executable(mqtt-sn-pico-client

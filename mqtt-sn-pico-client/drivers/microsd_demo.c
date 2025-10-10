@@ -158,7 +158,24 @@ static bool test_multiple_byte_operation(void)
 static bool test_create_exfat_file(void)
 {
     bool result = false;
-    const char *message = "HELLO INF2004 CS31 GROUP\n";
+    const char *message =
+        "HELLO INF2004 CS31 GROUP\n"
+        "This text file was created by microsd_driver.c demo.\n"
+        "Hello Prof Fauzi!\n"
+        "Just for some fun, here are some funny dumps:\n"
+        "\n"
+        "Glasses are really versatile. For example, glasses can change a character's\n"
+        "appearance or personality: someone wearing glasses can look more serious,\n"
+        "or removing glasses can create a different effect. Characters stealing a\n"
+        "protagonist's glasses and putting them on can be played for humor (\"Haha,\n"
+        "got your glasses!\"), and glasses can also make a character look cool.\n"
+        "You can switch styles and colors to match a mood: half-rim, thick frames,\n"
+        "and more. It's fun to experiment with different styles.\n"
+        "\n"
+        "I hope Luna or Marine might try some on to replace an eyepatch — it would\n"
+        "be a cute visual change.\n"
+        "\n"
+        "Don't you think we should officially give everyone glasses?\n\0"; // eof at the end
     const char *filename = "HELLO_INF2004.txt";
     filesystem_info_t fs_info;
 
@@ -208,7 +225,7 @@ static bool test_read_exfat_file(void)
 {
     bool result = false;
     const char *filename = "HELLO_INF2004.txt";
-    uint8_t read_buffer[64];
+    uint8_t read_buffer[256]; // the amount of bytes to store the test file
     uint32_t bytes_read = 0;
     filesystem_info_t fs_info;
 
@@ -282,6 +299,9 @@ int main(void)
         printf("=== Test Run #%d ===\n", test_count);
         all_tests_passed = true;
 
+        uint32_t current_time = get_current_time();
+        printf("Current time (for timestamping): 0x%08lX\n", current_time);
+
         /* Initialize microSD card */
         printf("Initializing microSD card...\n");
         if(microsd_init())
@@ -297,15 +317,17 @@ int main(void)
             /* Run test suite */
             printf("\nStarting test suite...\n");
 
-            // /* Test 1: Single byte operation */
-            // if (!test_single_byte_operation()) {
-            //     all_tests_passed = false;
-            // }
+            /* Test 1: Single byte operation */
+            if(!test_single_byte_operation())
+            {
+                all_tests_passed = false;
+            }
 
-            // /* Test 2: Multiple byte operations */
-            // if (!test_multiple_byte_operation()) {
-            //     all_tests_passed = false;
-            // }
+            /* Test 2: Multiple byte operations */
+            if(!test_multiple_byte_operation())
+            {
+                all_tests_passed = false;
+            }
 
             /* Test 3: exFAT file creation test */
             if(!test_create_exfat_file())
@@ -338,8 +360,8 @@ int main(void)
             printf("Please check the microSD card connection and try again.\n");
         }
 
-        printf("\n--- Waiting 10 seconds for next test run ---\n\n");
-        sleep_ms(10000);
+        printf("\n--- Waiting 5 seconds for next test run ---\n\n");
+        sleep_ms(5000);
         test_count++;
     }
 
