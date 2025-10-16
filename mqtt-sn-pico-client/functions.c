@@ -7,6 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 
+static uint16_t next_msg_id = 1;
+qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
+
+uint16_t get_next_msg_id(void) {
+    return next_msg_id++;
+}
+
 // Send MQTT-SN CONNECT packet
 void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port)
 {
@@ -99,15 +106,21 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb,
     pbuf_free(p);
 }
 
-// PUBLISH  QOS 0 to Predefined Topic ID
+// PUBLISH to Predefined Topic ID with qos
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
                               const ip_addr_t *gw_addr,
                               u16_t gw_port,
                               u16_t topic_id,
-                              const char *payload)
+                              const char *payload,
+                              int qos,
+                              uint16_t msg_id,
+                              bool is_retransmit)
 {
-    if(!payload)
+    if (!payload || qos < 0 || qos > 2) {
+        printf("Invalid QoS or payload\n");
         return;
+    }
+
     size_t payload_len = strlen(payload);
     u16_t packet_len = 7 + payload_len;
 
@@ -119,39 +132,186 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
 
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
     if(!p)
+    {
+        printf("Failed to allocate pbuf\n");
         return;
+    }
+
+    // QOS Flags 
+    uint8_t flags = 0x01; // TopicIdType = Predefined
+
+    if (qos == 1) {
+        flags |= 0x20; // QoS 1 (bit 5 = 1)
+    } else if (qos == 2) {
+        flags |= 0x40; // QoS 2 (bit 6 = 1)
+    }
 
     uint8_t *data = (uint8_t *) p->payload;
     data[0] = (uint8_t) packet_len;
     data[1] = 0x0C;                   // PUBLISH
-    data[2] = 0x01;                   // Flags: Predefined Topic (Paho convention)
+    data[2] = flags;                  
     data[3] = (topic_id >> 8) & 0xFF; // Topic ID high
     data[4] = topic_id & 0xFF;        // Topic ID low
-    data[5] = 0x00;                   // MsgId high = 0
-    data[6] = 0x00;                   // MsgId low = 0  0 for QoS 0
+    data[5] = (qos > 0) ? (msg_id >> 8) & 0xFF : 0x00;
+    data[6] = (qos > 0) ? (msg_id & 0xFF) : 0x00;
     memcpy(&data[7], payload, payload_len);
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
-    if(err == ERR_OK)
-    {
-        printf("Sent PUBLISH to Topic ID %d: '%s'\n", topic_id, payload);
-    }
-    else
-    {
+    if (err == ERR_OK) {
+        printf("Sent PUBLISH to Topic ID %d (QoS %d, Msg ID %d): '%s'\n", topic_id, qos, msg_id, payload);
+
+        if (qos > 0 && !is_retransmit) {
+            for (int i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+                if (!pending_msgs[i].in_use) {
+                    pending_msgs[i].in_use = true;
+                    pending_msgs[i].msg_id = msg_id;
+                    pending_msgs[i].qos = qos;
+                    pending_msgs[i].step = 0;
+                    pending_msgs[i].timestamp = get_absolute_time();
+                    pending_msgs[i].retry_count = 0;
+                    pending_msgs[i].topic_id = topic_id;
+                    strncpy(pending_msgs[i].payload, payload, sizeof(pending_msgs[i].payload) - 1);
+                    pending_msgs[i].payload[sizeof(pending_msgs[i].payload) - 1] = '\0';
+                    break;
+                }
+            }
+        }
+    } else {
         printf("Failed to send PUBLISH: %d\n", err);
     }
     pbuf_free(p);
 }
 
+void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
+    uint8_t msg[4];
+    msg[0] = 4;
+    msg[1] = 0x0D; // PUBACK
+    msg[2] = (msg_id >> 8) & 0xFF;
+    msg[3] = msg_id & 0xFF;
+
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    if (!p) return;
+    memcpy(p->payload, msg, sizeof(msg));
+    udp_sendto(pcb, p, gw_addr, gw_port);
+    pbuf_free(p);
+    printf("Sent PUBACK for Msg ID: %d\n", msg_id);
+}
+
+void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
+    uint8_t msg[4];
+    msg[0] = 4;
+    msg[1] = 0x0F; // PUBREC
+    msg[2] = (msg_id >> 8) & 0xFF;
+    msg[3] = msg_id & 0xFF;
+
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    if (!p) return;
+    memcpy(p->payload, msg, sizeof(msg));
+    udp_sendto(pcb, p, gw_addr, gw_port);
+    pbuf_free(p);
+    printf("Sent PUBREC for Msg ID: %d\n", msg_id);
+}
+
+void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
+    uint8_t msg[4];
+    msg[0] = 4;
+    msg[1] = 0x0E; // PUBCOMP
+    msg[2] = (msg_id >> 8) & 0xFF;
+    msg[3] = msg_id & 0xFF;
+
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    if (!p) return;
+    memcpy(p->payload, msg, sizeof(msg));
+    udp_sendto(pcb, p, gw_addr, gw_port);
+    pbuf_free(p);
+    printf("Sent PUBCOMP for Msg ID: %d\n", msg_id);
+}
+
+void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
+    uint8_t msg[4];
+    msg[0] = 4; // Length
+    msg[1] = 0x10; // PUBREL
+    msg[2] = (msg_id >> 8) & 0xFF;
+    msg[3] = msg_id & 0xFF;
+
+    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    if (!p) return;
+
+    memcpy(p->payload, msg, sizeof(msg));
+    udp_sendto(pcb, p, gw_addr, gw_port);
+    pbuf_free(p);
+}
+
+//Check and handle QoS message timeouts and retransmissions
+void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port) {
+    absolute_time_t now = get_absolute_time();
+    for (int i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+        if (!pending_msgs[i].in_use) continue;
+
+        if (absolute_time_diff_us(pending_msgs[i].timestamp, now) > QOS_RETRY_INTERVAL_US) { 
+            if (pending_msgs[i].retry_count >= QOS_MAX_RETRIES) {
+                printf("QoS %d Msg ID %d failed after retries\n", pending_msgs[i].qos, pending_msgs[i].msg_id);
+                pending_msgs[i].in_use = false;
+                continue;
+            }
+
+            // Retransmit
+            if (pending_msgs[i].qos == 1) {
+                printf("Retransmitting QoS1 PUBLISH for Msg ID %d\n", pending_msgs[i].msg_id);
+                mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
+                                         pending_msgs[i].topic_id,
+                                         pending_msgs[i].payload,
+                                         pending_msgs[i].qos,
+                                         pending_msgs[i].msg_id,
+                                        true);
+            } else if (pending_msgs[i].qos == 2) {
+                if (pending_msgs[i].step == 0) {
+                    printf("Retransmitting QoS2 PUBLISH for Msg ID %d\n", pending_msgs[i].msg_id);
+                    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
+                                             pending_msgs[i].topic_id,
+                                             pending_msgs[i].payload,
+                                             pending_msgs[i].qos,
+                                             pending_msgs[i].msg_id,
+                                            true);
+                } else if (pending_msgs[i].step == 1) {
+                    printf("Retransmitting PUBREL for Msg ID %d\n", pending_msgs[i].msg_id);
+                    mqtt_sn_send_pubrel(pcb, gw_addr, gw_port, pending_msgs[i].msg_id);
+                }
+            }
+
+            pending_msgs[i].retry_count++;
+            pending_msgs[i].timestamp = get_absolute_time();
+        }
+    }
+}
+
+void remove_pending_qos_msg(uint16_t msg_id) {
+    for (int i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+        if (pending_msgs[i].in_use && pending_msgs[i].msg_id == msg_id) {
+            pending_msgs[i].in_use = false;
+            break;
+        }
+    }
+}
+
+
 // Callback for when UDP data is received
 void udp_recv_callback(
     void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
+    mqtt_sn_context_t *ctx = (mqtt_sn_context_t *)arg;
+
     if(p != NULL && p->len >= 3)
     {
         uint8_t *data = (uint8_t *) p->payload;
         uint8_t length = data[0];
         uint8_t msg_type = data[1];
+
+        if (ctx && ctx->drop_acks && (msg_type == 0x0D || msg_type == 0x0F || msg_type == 0x0E)) {
+            printf("Simulated drop of ACK type 0x%02X\n", msg_type);
+            pbuf_free(p);
+            return;
+        }
 
         if(msg_type == 0x05)
         { // CONNACK
@@ -162,36 +322,78 @@ void udp_recv_callback(
         }
         else if(msg_type == 0x13)
         { // SUBACK
-            uint16_t topic_id = (data[4] << 8) | data[5];
-            uint8_t return_code = data[6];
-            printf("SUBACK: topic_id=%d, return_code=%d\n", topic_id, return_code);
+            uint8_t flags = data[2];
+            uint16_t topic_id = (data[3] << 8) | data[4];
+            uint16_t msg_id = (data[5] << 8) | data[6];
+            uint8_t return_code = data[7];
+            printf("SUBACK: topic_id=%d, msg_id=%d, return_code=%d\n", topic_id, msg_id, return_code);
         }
-        else if(msg_type == 0x0C)
+        else if (msg_type == 0x0C) 
         { // PUBLISH
-            if(length >= 7)
-            {
+            if (length >= 7) {
+                uint8_t flags = data[2];
+                uint8_t qos = (flags >> 5) & 0x03;
                 uint16_t topic_id = (data[3] << 8) | data[4];
+                uint16_t msg_id = (data[5] << 8) | data[6];
                 int payload_len = length - 7;
-                if(topic_id == 1 && payload_len > 0)
-                { // IF Topic ID 1 (pico/cmd)
-                    // Null-terminate for string comparison
+
+                if (payload_len > 0) {
                     char payload[64];
                     int copy_len = (payload_len < 63) ? payload_len : 63;
                     memcpy(payload, &data[7], copy_len);
                     payload[copy_len] = '\0';
 
-                    printf("Command received: %s\n", payload);
+                    printf("PUBLISH received (QoS %d, Msg ID %d): %s\n", qos, msg_id, payload);
 
-                    if(strcmp(payload, "led on") == 0)
-                    {
+                    // Example: act on command
+                    if (strcmp(payload, "led on") == 0) {
                         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-                    }
-                    else if(strcmp(payload, "led off") == 0)
-                    {
+                    } else if (strcmp(payload, "led off") == 0) {
                         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
                     }
                 }
+
+                // Acknowledge based on QoS
+                if (qos == 1) {
+                    mqtt_sn_send_puback(pcb, addr, port, msg_id);
+                } else if (qos == 2) {
+                    mqtt_sn_send_pubrec(pcb, addr, port, msg_id);
+                }
             }
+        }
+        else if (msg_type == 0x0D) 
+        {   //PUBACK QOS 1
+            uint16_t msg_id = (data[4] << 8) | data[5];
+            printf("PUBACK received for Msg ID: %d \n", msg_id);
+            remove_pending_qos_msg(msg_id);
+        }
+        else if (msg_type == 0x0E) 
+        {   //PUBCOMP (QoS 2 final ack)
+            uint16_t msg_id = (data[2] << 8) | data[3];
+            printf("PUBCOMP received for Msg ID: %d\n", msg_id);
+            remove_pending_qos_msg(msg_id);
+        }
+        else if (msg_type == 0x0F) 
+        {   //PUBREC (QoS 2 Step 1) then send PUBREL
+            uint16_t msg_id = (data[2] << 8) | data[3];
+            printf("PUBREC received for Msg ID: %d. Sending PUBREL...\n", msg_id);
+            sleep_ms(200); // brief pause so i can debug and turn of gateway
+            mqtt_sn_send_pubrel(pcb, addr, port, msg_id); // Send PUBREL in response
+            // Update step to indicate PUBREL was sent
+            for (int i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+                if (pending_msgs[i].in_use && pending_msgs[i].msg_id == msg_id) {
+                    pending_msgs[i].step = 1;
+                    pending_msgs[i].timestamp = get_absolute_time(); // reset timer
+                    break;
+                }
+            }
+        }
+        else if (msg_type == 0x10) 
+        { //PUBREL (QoS 2 Step 2) then send PUBCOMP
+            uint16_t msg_id = (data[2] << 8) | data[3];
+            printf("PUBREL received for Msg ID: %d. Sending PUBCOMP...\n", msg_id);
+            mqtt_sn_send_pubcomp(pcb, addr, port, msg_id);
+            remove_pending_qos_msg(msg_id);
         }
         pbuf_free(p);
     }
