@@ -5,7 +5,9 @@ This project demonstrates microSD card operations on Raspberry Pi Pico W and inc
 ## Components
 
 - **Pico W Firmware**: MicroSD card driver and demonstration
-- **MQTT-SN Gateway**: Runs on laptop for MQTT communication
+- **MQTT-SN Gateway**: Runs on laptop for MQTT-SN over UDP communication
+- **MQTT Broker**: Runs on laptop for MQTT communication
+
 
 ## Quick Start
 
@@ -62,12 +64,17 @@ This project demonstrates microSD card operations on Raspberry Pi Pico W and inc
 - Make
 - Network connectivity
 
+### For MQTT-SN Broker (Laptop)
+- Mosquitto
+- Network connectivity
+
 ## Usage
 
 1. Build and flash the Pico W firmware
 2. Insert microSD card into Cytron Pico W kit
 3. Connect via serial terminal (115200 baud)
-4. Run MQTT-SN Gateway on laptop for network communication
+4. Run Mosquitto Broker on laptop for MQTT communication
+5. Run MQTT-SN Gateway on laptop for MQTT-SN (UDP) <-> MQTT (TCP/IP) translation
 
 ## File Structure
 
