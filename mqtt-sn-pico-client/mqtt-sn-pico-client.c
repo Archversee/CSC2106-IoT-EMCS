@@ -9,7 +9,9 @@
 // #define WIFI_SSID "MyOtherSSID"
 // #define WIFI_PASS "MyOtherPass"
 
-#define PAYLOAD_SIZE 248
+uint32_t last_pingresp = 0;
+static uint32_t last_pingreq = 0;
+bool ping_ack_received = true;
 
 int main() {
     
@@ -134,15 +136,39 @@ int main() {
 
         // SEND PINGREQ at intervals
         uint32_t now = to_ms_since_boot(get_absolute_time());
-        if (now - last_ping >= PING_INTERVAL_MS) {
-            mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
-            for (int i = 0; i < 5; i++) {
-                cyw43_arch_poll();
-                sleep_ms(10);
+        // Send PINGREQ 
+        if (ping_ack_received) {
+        // Previous ping was acknowledged, can send new PINGREQ periodically
+            if (now - last_pingreq >= PING_INTERVAL_MS) {
+                mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
+                ping_ack_received = false;  // now waiting for PINGRESP
+                last_pingreq = now;
             }
-            last_ping = now;
-        }
+        } 
+        else {
+            // Waiting for PINGRESP, check timeout
+            if (now - last_pingreq > PINGRESP_TIMEOUT_MS) {
+                printf("PINGRESP timeout, reconnecting MQTT-SN...\n");
+                ping_ack_received = true; // reset flag before reconnect
+                mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
 
+                // Poll and wait for CONNACK
+                for (int i = 0; i < 50; i++) {
+                    cyw43_arch_poll();
+                    sleep_ms(10);
+                }
+                printf("Waiting for CONNACK after reconnect...\n");
+
+                mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1);
+
+                for (int i = 0; i < 20; i++) {
+                    cyw43_arch_poll();
+                    sleep_ms(10);
+                }
+
+                last_pingreq = now;  // reset ping timer after reconnect
+            }
+        }
         // Check for QoS message timeouts and retransmissions
         check_qos_timeouts(pcb, &gateway_addr, UDP_PORT);
 

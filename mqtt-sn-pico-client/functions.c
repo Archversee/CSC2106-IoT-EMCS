@@ -17,7 +17,7 @@ uint16_t get_next_msg_id(void) {
 // Send MQTT-SN CONNECT packet
 void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port)
 {
-    const char *client_id = "pico_w";
+    const char *client_id = MQTT_SN_CLIENT_ID;
     size_t id_len = strlen(client_id);
     u16_t packet_len = 6 + id_len; // [len][type=0x04][flags][protocol_id][duration(2)][client_id]
 
@@ -313,7 +313,7 @@ void udp_recv_callback(
 {
     mqtt_sn_context_t *ctx = (mqtt_sn_context_t *)arg;
 
-    if(p != NULL && p->len >= 3)
+    if(p != NULL && p->len >= 2)
     {
         uint8_t *data = (uint8_t *) p->payload;
         uint8_t length = data[0];
@@ -325,13 +325,22 @@ void udp_recv_callback(
             return;
         }
 
+        if(msg_type == 0x17) {  
+            // PINGRESP
+            last_pingresp = to_ms_since_boot(get_absolute_time());
+            ping_ack_received = true;
+            printf("Received PINGRESP\n");
+        } 
+
         if(msg_type == 0x05)
         { // CONNACK
             uint8_t return_code = data[2];
             printf("CONNACK: return_code=%d (%s)\n",
                    return_code,
                    return_code == 0 ? "Accepted" : "Rejected");
+            ping_ack_received = true;
         }
+        
         else if(msg_type == 0x13)
         { // SUBACK
             uint8_t flags = data[2];

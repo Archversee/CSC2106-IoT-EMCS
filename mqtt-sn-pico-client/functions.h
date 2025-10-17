@@ -46,4 +46,7 @@ typedef struct {
 extern qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
 uint16_t get_next_msg_id(void);
 
+extern uint32_t last_pingresp;
+extern bool ping_ack_received; 
+
 #endif // FUNCTIONS_H
