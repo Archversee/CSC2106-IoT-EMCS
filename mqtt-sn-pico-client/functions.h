@@ -6,6 +6,27 @@
 #include "lwip/udp.h"
 #include "lwip/ip_addr.h"
 
+
+typedef struct {
+    uint16_t msg_id;
+    uint8_t qos;
+    uint8_t step;  // 0 = PUBLISH sent, 1 = PUBREL sent (for QoS 2)
+    absolute_time_t timestamp;
+    uint8_t retry_count;
+    uint16_t topic_id;
+    uint8_t payload[255];   // Binary-safe payload buffer
+    size_t payload_len;     // Actual payload length
+    bool in_use;
+} qos_msg_t;
+
+typedef struct {
+    bool drop_acks;
+} mqtt_sn_context_t;
+
+extern qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
+extern uint32_t last_pingresp;
+extern bool ping_ack_received; 
+
 // Public function declarations
 void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
 void mqtt_sn_pingreq(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
@@ -26,27 +47,6 @@ void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t g
 void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
 void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
 void remove_pending_qos_msg(uint16_t msg_id);
-
-typedef struct {
-    uint16_t msg_id;
-    uint8_t qos;
-    uint8_t step;  // 0 = PUBLISH sent, 1 = PUBREL sent (for QoS 2)
-    absolute_time_t timestamp;
-    uint8_t retry_count;
-    uint16_t topic_id;
-    uint8_t payload[255];   // Binary-safe payload buffer
-    size_t payload_len;     // Actual payload length
-    bool in_use;
-} qos_msg_t;
-
-typedef struct {
-    bool drop_acks;
-} mqtt_sn_context_t;
-
-extern qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
 uint16_t get_next_msg_id(void);
-
-extern uint32_t last_pingresp;
-extern bool ping_ack_received; 
 
 #endif // FUNCTIONS_H
