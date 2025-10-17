@@ -88,7 +88,7 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb,
     uint8_t *data = (uint8_t *) p->payload;
     data[0] = 7;                      // length
     data[1] = 0x12;                   // SUBSCRIBE
-    data[2] = 0x01;                   // flags: QoS0, TopicIdType=predefined (0x01)
+    data[2] = 0x41;                   // flags: QoS2, TopicIdType=predefined (0x01)
     data[3] = 0x00;                   // msg ID high
     data[4] = 0x01;                   // msg ID low
     data[5] = (topic_id >> 8) & 0xFF; // topic ID high
@@ -106,12 +106,13 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb,
     pbuf_free(p);
 }
 
-// PUBLISH to Predefined Topic ID with qos
+// PUBLISH to Predefined Topic ID with qos, binary payload support
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
                               const ip_addr_t *gw_addr,
                               u16_t gw_port,
                               u16_t topic_id,
-                              const char *payload,
+                              const uint8_t *payload,
+                              size_t payload_len,
                               int qos,
                               uint16_t msg_id,
                               bool is_retransmit)
@@ -121,7 +122,6 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
         return;
     }
 
-    size_t payload_len = strlen(payload);
     u16_t packet_len = 7 + payload_len;
 
     if(packet_len > 255)
@@ -158,7 +158,7 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
     if (err == ERR_OK) {
-        printf("Sent PUBLISH to Topic ID %d (QoS %d, Msg ID %d): '%s'\n", topic_id, qos, msg_id, payload);
+        printf("Sent PUBLISH to Topic ID %d (QoS %d, Msg ID %d, Len %d)\n", topic_id, qos, msg_id, packet_len);
 
         if (qos > 0 && !is_retransmit) {
             for (int i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
@@ -170,8 +170,10 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
                     pending_msgs[i].timestamp = get_absolute_time();
                     pending_msgs[i].retry_count = 0;
                     pending_msgs[i].topic_id = topic_id;
-                    strncpy(pending_msgs[i].payload, payload, sizeof(pending_msgs[i].payload) - 1);
-                    pending_msgs[i].payload[sizeof(pending_msgs[i].payload) - 1] = '\0';
+                    // Store binary payload safely, truncate if needed
+                    size_t copy_len = (payload_len < sizeof(pending_msgs[i].payload)) ? payload_len : sizeof(pending_msgs[i].payload);
+                    memcpy(pending_msgs[i].payload, payload, copy_len);
+                    pending_msgs[i].payload_len = copy_len;
                     break;
                 }
             }
@@ -182,27 +184,35 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb,
     pbuf_free(p);
 }
 
-void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
-    uint8_t msg[4];
-    msg[0] = 4;
+
+void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, 
+                         uint16_t topic_id, uint16_t msg_id, uint8_t return_code) {
+    uint8_t msg[7];
+    msg[0] = 7; // Length
     msg[1] = 0x0D; // PUBACK
-    msg[2] = (msg_id >> 8) & 0xFF;
-    msg[3] = msg_id & 0xFF;
+    msg[2] = (topic_id >> 8) & 0xFF;
+    msg[3] = topic_id & 0xFF;
+    msg[4] = (msg_id >> 8) & 0xFF;
+    msg[5] = msg_id & 0xFF;
+    msg[6] = return_code; // 0x00 = Accepted
 
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p) return;
     memcpy(p->payload, msg, sizeof(msg));
     udp_sendto(pcb, p, gw_addr, gw_port);
     pbuf_free(p);
-    printf("Sent PUBACK for Msg ID: %d\n", msg_id);
+
+    printf("Sent PUBACK (topic_id: %u, msg_id: %u, rc: %u)\n", topic_id, msg_id, return_code);
 }
 
+
 void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
-    uint8_t msg[4];
-    msg[0] = 4;
+    uint8_t msg[5];
+    msg[0] = 5;
     msg[1] = 0x0F; // PUBREC
     msg[2] = (msg_id >> 8) & 0xFF;
     msg[3] = msg_id & 0xFF;
+    msg[4] = 0x00;                   // Return code: ACCEPTED (0x00)
 
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p) return;
@@ -213,11 +223,12 @@ void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw
 }
 
 void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port, uint16_t msg_id) {
-    uint8_t msg[4];
-    msg[0] = 4;
+    uint8_t msg[5];
+    msg[0] = 5;
     msg[1] = 0x0E; // PUBCOMP
     msg[2] = (msg_id >> 8) & 0xFF;
     msg[3] = msg_id & 0xFF;
+    msg[4] = 0x00;                   // Return code: ACCEPTED (0x00)
 
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p) return;
@@ -255,24 +266,25 @@ void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
                 continue;
             }
 
-            // Retransmit
             if (pending_msgs[i].qos == 1) {
                 printf("Retransmitting QoS1 PUBLISH for Msg ID %d\n", pending_msgs[i].msg_id);
                 mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
                                          pending_msgs[i].topic_id,
                                          pending_msgs[i].payload,
+                                         pending_msgs[i].payload_len,
                                          pending_msgs[i].qos,
                                          pending_msgs[i].msg_id,
-                                        true);
+                                         true);
             } else if (pending_msgs[i].qos == 2) {
                 if (pending_msgs[i].step == 0) {
                     printf("Retransmitting QoS2 PUBLISH for Msg ID %d\n", pending_msgs[i].msg_id);
                     mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
                                              pending_msgs[i].topic_id,
                                              pending_msgs[i].payload,
+                                             pending_msgs[i].payload_len,
                                              pending_msgs[i].qos,
                                              pending_msgs[i].msg_id,
-                                            true);
+                                             true);
                 } else if (pending_msgs[i].step == 1) {
                     printf("Retransmitting PUBREL for Msg ID %d\n", pending_msgs[i].msg_id);
                     mqtt_sn_send_pubrel(pcb, gw_addr, gw_port, pending_msgs[i].msg_id);
@@ -329,33 +341,33 @@ void udp_recv_callback(
             printf("SUBACK: topic_id=%d, msg_id=%d, return_code=%d\n", topic_id, msg_id, return_code);
         }
         else if (msg_type == 0x0C) 
-        { // PUBLISH
+        { // PUBLISH received
             if (length >= 7) {
                 uint8_t flags = data[2];
                 uint8_t qos = (flags >> 5) & 0x03;
                 uint16_t topic_id = (data[3] << 8) | data[4];
                 uint16_t msg_id = (data[5] << 8) | data[6];
                 int payload_len = length - 7;
+                const uint8_t *payload = &data[7];
 
-                if (payload_len > 0) {
-                    char payload[64];
-                    int copy_len = (payload_len < 63) ? payload_len : 63;
-                    memcpy(payload, &data[7], copy_len);
-                    payload[copy_len] = '\0';
+                // Print binary payload in hex
+                printf("PUBLISH received (QoS %d, Msg ID %d), Payload (%d bytes): ", qos, msg_id, payload_len);
+                for (int i = 0; i < payload_len; i++) {
+                    printf("%02X ", payload[i]);
+                }
+                printf("\n");
 
-                    printf("PUBLISH received (QoS %d, Msg ID %d): %s\n", qos, msg_id, payload);
-
-                    // Example: act on command
-                    if (strcmp(payload, "led on") == 0) {
-                        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-                    } else if (strcmp(payload, "led off") == 0) {
-                        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-                    }
+                // handle text commands embedded in binary
+                if (payload_len == 6 && memcmp(payload, "led on", 6) == 0) {
+                    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+                } 
+                else if (payload_len == 7 && memcmp(payload, "led off", 7) == 0) {
+                    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
                 }
 
-                // Acknowledge based on QoS
+                // QoS ACKs
                 if (qos == 1) {
-                    mqtt_sn_send_puback(pcb, addr, port, msg_id);
+                    mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id, 0x00);
                 } else if (qos == 2) {
                     mqtt_sn_send_pubrec(pcb, addr, port, msg_id);
                 }

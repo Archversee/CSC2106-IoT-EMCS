@@ -9,6 +9,8 @@
 // #define WIFI_SSID "MyOtherSSID"
 // #define WIFI_PASS "MyOtherPass"
 
+#define PAYLOAD_SIZE 248
+
 int main() {
     
     stdio_init_all();
@@ -89,6 +91,12 @@ int main() {
     bool last_qos_button = gpio_get(QOSBUTTON_PIN);
     bool last_drop_button = gpio_get(DROP_ACK_BUTTON_PIN);
 
+    uint8_t payload[PAYLOAD_SIZE];
+    // Fill payload with example binary data: 0x00, 0x01, 0x02, ..., 0xFE
+    for (int i = 0; i < PAYLOAD_SIZE; i++) {
+        payload[i] = i & 0xFF;
+    }
+
     while (true) {
         cyw43_arch_poll();
 
@@ -98,7 +106,7 @@ int main() {
             // GP 20 Button pressed (falling edge)
             printf("Button pressed! Publishing message...\n");
             uint16_t id = get_next_msg_id();
-            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, "Hello from pico W!", qos_level, id, false);
+            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, payload, PAYLOAD_SIZE, qos_level, id, false);
             sleep_ms(200); // Debounce
         }
         last_button_state = current_button;
@@ -114,9 +122,10 @@ int main() {
         }
         last_qos_button = current_qos_button;
 
-        //Toggle drop_acks with button (active LOW)
+        //Check drock ack button press (active LOW)
         bool cur_drop_btn = gpio_get(DROP_ACK_BUTTON_PIN);
-        if (last_drop_button && !cur_drop_btn) { // falling edge
+        if (last_drop_button && !cur_drop_btn) { 
+            // GP 22 falling edge
             mqtt_ctx.drop_acks = !mqtt_ctx.drop_acks;
             printf("drop_acks = %d\n", mqtt_ctx.drop_acks);
             sleep_ms(200);
