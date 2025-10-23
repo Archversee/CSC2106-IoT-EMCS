@@ -22,8 +22,7 @@
 #define MICROSD_DRIVER_VERSION_PATCH (0U)
 
 /*! Debug logging levels */
-typedef enum
-{
+typedef enum {
     MICROSD_LOG_NONE = 0,
     MICROSD_LOG_ERROR = 1,
     MICROSD_LOG_WARN = 2,
@@ -198,7 +197,7 @@ bool microsd_init(void);
  * @param[out] p_info   Pointer to driver info structure
  * @return bool         true on success, false on failure
  */
-bool microsd_get_driver_info(microsd_driver_info_t *const p_info);
+bool microsd_get_driver_info(microsd_driver_info_t* const p_info);
 
 /*!
  * @brief Set logging level for debugging
@@ -219,7 +218,7 @@ void microsd_print_banner(void);
  * @param[out] p_data   Pointer to store read data
  * @return bool         true on success, false on failure
  */
-bool microsd_read_byte(uint32_t const address, uint8_t *const p_data);
+bool microsd_read_byte(uint32_t const address, uint8_t* const p_data);
 
 /*!
  * @brief Write single byte to microSD card
@@ -235,7 +234,7 @@ bool microsd_write_byte(uint32_t const address, uint8_t const data);
  * @param[out] p_buffer     Pointer to buffer for read data
  * @return bool             true on success, false on failure
  */
-bool microsd_read_block(uint32_t const block_num, uint8_t *const p_buffer);
+bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer);
 
 /*!
  * @brief Write block to microSD card
@@ -243,14 +242,14 @@ bool microsd_read_block(uint32_t const block_num, uint8_t *const p_buffer);
  * @param[in] p_buffer      Pointer to data buffer
  * @return bool             true on success, false on failure
  */
-bool microsd_write_block(uint32_t const block_num, uint8_t const *const p_buffer);
+bool microsd_write_block(uint32_t const block_num, uint8_t const* const p_buffer);
 
 /*!
  * @brief Initialize filesystem information
  * @param[out] p_fs_info    Pointer to filesystem info structure
  * @return bool             true on success, false on failure
  */
-bool microsd_init_filesystem(filesystem_info_t *const p_fs_info);
+bool microsd_init_filesystem(filesystem_info_t* const p_fs_info);
 
 /*!
  * @brief Create a file in the exFAT filesystem
@@ -260,9 +259,9 @@ bool microsd_init_filesystem(filesystem_info_t *const p_fs_info);
  * @param[in] data_length   Length of file data in bytes
  * @return bool             true on success, false on failure
  */
-bool microsd_create_file(filesystem_info_t const *const p_fs_info,
-                         char const *const filename,
-                         uint8_t const *const p_data,
+bool microsd_create_file(filesystem_info_t const* const p_fs_info,
+                         char const* const filename,
+                         uint8_t const* const p_data,
                          uint32_t const data_length);
 
 /*!
@@ -275,9 +274,9 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info,
  * @param[in] num_chunks    Number of chunks to write
  * @return bool             true on success, false on failure
  */
-bool microsd_create_large_file_chunked(filesystem_info_t const *const p_fs_info,
-                                       char const *const filename,
-                                       uint8_t const *const p_chunk_data,
+bool microsd_create_large_file_chunked(filesystem_info_t const* const p_fs_info,
+                                       char const* const filename,
+                                       uint8_t const* const p_chunk_data,
                                        uint32_t const chunk_size,
                                        uint32_t const total_size,
                                        uint32_t const num_chunks);
@@ -292,12 +291,12 @@ bool microsd_create_large_file_chunked(filesystem_info_t const *const p_fs_info,
  * @param[out] p_total_bytes_read Pointer to store total bytes read
  * @return bool                 true on success, false on failure
  */
-bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
-                                     char const *const filename,
-                                     uint8_t *const p_chunk_buffer,
+bool microsd_read_large_file_chunked(filesystem_info_t const* const p_fs_info,
+                                     char const* const filename,
+                                     uint8_t* const p_chunk_buffer,
                                      uint32_t const chunk_size,
                                      uint32_t const max_file_size,
-                                     uint32_t *const p_total_bytes_read);
+                                     uint32_t* const p_total_bytes_read);
 
 /*!
  * @brief Read a file from the exFAT filesystem
@@ -308,11 +307,11 @@ bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
  * @param[out] p_bytes_read Pointer to store actual bytes read
  * @return bool             true on success, false on failure
  */
-bool microsd_read_file(filesystem_info_t const *const p_fs_info,
-                       char const *const filename,
-                       uint8_t *const p_buffer,
+bool microsd_read_file(filesystem_info_t const* const p_fs_info,
+                       char const* const filename,
+                       uint8_t* const p_buffer,
                        uint32_t const buffer_size,
-                       uint32_t *const p_bytes_read);
+                       uint32_t* const p_bytes_read);
 
 /*!
  * @brief Read a large file using chunked reading to avoid memory limitations
@@ -324,12 +323,12 @@ bool microsd_read_file(filesystem_info_t const *const p_fs_info,
  * @param[out] p_total_read Pointer to store total bytes read
  * @return bool             true on success, false on failure
  */
-bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
-                                     char const *const filename,
-                                     uint8_t *const p_chunk_data,
+bool microsd_read_large_file_chunked(filesystem_info_t const* const p_fs_info,
+                                     char const* const filename,
+                                     uint8_t* const p_chunk_data,
                                      uint32_t const chunk_size,
                                      uint32_t const max_size,
-                                     uint32_t *const p_total_read);
+                                     uint32_t* const p_total_read);
 
 /*!
  * @brief Enable/disable logging to file
@@ -339,5 +338,80 @@ bool microsd_read_large_file_chunked(filesystem_info_t const *const p_fs_info,
 void microsd_enable_file_logging(bool enable);
 
 uint32_t get_current_time();
+
+/*! Chunk metadata structure for tracking out-of-order chunk writes */
+typedef struct
+{
+    uint32_t total_chunks;    /*!< Total number of chunks expected */
+    uint32_t chunk_size;      /*!< Size of each chunk in bytes */
+    uint32_t chunks_received; /*!< Number of chunks received so far */
+    uint8_t chunk_bitmap[32]; /*!< Bitmap tracking which chunks are received (max 256 chunks) */
+    uint32_t file_cluster;    /*!< First cluster of the file data */
+    uint32_t total_file_size; /*!< Total size of the file in bytes */
+    char filename[64];        /*!< Filename for this chunked file */
+} chunk_metadata_t;
+
+/*!
+ * @brief Initialize chunk-based writing for a new file
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in] filename          Filename for the chunked file
+ * @param[in] total_chunks      Total number of chunks expected (including metadata chunk)
+ * @param[in] chunk_size        Size of each chunk in bytes
+ * @param[out] p_metadata       Pointer to metadata structure to initialize
+ * @return bool                 true on success, false on failure
+ */
+bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
+                              char const* const filename,
+                              uint32_t const total_chunks,
+                              uint32_t const chunk_size,
+                              chunk_metadata_t* const p_metadata);
+
+/*!
+ * @brief Write a single chunk to the file (can be out-of-order)
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in,out] p_metadata    Pointer to chunk metadata structure
+ * @param[in] chunk_index       Index of the chunk (0-based, 0 is metadata)
+ * @param[in] p_chunk_data      Pointer to chunk data
+ * @param[in] chunk_data_size   Size of chunk data (may be less than chunk_size for last chunk)
+ * @return bool                 true on success, false on failure
+ */
+bool microsd_write_chunk(filesystem_info_t const* const p_fs_info,
+                         chunk_metadata_t* const p_metadata,
+                         uint32_t const chunk_index,
+                         uint8_t const* const p_chunk_data,
+                         uint32_t const chunk_data_size);
+
+/*!
+ * @brief Finalize chunk-based writing and create directory entry
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in] p_metadata        Pointer to chunk metadata structure
+ * @return bool                 true on success, false on failure
+ */
+bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
+                                  chunk_metadata_t const* const p_metadata);
+
+/*!
+ * @brief Read chunks from a file
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in] filename          Filename to read
+ * @param[out] p_chunk_data     Pointer to buffer for chunk data
+ * @param[in] chunk_size        Size of each chunk
+ * @param[in] chunk_index       Index of chunk to read
+ * @param[out] p_bytes_read     Pointer to store actual bytes read
+ * @return bool                 true on success, false on failure
+ */
+bool microsd_read_chunk(filesystem_info_t const* const p_fs_info,
+                        char const* const filename,
+                        uint8_t* const p_chunk_data,
+                        uint32_t const chunk_size,
+                        uint32_t const chunk_index,
+                        uint32_t* const p_bytes_read);
+
+/*!
+ * @brief Check if all chunks have been received
+ * @param[in] p_metadata        Pointer to chunk metadata structure
+ * @return bool                 true if all chunks received, false otherwise
+ */
+bool microsd_check_all_chunks_received(chunk_metadata_t const* const p_metadata);
 
 #endif /* MICROSD_DRIVER_H */

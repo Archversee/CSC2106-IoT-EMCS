@@ -1,450 +1,251 @@
-/*!
- * @file    data_frame.c
- * @brief   File deconstruction and reconstruction implementation
- * @author  INF2004 Team
- * @date    2024
- */
-
 #include "data_frame.h"
 
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "../drivers/microsd_driver.h"
 
-/*! Global filesystem info structure */
-static filesystem_info_t g_fs_info = {0};
-static bool g_fs_initialized = false;
-
-/*! Storage layout constants - now using filesystem-based storage */
-#define METADATA_FILE_PREFIX "metadata_" /*!< Prefix for metadata files */
-#define PACKET_FILE_PREFIX "packet_"     /*!< Prefix for packet files */
-#define FILE_EXTENSION ".dat"            /*!< File extension for data files */
-#define MAX_STORED_FILES (10U)           /*!< Maximum number of stored files */
-#define MAX_PACKETS_PER_FILE (100U)      /*!< Maximum packets per file */
-#define METADATA_SIZE (sizeof(file_metadata_t))
-#define PACKET_STORAGE_SIZE (sizeof(data_packet_t))
-
-/*! Private function prototypes */
-static uint32_t calculate_crc32(uint8_t const *const p_data, size_t const length);
-static bool validate_packet_checksum(data_packet_t const *const p_packet);
-static void generate_packet_checksum(data_packet_t *const p_packet);
-static uint32_t generate_session_id(void);
-static bool init_filesystem(void);
-static void
-get_metadata_filename(uint8_t const file_index, char *const p_filename, size_t const filename_size);
-static void get_packet_filename(uint8_t const file_index,
-                                uint32_t const packet_seq,
-                                char *const p_filename,
-                                size_t const filename_size);
-
-/*!
- * @brief Initialize filesystem if not already done
- * @return bool true on success, false on failure
+/**
+ * @brief Calculate CRC16 checksum for data buffer (CCITT-FALSE)
+ * @param data Pointer to data buffer
+ * @param length Length of data in bytes
+ * @return uint16_t CRC16 checksum value
  */
-static bool init_filesystem(void) {
-    if (!g_fs_initialized) {
-        if (microsd_init() && microsd_init_filesystem(&g_fs_info)) {
-            g_fs_initialized = true;
-            printf("Filesystem initialized for data frame operations\n");
-        } else {
-            printf("Failed to initialize filesystem for data frame operations\n");
-            return false;
-        }
-    }
-    return true;
-}
+uint16_t crc16(unsigned char* data, size_t length) {
+    uint16_t crc = 0xFFFF;  // Initial value for CCITT-FALSE
 
-/*!
- * @brief Generate metadata filename
- * @param[in] file_index    File index (0-9)
- * @param[out] p_filename   Buffer for filename
- * @param[in] filename_size Size of filename buffer
- */
-static void
-get_metadata_filename(uint8_t const file_index, char *const p_filename, size_t const filename_size) {
-    snprintf(
-        p_filename, filename_size, "%s%02u%s", METADATA_FILE_PREFIX, file_index, FILE_EXTENSION);
-}
+    for (size_t i = 0; i < length; i++) {
+        crc ^= (uint16_t)data[i] << 8;
 
-/*!
- * @brief Generate packet filename
- * @param[in] file_index    File index (0-9)
- * @param[in] packet_seq    Packet sequence number
- * @param[out] p_filename   Buffer for filename
- * @param[in] filename_size Size of filename buffer
- */
-static void get_packet_filename(uint8_t const file_index,
-                                uint32_t const packet_seq,
-                                char *const p_filename,
-                                size_t const filename_size) {
-    snprintf(p_filename,
-             filename_size,
-             "%s%02u_%04lu%s",
-             PACKET_FILE_PREFIX,
-             file_index,
-             (unsigned long)packet_seq,
-             FILE_EXTENSION);
-}
-
-/*!
- * @brief Calculate CRC32 checksum
- * @param[in] p_data    Pointer to data buffer
- * @param[in] length    Length of data
- * @return uint32_t     CRC32 checksum
- */
-static uint32_t calculate_crc32(uint8_t const *const p_data, size_t const length) {
-    uint32_t crc = 0xFFFFFFFFU;
-    uint32_t const polynomial = 0xEDB88320U;
-
-    if (NULL != p_data) {
-        for (size_t i = 0U; i < length; i++) {
-            crc ^= p_data[i];
-
-            for (int j = 0; j < 8; j++) {
-                if (0U != (crc & 1U)) {
-                    crc = (crc >> 1U) ^ polynomial;
-                } else {
-                    crc >>= 1U;
-                }
+        for (int j = 0; j < 8; j++) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021;  // CCITT polynomial
+            } else {
+                crc = crc << 1;
             }
         }
     }
 
-    return ~crc;
+    return crc;
 }
 
-/*!
- * @brief Validate packet checksum
- * @param[in] p_packet  Pointer to data packet
- * @return bool         true if checksum is valid, false otherwise
+/**
+ * @brief Verify integrity of a chunk using CRC16
+ * @param chunk Pointer to Payload structure
+ * @return int 1 if valid, 0 if invalid
  */
-static bool validate_packet_checksum(data_packet_t const *const p_packet) {
-    bool result = false;
-    uint32_t calculated_crc;
-    uint32_t stored_crc;
-
-    if (NULL != p_packet) {
-        calculated_crc = calculate_crc32((uint8_t const *)p_packet->payload, p_packet->data_len);
-
-        /* Convert stored checksum from string to uint32_t */
-        stored_crc = *(uint32_t const *)p_packet->checksum;
-
-        result = (calculated_crc == stored_crc);
+int verify_chunk(struct Payload* chunk) {
+    if (chunk == NULL) {
+        return 0;
     }
 
-    return result;
+    // Calculate CRC16 of the data portion
+    uint16_t calculated_crc = crc16(chunk->data, chunk->size);
+
+    // Compare with stored CRC
+    return (calculated_crc == chunk->crc) ? 1 : 0;
 }
 
-/*!
- * @brief Generate packet checksum
- * @param[in,out] p_packet  Pointer to data packet
- * @return void
+/**
+ * @brief Deconstruct a file into chunks for MQTT transmission
+ * @param filename Name of file to read from SD card
+ * @param meta Pointer to Metadata structure (output)
+ * @param chunks Pointer to array of Payload pointers (output)
+ * @return int 0 on success, -1 on failure
  */
-static void generate_packet_checksum(data_packet_t *const p_packet) {
-    uint32_t crc;
-
-    if (NULL != p_packet) {
-        crc = calculate_crc32((uint8_t const *)p_packet->payload, p_packet->data_len);
-
-        /* Store CRC as binary data */
-        (void)memcpy(p_packet->checksum, &crc, sizeof(uint32_t));
-    }
-}
-
-/*!
- * @brief Generate unique session ID
- * @return uint32_t  Unique session identifier
- */
-static uint32_t generate_session_id(void) {
-    static uint32_t session_counter = 0U;
-
-    session_counter++;
-
-    /* Use counter only since time() may not be available on Pico */
-    return session_counter;
-}
-
-/*!
- * @brief Find available file slot
- * @return uint8_t  File index (0-9) or 0xFF if no slot available
- */
-static uint8_t find_available_file_slot(void) {
-    uint8_t file_index = 0xFFU;
-    char filename[64];
-    uint8_t buffer[1];
-    uint32_t bytes_read;
-
-    if (!init_filesystem()) {
-        return 0xFFU;
-    }
-
-    for (uint8_t i = 0U; i < MAX_STORED_FILES; i++) {
-        get_metadata_filename(i, filename, sizeof(filename));
-
-        /* Check if metadata file exists by trying to read it */
-        if (!microsd_read_file(&g_fs_info, filename, buffer, sizeof(buffer), &bytes_read)) {
-            /* File doesn't exist, this slot is available */
-            file_index = i;
-            break;
-        }
-    }
-
-    return file_index;
-}
-
-/*!
- * @brief Store metadata to microSD using exFAT filesystem
- * @param[in] file_index    File index
- * @param[in] p_metadata    Pointer to metadata structure
- * @return bool             true on success, false on failure
- */
-static bool store_metadata(uint8_t const file_index, file_metadata_t const *const p_metadata) {
-    bool result = false;
-    char filename[64];
-
-    if (NULL != p_metadata && init_filesystem()) {
-        get_metadata_filename(file_index, filename, sizeof(filename));
-
-        /* Write metadata as a file */
-        result = microsd_create_file(
-            &g_fs_info, filename, (uint8_t const *)p_metadata, sizeof(file_metadata_t));
-
-        if (result) {
-            printf("Stored metadata file: %s\n", filename);
-        } else {
-            printf("Failed to store metadata file: %s\n", filename);
-        }
-    }
-
-    return result;
-}
-
-/*!
- * @brief Load metadata from microSD using exFAT filesystem
- * @param[in]  file_index   File index
- * @param[out] p_metadata   Pointer to metadata structure
- * @return bool             true on success, false on failure
- */
-static bool load_metadata(uint8_t const file_index, file_metadata_t *const p_metadata) {
-    bool result = false;
-    char filename[64];
-    uint32_t bytes_read = 0;
-
-    if (NULL != p_metadata && init_filesystem()) {
-        get_metadata_filename(file_index, filename, sizeof(filename));
-
-        /* Read metadata from file */
-        result = microsd_read_file(
-            &g_fs_info, filename, (uint8_t *)p_metadata, sizeof(file_metadata_t), &bytes_read);
-
-        if (result && bytes_read == sizeof(file_metadata_t)) {
-            printf("Loaded metadata file: %s (%lu bytes)\n", filename, (unsigned long)bytes_read);
-        } else {
-            result = false;
-            printf("Failed to load metadata file: %s\n", filename);
-        }
-    }
-
-    return result;
-}
-
-/*!
- * @brief Store packet to microSD using exFAT filesystem
- * @param[in] file_index    File index
- * @param[in] p_packet      Pointer to packet structure
- * @return bool             true on success, false on failure
- */
-static bool store_packet(uint8_t const file_index, data_packet_t const *const p_packet) {
-    bool result = false;
-    char filename[64];
-
-    if (NULL != p_packet && init_filesystem()) {
-        get_packet_filename(file_index, p_packet->seq, filename, sizeof(filename));
-
-        /* Write packet as a file */
-        result = microsd_create_file(
-            &g_fs_info, filename, (uint8_t const *)p_packet, sizeof(data_packet_t));
-
-        if (result) {
-            printf("Stored packet file: %s\n", filename);
-        } else {
-            printf("Failed to store packet file: %s\n", filename);
-        }
-    }
-
-    return result;
-}
-
-/*!
- * @brief Load packet from microSD using exFAT filesystem
- * @param[in]  file_index   File index
- * @param[in]  packet_seq   Packet sequence number
- * @param[out] p_packet     Pointer to packet structure
- * @return bool             true on success, false on failure
- */
-static bool
-load_packet(uint8_t const file_index, uint32_t const packet_seq, data_packet_t *const p_packet) {
-    bool result = false;
-    char filename[64];
-    uint32_t bytes_read = 0;
-
-    if (NULL != p_packet && init_filesystem()) {
-        get_packet_filename(file_index, packet_seq, filename, sizeof(filename));
-
-        /* Read packet from file */
-        result = microsd_read_file(
-            &g_fs_info, filename, (uint8_t *)p_packet, sizeof(data_packet_t), &bytes_read);
-
-        if (result && bytes_read == sizeof(data_packet_t)) {
-            printf("Loaded packet file: %s (%lu bytes)\n", filename, (unsigned long)bytes_read);
-        } else {
-            result = false;
-            printf("Failed to load packet file: %s\n", filename);
-        }
-    }
-
-    return result;
-}
-
-void send_file(char const *const p_filename, int const sock, void *const p_receiver) {
-    uint8_t file_index;
-    file_metadata_t metadata = {0};
-    data_packet_t packet = {0};
-    uint32_t bytes_processed = 0U;
-
-    /* Unused parameters for Pico implementation */
-    (void)sock;
-    (void)p_receiver;
-
-    if (NULL != p_filename && init_filesystem()) {
-        /* Find file in storage by filename */
-        bool file_found = false;
-
-        for (uint8_t i = 0U; i < MAX_STORED_FILES; i++) {
-            if (load_metadata(i, &metadata)) {
-                if (0 == strncmp(metadata.filename, p_filename, FILENAME_MAX_LEN)) {
-                    file_index = i;
-                    file_found = true;
-                    break;
-                }
-            }
-        }
-
-        if (file_found) {
-            printf("Deconstructing file: %s (%llu bytes, %u packets)\n",
-                   metadata.filename,
-                   metadata.file_size,
-                   metadata.total_packets);
-
-            /* Read and output each packet */
-            for (uint32_t seq = 0U; seq < metadata.total_packets; seq++) {
-                if (load_packet(file_index, seq, &packet)) {
-                    if (validate_packet_checksum(&packet)) {
-                        printf("Packet %u: %u bytes, checksum valid\n", seq, packet.data_len);
-
-                        /* Here you would send via MQTT-SN when implemented */
-                        /* For now, just validate the deconstruction */
-                        bytes_processed += packet.data_len;
-                    } else {
-                        printf("Packet %u: checksum validation failed\n", seq);
-                    }
-                } else {
-                    printf("Failed to load packet %u\n", seq);
-                }
-            }
-
-            printf("File deconstruction complete: %u bytes processed\n", bytes_processed);
-        } else {
-            printf("File not found in storage: %s\n", p_filename);
-        }
-    }
-}
-
-int receive_file(int const sock, void *const p_sender) {
-    int result = -1;
-    uint8_t file_index;
-    file_metadata_t metadata = {0};
-    data_packet_t packet = {0};
-    uint32_t packets_stored = 0U;
-
-    /* Unused parameters for Pico implementation */
-    (void)sock;
-    (void)p_sender;
-
-    if (!init_filesystem()) {
-        printf("Failed to initialize filesystem\n");
+int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) {
+    if (filename == NULL || meta == NULL || chunks == NULL) {
+        printf("Error: NULL parameters\n");
         return -1;
     }
 
-    /* Find available file slot */
-    file_index = find_available_file_slot();
-
-    if (0xFFU != file_index) {
-        /* For demonstration, create a test file reconstruction */
-        /* In real implementation, this would receive via MQTT-SN */
-
-        /* Create sample metadata */
-        metadata.session_id = generate_session_id();
-        (void)strncpy(metadata.filename, "received_file.bin", FILENAME_MAX_LEN - 1U);
-        metadata.filename[FILENAME_MAX_LEN - 1U] = '\0';
-        metadata.file_size = 2048U; /* 2KB test file */
-        metadata.total_packets = (uint32_t)((metadata.file_size + PACKET_SIZE - 1U) / PACKET_SIZE);
-        metadata.packet_size = PACKET_SIZE;
-
-        printf("Reconstructing file: %s (%llu bytes, %u packets)\n",
-               metadata.filename,
-               metadata.file_size,
-               metadata.total_packets);
-
-        /* Store metadata */
-        if (store_metadata(file_index, &metadata)) {
-            /* Create and store test packets */
-            for (uint32_t seq = 0U; seq < metadata.total_packets; seq++) {
-                /* Fill packet with test data */
-                packet.session_id = metadata.session_id;
-                packet.seq = seq;
-                packet.timestamp = seq; /* Use sequence as timestamp */
-
-                /* Calculate data length for this packet */
-                uint64_t const remaining_bytes =
-                    metadata.file_size - ((uint64_t)seq * PACKET_SIZE);
-                packet.data_len =
-                    (remaining_bytes > PACKET_SIZE) ? PACKET_SIZE : (uint16_t)remaining_bytes;
-
-                /* Fill with test pattern */
-                for (uint16_t i = 0U; i < packet.data_len; i++) {
-                    packet.payload[i] = (char)((seq + i) & 0xFFU);
-                }
-
-                /* Generate checksum */
-                generate_packet_checksum(&packet);
-
-                /* Store packet */
-                if (store_packet(file_index, &packet)) {
-                    packets_stored++;
-                    printf("Stored packet %u/%u (%u bytes)\n",
-                           seq + 1U,
-                           metadata.total_packets,
-                           packet.data_len);
-                } else {
-                    printf("Failed to store packet %u\n", seq);
-                    break;
-                }
-            }
-
-            if (packets_stored == metadata.total_packets) {
-                printf("File reconstruction completed successfully!\n");
-                result = 0;
-            }
-        } else {
-            printf("Failed to store metadata\n");
-        }
-    } else {
-        printf("No available file slots\n");
+    // Initialize filesystem
+    filesystem_info_t fs_info;
+    if (!microsd_init_filesystem(&fs_info)) {
+        printf("Error: Failed to initialize filesystem\n");
+        return -1;
     }
 
-    return result;
+// Use a reasonably sized buffer (32KB should be enough for most files on Pico)
+#define MAX_FILE_BUFFER_SIZE (32 * 1024)
+    uint8_t* file_buffer = (uint8_t*)malloc(MAX_FILE_BUFFER_SIZE);
+    if (file_buffer == NULL) {
+        printf("Error: Memory allocation failed for file buffer\n");
+        return -1;
+    }
+
+    // Read the file
+    uint32_t file_size = 0;
+    if (!microsd_read_file(&fs_info, filename, file_buffer, MAX_FILE_BUFFER_SIZE, &file_size)) {
+        printf("Error: Failed to read file %s\n", filename);
+        free(file_buffer);
+        return -1;
+    }
+
+    if (file_size == 0) {
+        printf("Error: File is empty or read failed\n");
+        free(file_buffer);
+        return -1;
+    }
+
+    printf("File read successfully: %u bytes\n", file_size);
+
+    // Calculate number of chunks needed
+    uint32_t chunk_count = (file_size + PAYLOAD_SIZE - 1) / PAYLOAD_SIZE;
+
+    // Allocate memory for chunks array
+    *chunks = (struct Payload*)malloc(sizeof(struct Payload) * chunk_count);
+    if (*chunks == NULL) {
+        printf("Error: Failed to allocate memory for %u chunks (%u bytes)\n",
+               chunk_count, sizeof(struct Payload) * chunk_count);
+        free(file_buffer);
+        return -1;
+    }
+
+    printf("Allocated %u chunks (%u bytes)\n", chunk_count, sizeof(struct Payload) * chunk_count);
+
+    // Calculate file CRC16
+    uint16_t file_crc = crc16(file_buffer, file_size);
+
+    // Fill metadata
+    strncpy(meta->filename, filename, METADATA_FILENAME_SIZE - 1);
+    meta->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+    meta->total_size = file_size;
+    meta->chunk_count = chunk_count;
+    meta->last_modified = 0;  // Would need RTC for actual timestamp
+    meta->file_crc = file_crc;
+
+    printf("Deconstructing file: %s\n", filename);
+    printf("Total size: %u bytes\n", file_size);
+    printf("Chunks: %u (247 bytes each)\n", chunk_count);
+    printf("File CRC16: 0x%04X\n", meta->file_crc);
+
+    // Create chunks
+    for (uint32_t i = 0; i < chunk_count; i++) {
+        uint32_t offset = i * PAYLOAD_SIZE;
+        uint32_t remaining = file_size - offset;
+        uint32_t chunk_size = (remaining < PAYLOAD_SIZE) ? remaining : PAYLOAD_SIZE;
+
+        // Set sequence number
+        (*chunks)[i].sequence = i;
+
+        // Copy data
+        memcpy((*chunks)[i].data, file_buffer + offset, chunk_size);
+        (*chunks)[i].size = chunk_size;
+
+        // Calculate CRC16 for this chunk
+        (*chunks)[i].crc = crc16((*chunks)[i].data, chunk_size);
+
+        if ((i + 1) % 10 == 0 || i == chunk_count - 1) {
+            printf("Processed chunk %u/%u\n", i + 1, chunk_count);
+        }
+    }
+
+    free(file_buffer);
+    printf("Deconstruction complete!\n");
+    return 0;
+}
+
+/**
+ * @brief Reconstruct a file from chunks
+ * @param meta Pointer to Metadata structure
+ * @param chunks Pointer to array of Payload pointers
+ * @param output_filename Name of file to write to SD card
+ * @return int 0 on success, -1 on failure
+ */
+int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_filename) {
+    if (meta == NULL || chunks == NULL || *chunks == NULL || output_filename == NULL) {
+        printf("Error: NULL parameters\n");
+        return -1;
+    }
+
+    printf("Reconstructing file: %s\n", output_filename);
+    printf("Expected size: %u bytes\n", meta->total_size);
+    printf("Expected chunks: %u\n", meta->chunk_count);
+
+    // Verify all chunks first
+    uint32_t verified_chunks = 0;
+    uint32_t failed_chunks = 0;
+
+    for (uint32_t i = 0; i < meta->chunk_count; i++) {
+        if (verify_chunk(&(*chunks)[i])) {
+            verified_chunks++;
+        } else {
+            printf("Warning: Chunk %u failed verification (CRC mismatch)\n", i);
+            failed_chunks++;
+        }
+    }
+
+    printf("Verified: %u/%u chunks\n", verified_chunks, meta->chunk_count);
+
+    if (failed_chunks > 0) {
+        printf("Error: %u chunks failed verification - reconstruction aborted\n", failed_chunks);
+        return -1;
+    }
+
+    // Allocate buffer for complete file
+    uint8_t* file_buffer = (uint8_t*)malloc(meta->total_size);
+    if (file_buffer == NULL) {
+        printf("Error: Memory allocation failed\n");
+        return -1;
+    }
+
+    // Reconstruct file from chunks
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < meta->chunk_count; i++) {
+        // Verify sequence number
+        if ((*chunks)[i].sequence != i) {
+            printf("Error: Chunk %u has wrong sequence number %u\n", i, (*chunks)[i].sequence);
+            free(file_buffer);
+            return -1;
+        }
+
+        // Copy chunk data to buffer
+        memcpy(file_buffer + offset, (*chunks)[i].data, (*chunks)[i].size);
+        offset += (*chunks)[i].size;
+
+        if ((i + 1) % 100 == 0 || i == meta->chunk_count - 1) {
+            printf("Reconstructed chunk %u/%u\n", i + 1, meta->chunk_count);
+        }
+    }
+
+    // Verify total file size
+    if (offset != meta->total_size) {
+        printf("Error: Reconstructed size (%u) doesn't match expected size (%u)\n",
+               offset, meta->total_size);
+        free(file_buffer);
+        return -1;
+    }
+
+    // Verify file CRC16
+    uint16_t calculated_file_crc = crc16(file_buffer, meta->total_size);
+    if (calculated_file_crc != meta->file_crc) {
+        printf("Error: File CRC16 mismatch - Expected: 0x%04X, Got: 0x%04X\n",
+               meta->file_crc, calculated_file_crc);
+        free(file_buffer);
+        return -1;
+    }
+
+    printf("File CRC16 verification passed: 0x%04X\n", calculated_file_crc);
+
+    // Initialize filesystem
+    filesystem_info_t fs_info;
+    if (!microsd_init_filesystem(&fs_info)) {
+        printf("Error: Failed to initialize filesystem\n");
+        free(file_buffer);
+        return -1;
+    }
+
+    // Write reconstructed file to SD card
+    if (!microsd_create_file(&fs_info, output_filename, file_buffer, meta->total_size)) {
+        printf("Error: Failed to write file to SD card\n");
+        free(file_buffer);
+        return -1;
+    }
+
+    free(file_buffer);
+    printf("Reconstruction complete! File saved as: %s\n", output_filename);
+    return 0;
 }

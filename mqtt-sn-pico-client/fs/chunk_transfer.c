@@ -1,0 +1,205 @@
+/*!
+ * @file    chunk_transfer.c
+ * @brief   High-level chunk-based file transfer management implementation
+ * @author  INF2004 Team
+ * @date    2024
+ */
+
+#include "chunk_transfer.h"
+
+#include <stdio.h>
+#include <string.h>
+
+bool chunk_transfer_init_session(filesystem_info_t* fs_info,
+                                 const struct Metadata* metadata,
+                                 transfer_session_t* session) {
+    if (!fs_info || !metadata || !session) {
+        printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
+        return false;
+    }
+
+    /* Copy metadata to session */
+    memcpy(&session->metadata, metadata, sizeof(struct Metadata));
+    strncpy(session->session_id, metadata->session_id, SESSION_ID_SIZE - 1);
+    session->session_id[SESSION_ID_SIZE - 1] = '\0';
+    strncpy(session->filename, metadata->filename, METADATA_FILENAME_SIZE - 1);
+    session->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+
+    /* Calculate total chunks: metadata (chunk 0) + data chunks */
+    session->total_chunks = metadata->chunk_count + 1;
+    session->chunk_size = PAYLOAD_DATA_SIZE;
+    session->active = false;
+
+    /* Initialize microSD chunk write */
+    if (!microsd_init_chunk_write(fs_info, session->filename, session->total_chunks,
+                                  session->chunk_size, &session->chunk_meta)) {
+        printf("ERROR: Failed to initialize microSD chunk write\n");
+        return false;
+    }
+
+    /* Write metadata chunk (chunk 0) to microSD */
+    if (!microsd_write_chunk(fs_info, &session->chunk_meta, 0,
+                             (uint8_t*)metadata, sizeof(struct Metadata))) {
+        printf("ERROR: Failed to write metadata chunk\n");
+        return false;
+    }
+
+    session->active = true;
+    printf("✓ Transfer session initialized:\n");
+    printf("  Session ID: %s\n", session->session_id);
+    printf("  Filename: %s\n", session->filename);
+    printf("  Total chunks: %lu (1 metadata + %lu data)\n",
+           (unsigned long)session->total_chunks,
+           (unsigned long)metadata->chunk_count);
+
+    return true;
+}
+
+bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
+                                  transfer_session_t* session,
+                                  const struct Payload* payload) {
+    if (!fs_info || !session || !payload) {
+        printf("ERROR: NULL parameter in chunk_transfer_write_payload\n");
+        return false;
+    }
+
+    if (!session->active) {
+        printf("ERROR: Session is not active\n");
+        return false;
+    }
+
+    /* Verify chunk is within valid range */
+    if (payload->sequence < 1 || payload->sequence > session->metadata.chunk_count) {
+        printf("ERROR: Invalid sequence number %lu (valid: 1-%lu)\n",
+               (unsigned long)payload->sequence,
+               (unsigned long)session->metadata.chunk_count);
+        return false;
+    }
+
+    /* Verify chunk hasn't already been written */
+    uint32_t byte_idx = payload->sequence / 8;
+    uint32_t bit_idx = payload->sequence % 8;
+    if (session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx)) {
+        printf("WARNING: Chunk %lu already received, skipping duplicate\n",
+               (unsigned long)payload->sequence);
+        return true; /* Not an error, just skip */
+    }
+
+    /* Write chunk to microSD */
+    if (!microsd_write_chunk(fs_info, &session->chunk_meta, payload->sequence,
+                             payload->data, payload->size)) {
+        printf("ERROR: Failed to write chunk %lu to microSD\n",
+               (unsigned long)payload->sequence);
+        return false;
+    }
+
+    return true;
+}
+
+bool chunk_transfer_is_complete(const transfer_session_t* session) {
+    if (!session || !session->active) {
+        return false;
+    }
+
+    return microsd_check_all_chunks_received(&session->chunk_meta);
+}
+
+bool chunk_transfer_finalize(filesystem_info_t* fs_info,
+                             transfer_session_t* session) {
+    if (!fs_info || !session) {
+        printf("ERROR: NULL parameter in chunk_transfer_finalize\n");
+        return false;
+    }
+
+    if (!session->active) {
+        printf("ERROR: Session is not active\n");
+        return false;
+    }
+
+    /* Check if all chunks received */
+    if (!chunk_transfer_is_complete(session)) {
+        printf("ERROR: Cannot finalize - not all chunks received\n");
+        printf("  Received: %lu/%lu chunks\n",
+               (unsigned long)session->chunk_meta.chunks_received,
+               (unsigned long)session->chunk_meta.total_chunks);
+        return false;
+    }
+
+    /* Finalize microSD write */
+    if (!microsd_finalize_chunk_write(fs_info, &session->chunk_meta)) {
+        printf("ERROR: Failed to finalize microSD chunk write\n");
+        return false;
+    }
+
+    printf("✓ Transfer session finalized:\n");
+    printf("  Session ID: %s\n", session->session_id);
+    printf("  File: %s\n", session->filename);
+    printf("  Total size: %lu bytes\n", (unsigned long)session->metadata.total_size);
+
+    session->active = false;
+    return true;
+}
+
+void chunk_transfer_get_progress(const transfer_session_t* session,
+                                 uint32_t* chunks_received,
+                                 uint32_t* total_chunks) {
+    if (!session) {
+        if (chunks_received) *chunks_received = 0;
+        if (total_chunks) *total_chunks = 0;
+        return;
+    }
+
+    if (chunks_received) {
+        *chunks_received = session->chunk_meta.chunks_received;
+    }
+    if (total_chunks) {
+        *total_chunks = session->chunk_meta.total_chunks;
+    }
+}
+
+void chunk_transfer_print_session_info(const transfer_session_t* session) {
+    if (!session) {
+        printf("Session: NULL\n");
+        return;
+    }
+
+    printf("=== Transfer Session Info ===\n");
+    printf("  Session ID: %s\n", session->session_id);
+    printf("  Filename: %s\n", session->filename);
+    printf("  Status: %s\n", session->active ? "ACTIVE" : "INACTIVE");
+    printf("  Progress: %lu/%lu chunks\n",
+           (unsigned long)session->chunk_meta.chunks_received,
+           (unsigned long)session->chunk_meta.total_chunks);
+    printf("  Chunk size: %lu bytes\n", (unsigned long)session->chunk_size);
+    printf("  Total file size: %lu bytes\n",
+           (unsigned long)session->metadata.total_size);
+
+    /* Show which chunks have been received */
+    printf("  Chunks received: ");
+    for (uint32_t i = 0; i < session->total_chunks; i++) {
+        uint32_t byte_idx = i / 8;
+        uint32_t bit_idx = i % 8;
+        if (session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx)) {
+            printf("%lu ", (unsigned long)i);
+        }
+    }
+    printf("\n");
+
+    /* Show missing chunks if any */
+    bool has_missing = false;
+    for (uint32_t i = 0; i < session->total_chunks; i++) {
+        uint32_t byte_idx = i / 8;
+        uint32_t bit_idx = i % 8;
+        if (!(session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx))) {
+            if (!has_missing) {
+                printf("  Missing chunks: ");
+                has_missing = true;
+            }
+            printf("%lu ", (unsigned long)i);
+        }
+    }
+    if (has_missing) {
+        printf("\n");
+    }
+    printf("============================\n");
+}
