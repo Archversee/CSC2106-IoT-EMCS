@@ -13,10 +13,10 @@ target_link_libraries(microsd_driver
     hardware_gpio
 )
 
-
+# Test executables
 # MicroSD Demo Executable
 add_executable(microsd_demo
-    microsd_demo.c
+    tests/microsd_demo.c
 )
 
 target_link_libraries(microsd_demo
@@ -33,7 +33,7 @@ pico_add_extra_outputs(microsd_demo)
 
 # Large File Test Executable
 add_executable(large_file_test
-    large_file_test.c
+    tests/large_file_test.c
 )
 
 target_link_libraries(large_file_test

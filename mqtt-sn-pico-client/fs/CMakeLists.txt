@@ -13,9 +13,10 @@ target_link_libraries(fs_lib
     microsd_driver
 )
 
+# Test executables
 # Data Frame Demo Executable
 add_executable(data_frame_demo
-    data_frame_demo.c
+    tests/data_frame_demo.c
 )
 
 target_link_libraries(data_frame_demo
@@ -33,7 +34,7 @@ pico_add_extra_outputs(data_frame_demo)
 
 # Chunk Write Example Executable
 add_executable(chunk_write_example
-    chunk_write_example.c
+    tests/chunk_write_example.c
 )
 
 target_link_libraries(chunk_write_example
