@@ -249,3 +249,180 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
     printf("Reconstruction complete! File saved as: %s\n", output_filename);
     return 0;
 }
+
+/**
+ * @brief Serialize Payload struct into a 247-byte buffer for MQTT transmission
+ * @param payload Pointer to Payload structure to serialize
+ * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
+ * @return int Number of bytes written, or -1 on error
+ */
+int serialize_payload(struct Payload* payload, uint8_t* buffer) {
+    if (!payload || !buffer) {
+        return -1;
+    }
+
+    uint8_t* ptr = buffer;
+
+    // Write sequence (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(payload->sequence & 0xFF);
+    *ptr++ = (uint8_t)((payload->sequence >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((payload->sequence >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((payload->sequence >> 24) & 0xFF);
+
+    // Write data (237 bytes)
+    memcpy(ptr, payload->data, PAYLOAD_DATA_SIZE);
+    ptr += PAYLOAD_DATA_SIZE;
+
+    // Write size (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(payload->size & 0xFF);
+    *ptr++ = (uint8_t)((payload->size >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((payload->size >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((payload->size >> 24) & 0xFF);
+
+    // Write CRC (2 bytes, little-endian)
+    *ptr++ = (uint8_t)(payload->crc & 0xFF);
+    *ptr++ = (uint8_t)((payload->crc >> 8) & 0xFF);
+
+    return (int)(ptr - buffer);  // Should be 247 bytes
+}
+
+/**
+ * @brief Deserialize 247-byte buffer into Payload struct after MQTT reception
+ * @param buffer Pointer to input buffer containing serialized data
+ * @param payload Pointer to Payload structure to populate
+ * @return int 0 on success, -1 on error
+ */
+int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
+    if (!buffer || !payload) {
+        return -1;
+    }
+
+    uint8_t* ptr = buffer;
+
+    // Read sequence (4 bytes, little-endian)
+    payload->sequence = (uint32_t)ptr[0] |
+                        ((uint32_t)ptr[1] << 8) |
+                        ((uint32_t)ptr[2] << 16) |
+                        ((uint32_t)ptr[3] << 24);
+    ptr += 4;
+
+    // Read data (237 bytes)
+    memcpy(payload->data, ptr, PAYLOAD_DATA_SIZE);
+    ptr += PAYLOAD_DATA_SIZE;
+
+    // Read size (4 bytes, little-endian)
+    payload->size = (uint32_t)ptr[0] |
+                    ((uint32_t)ptr[1] << 8) |
+                    ((uint32_t)ptr[2] << 16) |
+                    ((uint32_t)ptr[3] << 24);
+    ptr += 4;
+
+    // Read CRC (2 bytes, little-endian)
+    payload->crc = (uint16_t)ptr[0] | ((uint16_t)ptr[1] << 8);
+    ptr += 2;
+
+    return 0;
+}
+
+/**
+ * @brief Serialize Metadata struct into a 247-byte buffer for MQTT transmission
+ * @param metadata Pointer to Metadata structure to serialize
+ * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
+ * @return int Number of bytes written, or -1 on error
+ */
+int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
+    if (!metadata || !buffer) {
+        return -1;
+    }
+
+    uint8_t* ptr = buffer;
+
+    // Write session_id (32 bytes)
+    memcpy(ptr, metadata->session_id, SESSION_ID_SIZE);
+    ptr += SESSION_ID_SIZE;
+
+    // Write filename (64 bytes)
+    memcpy(ptr, metadata->filename, METADATA_FILENAME_SIZE);
+    ptr += METADATA_FILENAME_SIZE;
+
+    // Write total_size (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(metadata->total_size & 0xFF);
+    *ptr++ = (uint8_t)((metadata->total_size >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->total_size >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->total_size >> 24) & 0xFF);
+
+    // Write chunk_count (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(metadata->chunk_count & 0xFF);
+    *ptr++ = (uint8_t)((metadata->chunk_count >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->chunk_count >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->chunk_count >> 24) & 0xFF);
+
+    // Write last_modified (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(metadata->last_modified & 0xFF);
+    *ptr++ = (uint8_t)((metadata->last_modified >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->last_modified >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->last_modified >> 24) & 0xFF);
+
+    // Write file_crc (2 bytes, little-endian)
+    *ptr++ = (uint8_t)(metadata->file_crc & 0xFF);
+    *ptr++ = (uint8_t)((metadata->file_crc >> 8) & 0xFF);
+
+    // Fill remaining bytes with zeros to make it 247 bytes total
+    size_t bytes_written = ptr - buffer;  // Should be 110 bytes
+    if (bytes_written < PAYLOAD_SIZE) {
+        memset(ptr, 0, PAYLOAD_SIZE - bytes_written);
+    }
+
+    return PAYLOAD_SIZE;  // Always return 247 bytes for consistency
+}
+
+/**
+ * @brief Deserialize 247-byte buffer into Metadata struct after MQTT reception
+ * @param buffer Pointer to input buffer containing serialized data
+ * @param metadata Pointer to Metadata structure to populate
+ * @return int 0 on success, -1 on error
+ */
+int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata) {
+    if (!buffer || !metadata) {
+        return -1;
+    }
+
+    uint8_t* ptr = buffer;
+
+    // Read session_id (32 bytes)
+    memcpy(metadata->session_id, ptr, SESSION_ID_SIZE);
+    metadata->session_id[SESSION_ID_SIZE - 1] = '\0';  // Ensure null termination
+    ptr += SESSION_ID_SIZE;
+
+    // Read filename (64 bytes)
+    memcpy(metadata->filename, ptr, METADATA_FILENAME_SIZE);
+    metadata->filename[METADATA_FILENAME_SIZE - 1] = '\0';  // Ensure null termination
+    ptr += METADATA_FILENAME_SIZE;
+
+    // Read total_size (4 bytes, little-endian)
+    metadata->total_size = (uint32_t)ptr[0] |
+                           ((uint32_t)ptr[1] << 8) |
+                           ((uint32_t)ptr[2] << 16) |
+                           ((uint32_t)ptr[3] << 24);
+    ptr += 4;
+
+    // Read chunk_count (4 bytes, little-endian)
+    metadata->chunk_count = (uint32_t)ptr[0] |
+                            ((uint32_t)ptr[1] << 8) |
+                            ((uint32_t)ptr[2] << 16) |
+                            ((uint32_t)ptr[3] << 24);
+    ptr += 4;
+
+    // Read last_modified (4 bytes, little-endian)
+    metadata->last_modified = (uint32_t)ptr[0] |
+                              ((uint32_t)ptr[1] << 8) |
+                              ((uint32_t)ptr[2] << 16) |
+                              ((uint32_t)ptr[3] << 24);
+    ptr += 4;
+
+    // Read file_crc (2 bytes, little-endian)
+    metadata->file_crc = (uint16_t)ptr[0] | ((uint16_t)ptr[1] << 8);
+    ptr += 2;
+
+    return 0;
+}
