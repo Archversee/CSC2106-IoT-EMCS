@@ -92,8 +92,8 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
 
     printf("File read successfully: %u bytes\n", file_size);
 
-    // Calculate number of chunks needed
-    uint32_t chunk_count = (file_size + PAYLOAD_SIZE - 1) / PAYLOAD_SIZE;
+    // Calculate number of chunks needed (based on actual data capacity)
+    uint32_t chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
 
     // Allocate memory for chunks array
     *chunks = (struct Payload*)malloc(sizeof(struct Payload) * chunk_count);
@@ -119,14 +119,14 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
 
     printf("Deconstructing file: %s\n", filename);
     printf("Total size: %u bytes\n", file_size);
-    printf("Chunks: %u (247 bytes each)\n", chunk_count);
+    printf("Chunks: %u (%d bytes data per chunk)\n", chunk_count, PAYLOAD_DATA_SIZE);
     printf("File CRC16: 0x%04X\n", meta->file_crc);
 
     // Create chunks
     for (uint32_t i = 0; i < chunk_count; i++) {
-        uint32_t offset = i * PAYLOAD_SIZE;
+        uint32_t offset = i * PAYLOAD_DATA_SIZE;
         uint32_t remaining = file_size - offset;
-        uint32_t chunk_size = (remaining < PAYLOAD_SIZE) ? remaining : PAYLOAD_SIZE;
+        uint32_t chunk_size = (remaining < PAYLOAD_DATA_SIZE) ? remaining : PAYLOAD_DATA_SIZE;
 
         // Set sequence number
         (*chunks)[i].sequence = i;

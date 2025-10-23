@@ -42,6 +42,20 @@ static bool test_payload_serialization(void) {
     uint8_t buffer[PAYLOAD_SIZE];
     int serialized_bytes = serialize_payload(&original_payload, buffer);
 
+    // print the buffer to show serialized data
+    // Space out the bytes to show each section
+    printf("Serialized Buffer:\n");
+
+    for (int i = 0; i < PAYLOAD_SIZE; i++) {
+        printf("%02X ", buffer[i]);
+        // Add spacing for readability
+        if (i == 3 || i == 240 || i == 244) {
+            printf("\n");
+        }
+    }
+
+    printf("\n");
+
     if (serialized_bytes != PAYLOAD_SIZE) {
         printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n",
                serialized_bytes, PAYLOAD_SIZE);
@@ -142,6 +156,18 @@ static bool test_metadata_serialization(void) {
     // Serialize
     uint8_t buffer[PAYLOAD_SIZE];
     int serialized_bytes = serialize_metadata(&original_meta, buffer);
+
+    // print the buffer to show serialized data
+    // show the padding bytes as well
+    printf("Serialized Buffer:\n");
+
+    for (int i = 0; i < PAYLOAD_SIZE; i++) {
+        printf("%02X ", buffer[i]);
+        // Add spacing for readability
+        if (i == 31 || i == 95 || i == 99 || i == 103 || i == 107 || i == 109) {
+            printf("\n");
+        }
+    }
 
     if (serialized_bytes != PAYLOAD_SIZE) {
         printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n",

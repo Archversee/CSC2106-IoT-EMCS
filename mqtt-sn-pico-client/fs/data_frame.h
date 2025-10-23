@@ -104,4 +104,4 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer);
  */
 int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata);
 
-#endif /* DATA_FRAME_H */
+#endif  // DATA_FRAME_H

@@ -66,3 +66,21 @@ pico_enable_stdio_uart(serialize_test 0)
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(serialize_test)
+
+# File Transfer Complete Demo Executable
+add_executable(file_transfer_demo
+    tests/file_transfer_demo.c
+)
+
+target_link_libraries(file_transfer_demo
+    pico_stdlib
+    fs_lib
+    microsd_driver
+)
+
+# Enable USB output for demo
+pico_enable_stdio_usb(file_transfer_demo 1)
+pico_enable_stdio_uart(file_transfer_demo 0)
+
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(file_transfer_demo)

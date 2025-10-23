@@ -2042,25 +2042,67 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
     /* Calculate how many bytes to read */
     uint32_t bytes_to_read = (file_size < buffer_size) ? file_size : buffer_size;
 
-    /* Read file data from cluster */
-    uint32_t file_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
-                           ((file_cluster - 2) * p_fs_info->sectors_per_cluster);
+    /* Read file data from cluster(s) - may span multiple sectors */
+    uint32_t bytes_read = 0;
+    uint32_t current_cluster = file_cluster;
+    
+    while (bytes_read < bytes_to_read && current_cluster != 0xFFFFFFFF) {
+        /* Calculate sector for this cluster */
+        uint32_t cluster_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
+                                  ((current_cluster - 2) * p_fs_info->sectors_per_cluster);
 
-    MICROSD_LOG(
-        MICROSD_LOG_DEBUG, "Reading file data from sector %lu\n", (unsigned long)file_sector);
+        MICROSD_LOG(MICROSD_LOG_DEBUG,
+                    "Reading from cluster %lu, sector %lu\n",
+                    (unsigned long)current_cluster,
+                    (unsigned long)cluster_sector);
 
-    if (!microsd_read_block(file_sector, buffer)) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read file data\n");
-        return false;
+        /* Read all sectors in this cluster */
+        for (uint32_t sector = 0; sector < p_fs_info->sectors_per_cluster && bytes_read < bytes_to_read; sector++) {
+            if (!microsd_read_block(cluster_sector + sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR,
+                            "Failed to read file data from sector %lu\n",
+                            (unsigned long)(cluster_sector + sector));
+                return false;
+            }
+
+            /* Calculate how many bytes to copy from this sector */
+            uint32_t bytes_in_sector = SD_BLOCK_SIZE;
+            if (bytes_read + bytes_in_sector > bytes_to_read) {
+                bytes_in_sector = bytes_to_read - bytes_read;
+            }
+
+            /* Copy data from sector to output buffer */
+            memcpy(p_buffer + bytes_read, buffer, bytes_in_sector);
+            bytes_read += bytes_in_sector;
+        }
+
+        /* Move to next cluster in chain if we need more data */
+        if (bytes_read < bytes_to_read) {
+            /* Read FAT entry to get next cluster */
+            uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
+                                  ((current_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
+            uint32_t entry_offset = ((current_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+
+            if (!microsd_read_block(fat_sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT for next cluster\n");
+                return false;
+            }
+
+            uint32_t* fat_entry = (uint32_t*)(buffer + entry_offset);
+            current_cluster = *fat_entry;
+
+            if (current_cluster >= 0xFFFFFFF8) {
+                /* End of cluster chain */
+                break;
+            }
+        }
     }
 
-    /* Copy file data to output buffer */
-    memcpy(p_buffer, buffer, bytes_to_read);
-    *p_bytes_read = bytes_to_read;
+    *p_bytes_read = bytes_read;
 
     MICROSD_LOG(MICROSD_LOG_INFO,
                 "Successfully read %lu bytes from file '%s'\n",
-                (unsigned long)bytes_to_read,
+                (unsigned long)bytes_read,
                 filename);
 
     return true;
