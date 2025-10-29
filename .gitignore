@@ -95,3 +95,4 @@ test_output/
 # MQTT-SN specific
 *.dat
 *.cache
+dashboard/backend/node_modules/
