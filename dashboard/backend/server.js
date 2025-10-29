@@ -26,6 +26,7 @@ const io = new Server(server, {
 // in-memory state
 const devices = {}; // devices[deviceId] = { status: { ts, payload }, telemetry: [...], lastSeen }
 const recentMessages = []; // array of { ts, deviceId, topic, payload }
+const fileTransfers = new Map(); // key: deviceId, value: transfer state
 
 function addRecent(msg) {
   recentMessages.unshift(msg);
@@ -46,6 +47,12 @@ mqttClient.on('connect', () => {
     if (err) console.error('[MQTT] subscribe error', err);
     else console.log('[MQTT] subscribed', [{ topic: 'devices/+/status', qos: 0 }]);
   });
+
+  // subscribe to file transfer topics
+  mqttClient.subscribe('devices/+/file-transfer/#', { qos: 0 }, (err) => {
+    if (err) console.error('[MQTT] subscribe error', err);
+    else console.log('[MQTT] subscribed to file-transfer topics');
+  });
 });
 
 mqttClient.on('error', (err) => {
@@ -61,6 +68,55 @@ mqttClient.on('message', (topic, payloadBuf) => {
   const pieces = topic.split('/');
   const deviceId = pieces[1] || 'unknown';
   const category = pieces[2] || '';
+
+  // for file-transfer messages
+  if (category === 'file-transfer') {
+    const transferAction = pieces[3];
+
+    // to initialise transfer state
+    if (!fileTransfers.has(deviceId)) {
+      fileTransfers.set(deviceId, {});
+    }
+
+    const transfer = fileTransfers.get(deviceId);
+
+    //update transfer based on message type
+    if (transferAction === 'progress') {
+      transfer.currentChunk = payload.chunk;
+      transfer.totalChunks = payload.total;
+      transfer.sequenceNum = payload.seq;
+      transfer.checksum = payload.checksum;
+      transfer.progress = Math.round((payload.chunk / payload.total) * 100); // percentage progress
+      transfer.lastUpdate = new Date().toISOString(); //  for timeout detection
+    } else if (transferAction === 'status') {
+      transfer.status = payload.status;
+      transfer.fileName = payload.fileName;
+      transfer.reason = payload.reason || '';
+      transfer.lastUpdate = new Date().toISOString();
+
+      if (payload.status === 'active') {
+        transfer.currentChunk = 0;
+        transfer.totalChunks = 0;
+        transfer.progress = 0;
+      }
+    } else if (transferAction === 'validation') {
+      transfer.validationResult = payload.result;
+      transfer.expectedChecksum = payload.expected;
+      transfer.actualChecksum = payload.actual;
+      transfer.lastUpdate = new Date().toISOString();
+    }
+
+    io.emit('file-transfer-update', {
+      deviceId,
+      type: transferAction,
+      data: payload,
+      transfer: transfer
+    });
+
+    //prevent processing as regular telemetry
+    console.log(`[File Transfer] ${deviceId} - ${transferAction}:`, payload); 
+    return; 
+  }
 
   const ts = (payload && payload.ts) ? payload.ts : new Date().toISOString();
 

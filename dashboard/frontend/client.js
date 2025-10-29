@@ -126,6 +126,105 @@
     else showToast(`Publish failed: ${info.error}`, 'error');
   });
 
+  socket.on('file-transfer-update', (data) => {
+    console.log('[File Transfer Update] RECEIVED:', data);
+    console.log('Device ID:', data.deviceId);
+    console.log('Type:', data.type);
+    console.log('Transfer data:', data.transfer);
+    
+    updateFileTransferUI(data);
+    
+
+    if (data.type === 'status' && data.data.status === 'failed') {
+      showToast(`Transfer failed on ${data.deviceId}: ${data.data.reason || 'Unknown error'}`, 'error');
+    }
+    
+    if (data.type === 'validation' && data.data.result === 'failed') {
+      showToast(`Checksum validation failed on ${data.deviceId}`, 'error');
+    }
+  });
+  
+    
+
+  function updateFileTransferUI(data) {
+    console.log('[updateFileTransferUI] Called with:', data);
+    const { deviceId, type, transfer } = data;
+    let card = document.getElementById(`transfer-${deviceId}`);
+    console.log('[updateFileTransferUI] Existing card:', card);
+  
+    if (!card) {
+      console.log('[updateFileTransferUI] Creating new card for', deviceId);
+      card = createTransferCard(deviceId);
+    }
+
+    // Update progress bar
+    if (type === 'progress') {
+      const percent = transfer.progress || 0;
+      card.querySelector('.transfer-progress-bar').style.width = `${percent}%`;
+      card.querySelector('.chunk-info').textContent = 
+        `Chunk ${transfer.currentChunk}/${transfer.totalChunks} (Seq: ${transfer.sequenceNum})`;
+      card.querySelector('.checksum-info').textContent = `Checksum: ${transfer.checksum || '-'}`;
+    }
+    
+    // Update status
+    if (type === 'status') {
+      card.querySelector('.status').textContent = transfer.status || '-';
+      card.querySelector('.status').className = `status status-${transfer.status}`;
+      card.querySelector('.file-name').textContent = transfer.fileName || 'Unknown';
+    }
+    
+    // Update validation
+    if (type === 'validation') {
+      const validationDiv = card.querySelector('.validation-info');
+      validationDiv.innerHTML = `
+        <strong>Validation:</strong> ${transfer.validationResult}<br>
+        Expected: ${transfer.expectedChecksum}<br>
+        Actual: ${transfer.actualChecksum}
+      `;
+      validationDiv.className = `validation-info ${transfer.validationResult === 'success' ? 'status-completed' : 'status-failed'}`;
+    }
+  }
+
+  function createTransferCard(deviceId) {
+    console.log('[createTransferCard] Creating card for:', deviceId);
+  
+    // Always show the section first
+    const section = document.getElementById('file-transfers-section');
+    if (section) {
+      console.log('[createTransferCard] Making section visible');
+      section.style.display = 'block';
+    }
+  
+    let container = document.getElementById('file-transfers-container');
+    console.log('[createTransferCard] Container found:', container);
+  
+    if (!container) {
+      console.log('[createTransferCard] ERROR: Container not found even after showing section!');
+      return null;
+    }
+    
+    const card = document.createElement('div');
+    card.id = `transfer-${deviceId}`;
+    card.className = 'transfer-card';
+    card.innerHTML = `
+      <h3>Device: ${deviceId}</h3>
+      <div><strong>File:</strong> <span class="file-name">-</span></div>
+      <div><strong>Status:</strong> <span class="status">-</span></div>
+      <div class="transfer-progress">
+        <div class="transfer-progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="chunk-info">Waiting...</div>
+      <div class="checksum-info"></div>
+      <div class="validation-info"></div>
+    `;
+    
+    console.log('[createTransferCard] Appending card to container');
+    container.appendChild(card);
+    console.log('[createTransferCard] Card created and appended successfully');
+    
+    return card;
+  }
+
   refreshBtn.addEventListener('click', () => {
     console.log('Refresh button clicked — requesting devices-list');
     refreshBtn.disabled = true;

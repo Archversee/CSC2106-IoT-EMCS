@@ -5,56 +5,138 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MQTT Subscriber Dashboard (MVP)</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    :root { --panel:#f3f3f3; --muted:#7a7a7a; --accent:#0b5cff; }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Helvetica Neue",Arial;background:#fff;color:#111;}
-    .container{display:flex;gap:36px;padding:28px;align-items:flex-start}
-    .left{width:360px;background:var(--panel);border-radius:10px;padding:20px;box-shadow:0 2px 6px rgba(0,0,0,.04)}
-    h1{font-size:40px;margin:0 0 18px 0;font-weight:800}
-    h2{font-size:22px;margin:10px 0}
-    .devices-list{margin:10px 0;padding-left:20px}
-    .devices-list li{margin:8px 0;cursor:pointer}
-    .muted{color:var(--muted);font-size:14px}
-    .form-control{width:100%;padding:10px;border-radius:6px;border:1px solid #ddd;margin-bottom:12px;box-sizing:border-box}
-    #send-btn{padding:10px 14px;border-radius:6px;border:2px solid #222;background:white;cursor:pointer}
-    .right{flex:1}
-    .chart-wrap{width:100%;height:300px;background:transparent}
-    .recent-messages{margin-top:20px}
-    .recent-item{padding:18px;background:#111;color:#fff;border-radius:6px;margin-bottom:12px;white-space:pre-wrap}
-    .toast{position:fixed;right:20px;bottom:20px;padding:8px 12px;border-radius:6px;color:#fff;z-index:2000}
-  </style>
-</head>
-<body>
-  <h1 style="padding-left:28px">MQTT Subscriber Dashboard (MVP)</h1>
-  <div class="container">
-    <div class="left">
-      <h2>Devices</h2>
-      <button id="refresh-devices" style="padding:8px 12px;border-radius:6px;margin-bottom:8px">Refresh</button>
-      <ul class="devices-list" id="devices-ul"></ul>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    :root { 
+      --bg: #f5f7fa;
+      --card-bg: #ffffff;
+      --text-primary: #1a1d1f;
+      --text-secondary: #6f767e;
+      --accent: #6c5dd3;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --error: #f44336;
+      --border: #efefef;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    }
 
-      <h2>Publish command</h2>
-      <input id="device-id" class="form-control" placeholder="device id (e.g. pico-001)" />
-      <input id="topic-suffix" class="form-control" placeholder="topic suffix (e.g. cmd/restart or cmd)" />
-      <textarea id="payload" class="form-control" rows="6" placeholder='{}'>{}</textarea>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="send-btn">Send</button>
-        <label style="margin-left:8px;color:var(--muted)"><input id="qos1" type="checkbox" /> QoS1</label>
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      background:var(--bg);
+      color:var(--text-primary);
+    }
+
+    .dashboard-header {background: var(--card-bg);padding: 24px 32px;border-bottom: 1px solid var(--border);display: flex;justify-content: space-between;align-items: center;}
+    .dashboard-header h1 {font-size: 28px;font-weight: 700;color: var(--text-primary);}
+    .header-actions {display: flex;gap: 12px;}
+    .container {display: grid;grid-template-columns: 280px 1fr;gap: 24px;padding: 24px 32px;max-width: 1600px;margin: 0 auto;}
+
+    /* sidebar */
+    .sidebar {display: flex;flex-direction: column;gap: 16px;}
+    .card {background: var(--card-bg);border-radius: 16px;padding: 24px;box-shadow: var(--shadow);border: 1px solid var(--border);}
+    .card h2 {font-size: 18px;font-weight: 600;margin-bottom: 16px;color: var(--text-primary);}
+    .devices-list {list-style: none; display: flex; flex-direction: column; gap: 8px;}
+    .devices-list li {padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;font-size: 14px; font-weight: 500; color: var(--text-secondary);background: var(--bg);}
+    .devices-list li:hover {background: var(--accent);color: white;transform: translateX(4px);}
+    .devices-list li.active {background: var(--accent);color: white;font-weight: 600;}
+
+    /* form controls */
+    .form-control {width: 100%;padding: 12px 16px;border-radius: 12px;border: 1px solid var(--border);margin-bottom: 12px;font-family: inherit;font-size: 14px;background: var(--bg);transition: all 0.2s;}
+    .form-control:focus {outline: none;border-color: var(--accent);box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.1);}
+    button {padding: 12px 24px;border-radius: 12px;border: none;background: var(--accent);color: white;font-weight: 600;font-size: 14px;cursor: pointer;transition: all 0.2s;font-family: inherit;}
+    button:hover {background: #5a4bc4;transform: translateY(-2px);box-shadow: var(--shadow-lg);}
+    button:disabled {opacity: 0.5;cursor: not-allowed;transform: none;}
+    .btn-secondary {background: var(--bg);color: var(--text-primary);border: 1px solid var(--border);}
+    .btn-secondary:hover {background: white;}
+
+    /* main content */
+    .main-content {display: flex;flex-direction: column;gap: 24px;}
+    .stats-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));gap: 16px;}
+    .stat-card {background: linear-gradient(135deg, var(--accent) 0%, #8b7dd8 100%);color: white;padding: 24px;border-radius: 16px;box-shadow: var(--shadow);}
+    .stat-card h3 {font-size: 14px;font-weight: 500;opacity: 0.9;margin-bottom: 8px;}
+    .stat-card .value {font-size: 32px;font-weight: 700;}
+    .chart-card {background: var(--card-bg);border-radius: 16px;padding: 24px;box-shadow: var(--shadow);border: 1px solid var(--border);}
+    .chart-wrap {width: 100%;height: 300px;}
+
+    /* file transfer progress bar*/
+    .transfer-card {background: var(--card-bg);border: 1px solid var(--border);padding: 20px;margin: 12px 0;border-radius: 16px;box-shadow: var(--shadow);}
+    .transfer-card h3 {font-size: 16px;font-weight: 600;margin-bottom: 16px;color: var(--text-primary);}
+    .transfer-progress {width: 100%;height: 8px;background: var(--bg);border-radius: 8px;overflow: hidden;margin: 12px 0;    }
+    .transfer-progress-bar {height: 100%;background: linear-gradient(90deg, var(--accent) 0%, #8b7dd8 100%);transition: width 0.3s ease;border-radius: 8px;}
+    .status-active { color: var(--accent); font-weight: 600; }
+    .status-completed { color: var(--success); font-weight: 600; }
+    .status-failed { color: var(--error); font-weight: 600; }
+    .chunk-info, .checksum-info, .validation-info {font-size: 13px;margin: 8px 0;color: var(--text-secondary);}
+    .validation-info {padding: 12px;background: var(--bg);border-radius: 12px;margin-top: 12px;}
+
+    /* messages */
+    .recent-item {padding: 16px;background: var(--card-bg);border: 1px solid var(--border);border-radius: 12px;margin-bottom: 12px;font-size: 13px;font-family: 'Monaco', monospace;}
+    .toast {position: fixed;right: 24px;bottom: 24px;padding: 16px 24px;border-radius: 12px;color: white;z-index: 2000;box-shadow: var(--shadow-lg);font-weight: 500;}
+    .muted {color: var(--text-secondary);font-size: 13px;}
+
+    /* responsive */
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+  </style>
+  </head>
+  <body>
+    <div class="dashboard-header">
+      <h1>MQTT Subscriber Dashboard (MVP)</h1>
+      <div class="header-actions">
+        <button id="refresh-devices" class="btn-secondary">Refresh Devices</button>
       </div>
     </div>
 
-    <div class="right">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h2>Select a device</h2>
-        <div style="color:var(--muted)">Live telemetry</div>
-      </div>
-      <div class="chart-wrap">
-        <canvas id="telemetry-chart"></canvas>
+
+  <div class="container">
+    <div class="sidebar">
+      <div class="card">
+        <h2>Devices</h2>
+        <ul class="devices-list" id="devices-ul"></ul>
       </div>
 
-      <div class="recent-messages">
-        <h2>Recent messages</h2>
+      <div class="card">
+        <h2>Send Command</h2>
+        <input id="device-id" class="form-control" placeholder="Device ID (e.g. pico-001)" />
+        <input id="topic-suffix" class="form-control" placeholder="Topic suffix" />
+        <textarea id="payload" class="form-control" rows="4" placeholder='{}'>{}</textarea>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <label style="color:var(--text-secondary);font-size:14px">
+            <input id="qos1" type="checkbox" /> QoS1
+          </label>
+        </div>
+        <button id="send-btn">Send Command</button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="chart-card">
+        <h2>Live Telemetry</h2>
+        <div class="chart-wrap">
+          <canvas id="telemetry-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card" id="file-transfers-section" style="display:none">
+        <h2>File Transfers</h2>
+        <div id="file-transfers-container"></div>
+      </div>
+
+      <div class="card">
+        <h2>Recent Messages</h2>
         <div id="recent-messages"></div>
       </div>
     </div>
