@@ -759,7 +759,8 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
         return;
     }
 
-    if (!chunk_transfer_init_session(ctx->fs_info, &metadata, ctx->file_session)) {
+    // Use new filename (true) to avoid overwriting existing files
+    if (!chunk_transfer_init_session(ctx->fs_info, &metadata, ctx->file_session, true)) {
         printf("ERROR: Failed to init transfer session\n");
         return;
     }

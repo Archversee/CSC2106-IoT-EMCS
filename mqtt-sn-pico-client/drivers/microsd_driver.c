@@ -2903,6 +2903,7 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
                               char const* const filename,
                               uint32_t const total_chunks,
                               uint32_t const chunk_size,
+                              uint32_t const actual_file_size,
                               chunk_metadata_t* const p_metadata) {
     if (NULL == p_fs_info || NULL == filename || NULL == p_metadata || total_chunks == 0 ||
         chunk_size == 0) {
@@ -2917,8 +2918,8 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
         return false;
     }
 
-    /* Calculate total file size (exclude chunk 0 which is metadata) */
-    uint32_t total_file_size = (total_chunks - 1) * chunk_size;
+    /* Use actual file size if provided, otherwise calculate from chunks */
+    uint32_t total_file_size = (actual_file_size > 0) ? actual_file_size : ((total_chunks - 1) * chunk_size);
 
     MICROSD_LOG(MICROSD_LOG_INFO,
                 "Initializing chunk write: file='%s', chunks=%lu, chunk_size=%lu, total_size=%lu\n",
@@ -3246,33 +3247,91 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
 
     /* Create directory entry for the file */
     uint8_t buffer[SD_BLOCK_SIZE];
-    uint32_t root_sector = cluster_to_sector(p_fs_info, p_fs_info->root_cluster);
-
-    if (!microsd_read_block(root_sector, buffer)) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory\n");
-        return false;
-    }
-
-    /* Find free directory entry */
-    uint32_t entry_index = 0;
     uint32_t filename_len = strlen(p_metadata->filename);
     uint32_t name_entries_needed = (filename_len + 14) / 15;
     uint32_t total_entries = 2 + name_entries_needed;
 
-    /* Find end of directory */
-    while (entry_index < (SD_BLOCK_SIZE / 32)) {
-        if (buffer[entry_index * 32] == 0x00) {
+    /* Scan directory sectors to find free space */
+    /* Only scan within the first cluster of the directory */
+    uint32_t sector_offset = 0;
+    uint32_t entry_index = 0;
+    uint32_t max_sectors = p_fs_info->sectors_per_cluster;  // Only scan first cluster
+    bool found_space = false;
+    uint32_t target_sector = 0;
+    uint32_t root_base_sector = cluster_to_sector(p_fs_info, p_fs_info->root_cluster);
+
+    for (sector_offset = 0; sector_offset < max_sectors; sector_offset++) {
+        uint32_t root_sector = root_base_sector + sector_offset;
+
+        if (!microsd_read_block(root_sector, buffer)) {
+            MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory sector %lu (offset %lu)\n",
+                        (unsigned long)root_sector, (unsigned long)sector_offset);
+            continue;
+        }
+
+        /* Find end of directory or deleted entries in this sector */
+        entry_index = 0;
+        uint32_t consecutive_free = 0;
+        uint32_t free_start_index = 0;
+
+        while (entry_index < (SD_BLOCK_SIZE / 32)) {
+            uint8_t entry_type = buffer[entry_index * 32];
+
+            /* Check if entry is free (0x00) or deleted (high bit clear on in-use entries) */
+            if (entry_type == 0x00) {
+                /* Found end of directory - all remaining entries are free */
+                if (consecutive_free == 0) {
+                    free_start_index = entry_index;
+                }
+                consecutive_free = (SD_BLOCK_SIZE / 32) - entry_index;
+                MICROSD_LOG(MICROSD_LOG_INFO,
+                            "Sector %lu: Found 0x00 at entry %lu, %lu entries available\n",
+                            (unsigned long)sector_offset, (unsigned long)entry_index,
+                            (unsigned long)consecutive_free);
+                break;
+            }
+
+            /* Continue counting consecutive free/deleted entries */
+            if (consecutive_free > 0) {
+                consecutive_free++;
+            } else {
+                consecutive_free = 0;
+            }
+
+            entry_index++;
+        }
+
+        /* Log if sector is completely full */
+        if (consecutive_free == 0 && entry_index >= (SD_BLOCK_SIZE / 32)) {
+            MICROSD_LOG(MICROSD_LOG_WARN,
+                        "Sector %lu: Completely full (all %lu entries occupied)\n",
+                        (unsigned long)sector_offset, (unsigned long)(SD_BLOCK_SIZE / 32));
+        }
+
+        /* Check if we have enough consecutive free space */
+        if (consecutive_free >= total_entries) {
+            target_sector = root_sector;
+            entry_index = free_start_index;
+            found_space = true;
+            MICROSD_LOG(MICROSD_LOG_INFO,
+                        "Found space in directory at sector %lu (offset %lu) entry %lu (%lu entries available)\n",
+                        (unsigned long)root_sector, (unsigned long)sector_offset,
+                        (unsigned long)entry_index, (unsigned long)consecutive_free);
             break;
         }
-        entry_index++;
     }
 
-    uint32_t available_entries = (SD_BLOCK_SIZE / 32) - entry_index;
-    if (available_entries < total_entries) {
+    if (!found_space) {
         MICROSD_LOG(MICROSD_LOG_ERROR,
-                    "Not enough space in directory (%lu needed, %lu available)\n",
+                    "Not enough space in directory (%lu needed, searched %lu sectors)\n",
                     (unsigned long)total_entries,
-                    (unsigned long)available_entries);
+                    (unsigned long)sector_offset);
+        return false;
+    }
+
+    /* Re-read the target sector to ensure we have the correct buffer */
+    if (!microsd_read_block(target_sector, buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to re-read target directory sector\n");
         return false;
     }
 
@@ -3325,8 +3384,8 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
         memset(&buffer[next_entry_index * 32], 0, 32);
     }
 
-    /* Write directory back */
-    if (!microsd_write_block(root_sector, buffer)) {
+    /* Write directory back to the correct sector */
+    if (!microsd_write_block(target_sector, buffer)) {
         MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to write directory entry\n");
         return false;
     }

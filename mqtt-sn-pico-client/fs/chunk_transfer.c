@@ -12,7 +12,8 @@
 
 bool chunk_transfer_init_session(filesystem_info_t* fs_info,
                                  const struct Metadata* metadata,
-                                 transfer_session_t* session) {
+                                 transfer_session_t* session,
+                                 bool use_new_filename) {
     if (!fs_info || !metadata || !session) {
         printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
         return false;
@@ -28,17 +29,47 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
     memcpy(&session->metadata, metadata, sizeof(struct Metadata));
     strncpy(session->session_id, metadata->session_id, SESSION_ID_SIZE - 1);
     session->session_id[SESSION_ID_SIZE - 1] = '\0';
-    strncpy(session->filename, metadata->filename, METADATA_FILENAME_SIZE - 1);
-    session->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+
+    /* Determine filename based on flag */
+    if (use_new_filename) {
+        /* Modify filename to add "_received" suffix before extension */
+        char new_filename[METADATA_FILENAME_SIZE];
+        const char* original_filename = metadata->filename;
+        const char* dot = strrchr(original_filename, '.');
+
+        if (dot && dot != original_filename) {
+            /* File has extension, insert "_received" before extension */
+            size_t base_len = dot - original_filename;
+
+            /* Ensure we don't overflow the buffer */
+            if (base_len + strlen("_received") + strlen(dot) >= METADATA_FILENAME_SIZE) {
+                /* Filename too long, truncate base name */
+                base_len = METADATA_FILENAME_SIZE - strlen("_received") - strlen(dot) - 1;
+            }
+
+            snprintf(new_filename, METADATA_FILENAME_SIZE, "%.*s_received%s",
+                     (int)base_len, original_filename, dot);
+        } else {
+            /* No extension, just append "_received" */
+            snprintf(new_filename, METADATA_FILENAME_SIZE, "%s_received", original_filename);
+        }
+
+        strncpy(session->filename, new_filename, METADATA_FILENAME_SIZE - 1);
+        session->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+    } else {
+        /* Use original filename from metadata */
+        strncpy(session->filename, metadata->filename, METADATA_FILENAME_SIZE - 1);
+        session->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+    }
 
     /* Calculate total chunks: metadata (chunk 0) + data chunks */
     session->total_chunks = metadata->chunk_count + 1;
     session->chunk_size = PAYLOAD_DATA_SIZE;
     session->active = false;
 
-    /* Initialize microSD chunk write */
+    /* Initialize microSD chunk write with actual file size from metadata */
     if (!microsd_init_chunk_write(fs_info, session->filename, session->total_chunks,
-                                  session->chunk_size, &session->chunk_meta)) {
+                                  session->chunk_size, metadata->total_size, &session->chunk_meta)) {
         printf("ERROR: Failed to initialize microSD chunk write\n");
         return false;
     }
@@ -53,7 +84,12 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
     session->active = true;
     printf("✓ Transfer session initialized:\n");
     printf("  Session ID: %s\n", session->session_id);
-    printf("  Filename: %s\n", session->filename);
+    if (use_new_filename) {
+        printf("  Original filename: %s\n", metadata->filename);
+        printf("  Saving as: %s\n", session->filename);
+    } else {
+        printf("  Filename: %s\n", session->filename);
+    }
     printf("  Total chunks: %lu (1 metadata + %lu data)\n",
            (unsigned long)session->total_chunks,
            (unsigned long)metadata->chunk_count);

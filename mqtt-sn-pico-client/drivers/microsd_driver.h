@@ -364,6 +364,7 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
                               char const* const filename,
                               uint32_t const total_chunks,
                               uint32_t const chunk_size,
+                              uint32_t const actual_file_size,
                               chunk_metadata_t* const p_metadata);
 
 /*!

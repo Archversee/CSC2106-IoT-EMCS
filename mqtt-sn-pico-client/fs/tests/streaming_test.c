@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../chunk_transfer.h"
 #include "../drivers/microsd_driver.h"
 #include "data_frame.h"
 #include "pico/stdlib.h"
@@ -276,18 +277,63 @@ static bool test_reconstruction(const char* source_filename, uint32_t expected_s
 
     printf("\nAll chunks received! Time: %lld ms\n", transfer_ms);
 
-    // Reconstruct file from chunks
-    // Use a completely different name to avoid any filename conflicts
-    char output_filename[80];
-    snprintf(output_filename, sizeof(output_filename), "RECON_TEST.txt");
-
-    printf("\nReconstructing file...\n");
-    printf("  Output: %s\n", output_filename);
+    // Reconstruct file from chunks using chunk_transfer API
+    // This will test the new filename flag feature
+    printf("\nReconstructing file using chunk_transfer API...\n");
+    printf("  Testing new filename flag feature\n");
 
     absolute_time_t recon_start = get_absolute_time();
 
-    if (reconstruct(&meta, &chunks, output_filename) != 0) {
-        printf("ERROR: File reconstruction failed\n");
+    // Initialize filesystem for reconstruction
+    filesystem_info_t recon_fs_info = {0};
+    if (!microsd_init_filesystem(&recon_fs_info)) {
+        printf("ERROR: Failed to initialize filesystem for reconstruction\n");
+        free(chunks);
+        return false;
+    }
+
+    // Initialize transfer session with use_new_filename=true to test the flag
+    transfer_session_t recon_session = {0};
+    if (!chunk_transfer_init_session(&recon_fs_info, &meta, &recon_session, true)) {
+        printf("ERROR: Failed to initialize reconstruction session\n");
+        free(chunks);
+        return false;
+    }
+
+    printf("  Output file will be: %s\n", recon_session.filename);
+
+    // Write all chunks using chunk_transfer API
+    // Note: The chunks array has 0-indexed sequences (0 to chunk_count-1)
+    // but chunk_transfer expects 1-indexed sequences (1 to chunk_count)
+    // We need to adjust the sequence numbers before writing
+    printf("  Writing %u chunks to new file...\n", meta.chunk_count);
+    for (uint32_t i = 0; i < meta.chunk_count; i++) {
+        // Temporarily adjust sequence number for chunk_transfer API
+        uint32_t original_seq = chunks[i].sequence;
+        chunks[i].sequence = original_seq + 1;  // Convert 0-indexed to 1-indexed
+
+        if (i < 3 || i == meta.chunk_count - 1) {
+            printf("  Writing chunk %u (original seq=%u, adjusted seq=%u)\n",
+                   i, original_seq, chunks[i].sequence);
+        }
+
+        if (!chunk_transfer_write_payload(&recon_fs_info, &recon_session, &chunks[i])) {
+            printf("ERROR: Failed to write chunk %u (seq=%u) during reconstruction\n", i, chunks[i].sequence);
+            chunks[i].sequence = original_seq;  // Restore original
+            free(chunks);
+            return false;
+        }
+
+        chunks[i].sequence = original_seq;  // Restore original sequence
+
+        if ((i + 1) % 10 == 0 || i == meta.chunk_count - 1) {
+            printf("  Progress: %u/%u chunks written\n", i + 1, meta.chunk_count);
+        }
+    }
+
+    // Finalize the transfer
+    if (!chunk_transfer_finalize(&recon_fs_info, &recon_session)) {
+        printf("ERROR: Failed to finalize reconstruction\n");
         free(chunks);
         return false;
     }
@@ -305,7 +351,9 @@ static bool test_reconstruction(const char* source_filename, uint32_t expected_s
     printf("\n=== Step 4: Verification Summary ===\n");
     printf("✓ All %u chunks verified during reception (CRC checks passed)\n", meta.chunk_count);
     printf("✓ File reconstructed with %u bytes\n", meta.total_size);
-    printf("✓ File saved as: %s\n", output_filename);
+    printf("✓ File saved as: %s\n", recon_session.filename);
+    printf("  Original filename: %s\n", source_filename);
+    printf("  New filename: %s (with _received suffix)\n", recon_session.filename);
     printf("  Total time: %lld ms (transfer + reconstruction)\n", transfer_ms + recon_ms);
 
     return true;
