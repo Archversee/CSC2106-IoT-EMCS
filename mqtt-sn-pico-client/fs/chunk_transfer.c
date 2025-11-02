@@ -18,6 +18,12 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
         return false;
     }
 
+    /* Verify filesystem is initialized by checking critical fields */
+    if (fs_info->bytes_per_sector == 0 || fs_info->cluster_count == 0) {
+        printf("ERROR: Filesystem not properly initialized\n");
+        return false;
+    }
+
     /* Copy metadata to session */
     memcpy(&session->metadata, metadata, sizeof(struct Metadata));
     strncpy(session->session_id, metadata->session_id, SESSION_ID_SIZE - 1);
