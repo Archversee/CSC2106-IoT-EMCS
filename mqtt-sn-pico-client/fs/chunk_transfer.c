@@ -79,6 +79,14 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
     /* Verify chunk hasn't already been written */
     uint32_t byte_idx = payload->sequence / 8;
     uint32_t bit_idx = payload->sequence % 8;
+
+    /* Defensive check: ensure bitmap index is within allocated bounds */
+    uint32_t bitmap_size_bytes = (session->chunk_meta.total_chunks + 7) / 8;
+    if (byte_idx >= bitmap_size_bytes) {
+        printf("ERROR: Bitmap index out of bounds (byte_idx=%lu, bitmap_size=%lu)\n",
+               (unsigned long)byte_idx, (unsigned long)bitmap_size_bytes);
+        return false;
+    }
     if (session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx)) {
         printf("WARNING: Chunk %lu already received, skipping duplicate\n",
                (unsigned long)payload->sequence);
