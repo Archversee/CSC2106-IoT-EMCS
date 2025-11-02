@@ -1,8 +1,8 @@
 /*!
  * @file    microsd_driver.h
  * @brief   MicroSD card driver for Raspberry Pi Pico W
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  */
 
 #ifndef MICROSD_DRIVER_H

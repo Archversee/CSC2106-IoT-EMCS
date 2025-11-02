@@ -1,8 +1,8 @@
 /*!
  * @file    mqtt-sn-pico-client.c
  * @brief   MQTT-SN Client with File Transfer Support
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * IMPORTANT: MicroSD Initialization
  * ----------------------------------
@@ -36,9 +36,25 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
-uint32_t last_pingresp = 0;
-static uint32_t last_pingreq = 0;
-bool ping_ack_received = true;
+/*! Application constants */
+#define WIFI_CONNECT_TIMEOUT_MS (10000U)
+#define WIFI_RETRY_DELAY_MS (5000U)
+#define MQTT_CONNECT_DELAY_MS (1000U)
+#define MQTT_CONNACK_WAIT_MS (100U)
+#define SD_CHECK_INTERVAL_MS (5000U)
+#define MICROSD_INIT_MAX_ATTEMPTS (3U)
+#define MQTT_POLL_DELAY_MS (10U)
+#define MQTT_POLL_SHORT_COUNT (10U)
+#define MQTT_POLL_LONG_DELAY_MS (100U)
+#define MQTT_POLL_LONG_COUNT (50U)
+#define MQTT_RECONNECT_POLL_COUNT (20U)
+#define CONNACK_POLL_COUNT (50U)
+#define SUBSCRIBE_POLL_COUNT (20U)
+
+/*! Global variables */
+uint32_t g_last_pingresp = 0U;
+static uint32_t s_last_pingreq = 0U;
+bool g_ping_ack_received = true;
 
 /*!
  * @brief Initialize microSD card with retry logic
@@ -52,8 +68,8 @@ bool ping_ack_received = true;
  * @param verbose Print detailed status messages
  * @return true if initialization succeeded, false otherwise
  */
-static bool initialize_microsd(filesystem_info_t* fs_info, int max_attempts, bool verbose) {
-    int sd_init_attempts = 0;
+static bool initialize_microsd(filesystem_info_t* fs_info, uint8_t max_attempts, bool verbose) {
+    uint8_t sd_init_attempts = 0U;
 
     if (verbose) {
         printf("Initializing microSD card...\n");
@@ -63,7 +79,7 @@ static bool initialize_microsd(filesystem_info_t* fs_info, int max_attempts, boo
     while (sd_init_attempts < max_attempts) {
         sd_init_attempts++;
         if (verbose) {
-            printf("Attempt %d/%d: ", sd_init_attempts, max_attempts);
+            printf("Attempt %u/%u: ", sd_init_attempts, max_attempts);
         }
 
         // Allow time for SPI communication to stabilize
@@ -151,7 +167,7 @@ int main() {
     bool fs_initialized = false;
 
     // Initial microSD card initialization
-    fs_initialized = initialize_microsd(&fs_info, 3, true);
+    fs_initialized = initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true);
 
     mqtt_sn_context_t mqtt_ctx = {
         .drop_acks = false,
@@ -159,7 +175,7 @@ int main() {
         .fs_info = fs_initialized ? &fs_info : NULL,
         .transfer_in_progress = false};
 
-    int qos_level = 0;
+    uint8_t qos_level = 0U;
 
     // Initialize Wi-Fi
     if (cyw43_arch_init()) {
@@ -169,9 +185,9 @@ int main() {
 
     cyw43_arch_enable_sta_mode();
 
-    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-        printf("Wi-Fi connect failed. Retrying in 5 seconds...\n");
-        sleep_ms(5000);
+    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, WIFI_CONNECT_TIMEOUT_MS)) {
+        printf("Wi-Fi connect failed. Retrying in %u seconds...\n", WIFI_RETRY_DELAY_MS / 1000U);
+        sleep_ms(WIFI_RETRY_DELAY_MS);
     }
 
     printf("Wi-Fi connected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
@@ -194,36 +210,36 @@ int main() {
     ip_addr_t gateway_addr;
     IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3);  // RMB to change to your gateway IP
 
-    sleep_ms(1000);
+    sleep_ms(MQTT_CONNECT_DELAY_MS);
 
     // Connect to MQTT-SN Gateway
     mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
-    for (int i = 0; i < 10; i++) {
+    for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
         cyw43_arch_poll();
-        sleep_ms(10);
+        sleep_ms(MQTT_POLL_DELAY_MS);
     }
     printf("Waiting for CONNACK...\n");
-    for (int i = 0; i < 50; i++) {
+    for (uint8_t i = 0U; i < MQTT_POLL_LONG_COUNT; i++) {
         cyw43_arch_poll();
-        sleep_ms(100);
+        sleep_ms(MQTT_CONNACK_WAIT_MS);
     }
-    sleep_ms(1000);
+    sleep_ms(MQTT_CONNECT_DELAY_MS);
 
-    // Subscribe to topic ID 1 (predefined topic "pico/cmd") fefault QoS 2 subscription - can still receive < QoS <2 messages
+    // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription - can still receive < QoS <2 messages
     printf("Subscribing to 'pico/cmd'...\n");
-    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1);
-    for (int i = 0; i < 10; i++) {
+    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
+    for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
         cyw43_arch_poll();
-        sleep_ms(10);
+        sleep_ms(MQTT_POLL_DELAY_MS);
     }
 
     // Subscribe to file transfer topics
     if (fs_initialized) {
         printf("Subscribing to file transfer topics...\n");
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3);  // file/meta
-        sleep_ms(100);
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4);  // file/data
-        sleep_ms(100);
+        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3U);  // file/meta
+        sleep_ms(MQTT_CONNACK_WAIT_MS);
+        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4U);  // file/data
+        sleep_ms(MQTT_CONNACK_WAIT_MS);
         printf("✓ File transfer topics subscribed\n");
     }
 
@@ -235,14 +251,13 @@ int main() {
 
     // Track microSD status for hot-plug detection
     uint32_t last_sd_check = to_ms_since_boot(get_absolute_time());
-    const uint32_t SD_CHECK_INTERVAL_MS = 5000;  // Check every 5 seconds
     bool sd_was_initialized = fs_initialized;
 
-    // Test binary payload MAX SIXZE 247 for QoS 1
+    // Test binary payload MAX SIZE 247 for QoS 1
     uint8_t payload[PAYLOAD_SIZE];
     // Fill payload with example binary data: 0x00, 0x01, 0x02, ..., 0xFE
-    for (int i = 0; i < PAYLOAD_SIZE; i++) {
-        payload[i] = i & 0xFF;
+    for (size_t i = 0U; i < PAYLOAD_SIZE; i++) {
+        payload[i] = (uint8_t)(i & 0xFFU);
     }
 
     // Main loop
@@ -266,9 +281,11 @@ int main() {
         if (last_qos_button && !current_qos_button) {
             // GP 21 Button pressed (falling edge)
             qos_level++;
-            if (qos_level > 2) qos_level = 0;  // Wrap around 0->1->2->0
-            printf("QoS level changed to: %d\n", qos_level);
-            sleep_ms(200);  // Debounce
+            if (qos_level > 2U) {
+                qos_level = 0U;  // Wrap around 0->1->2->0
+            }
+            printf("QoS level changed to: %u\n", qos_level);
+            sleep_ms(200U);  // Debounce
         }
         last_qos_button = current_qos_button;
 
@@ -277,8 +294,8 @@ int main() {
         if (last_drop_button && !cur_drop_btn) {
             // GP 22 falling edge
             mqtt_ctx.drop_acks = !mqtt_ctx.drop_acks;
-            printf("drop_acks = %d\n", mqtt_ctx.drop_acks);
-            sleep_ms(200);  // Debounce
+            printf("drop_acks = %u\n", mqtt_ctx.drop_acks ? 1U : 0U);
+            sleep_ms(200U);  // Debounce
         }
         last_drop_button = cur_drop_btn;
 
@@ -298,35 +315,35 @@ int main() {
 
         uint32_t now = to_ms_since_boot(get_absolute_time());
         // Send PINGREQ
-        if (ping_ack_received) {
+        if (g_ping_ack_received) {
             // Previous ping was acknowledged, can send new PINGREQ periodically
-            if (now - last_pingreq >= PING_INTERVAL_MS) {
+            if (now - s_last_pingreq >= PING_INTERVAL_MS) {
                 mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
-                ping_ack_received = false;  // now waiting for PINGRESP
-                last_pingreq = now;
+                g_ping_ack_received = false;  // now waiting for PINGRESP
+                s_last_pingreq = now;
             }
         } else {
             // Waiting for PINGRESP, check timeout
-            if (now - last_pingreq > PINGRESP_TIMEOUT_MS) {
+            if (now - s_last_pingreq > PINGRESP_TIMEOUT_MS) {
                 printf("PINGRESP timeout, reconnecting MQTT-SN...\n");
-                ping_ack_received = true;  // reset flag before reconnect
+                g_ping_ack_received = true;  // reset flag before reconnect
                 mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
 
                 // Poll and wait for CONNACK
-                for (int i = 0; i < 50; i++) {
+                for (uint8_t i = 0U; i < CONNACK_POLL_COUNT; i++) {
                     cyw43_arch_poll();
-                    sleep_ms(10);
+                    sleep_ms(MQTT_POLL_DELAY_MS);
                 }
                 printf("Waiting for CONNACK after reconnect...\n");
 
-                mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1);
+                mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
 
-                for (int i = 0; i < 20; i++) {
+                for (uint8_t i = 0U; i < SUBSCRIBE_POLL_COUNT; i++) {
                     cyw43_arch_poll();
-                    sleep_ms(10);
+                    sleep_ms(MQTT_POLL_DELAY_MS);
                 }
 
-                last_pingreq = now;  // reset ping timer after reconnect
+                s_last_pingreq = now;  // reset ping timer after reconnect
             }
         }
 

@@ -1,8 +1,8 @@
 /*!
  * @file    microsd_driver.c
  * @brief   MicroSD card driver implementation for Raspberry Pi Pico W
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  */
 
 #include "microsd_driver.h"
@@ -2045,7 +2045,7 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
     /* Read file data from cluster(s) - may span multiple sectors */
     uint32_t bytes_read = 0;
     uint32_t current_cluster = file_cluster;
-    
+
     while (bytes_read < bytes_to_read && current_cluster != 0xFFFFFFFF) {
         /* Calculate sector for this cluster */
         uint32_t cluster_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +

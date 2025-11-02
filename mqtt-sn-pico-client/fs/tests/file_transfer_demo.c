@@ -1,8 +1,8 @@
 /*!
  * @file    file_transfer_demo.c
  * @brief   Complete file transfer simulation demo with chunking, serialization and reconstruction
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This demo demonstrates the complete workflow of:
  * 1. Creating a test file (HELLO_INF2004.txt)

@@ -1,8 +1,8 @@
 /*!
  * @file    chunk_transfer.c
  * @brief   High-level chunk-based file transfer management implementation
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  */
 
 #include "chunk_transfer.h"

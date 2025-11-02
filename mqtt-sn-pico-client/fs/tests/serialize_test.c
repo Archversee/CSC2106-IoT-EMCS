@@ -1,8 +1,8 @@
 /*!
  * @file    serialize_test.c
  * @brief   Test serialization/deserialization for MQTT QoS1 data transfer
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This test demonstrates and validates the serialize/deserialize functions
  * for Payload and Metadata structs used in MQTT-SN file transfer.

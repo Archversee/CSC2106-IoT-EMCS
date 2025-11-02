@@ -313,4 +313,4 @@ make large_file_test
 
 ## License
 
-Copyright © 2024 INF2004 Team
+Copyright © 2025 CS31 (MQTT-SN via UDP), INF2004 Project Team
