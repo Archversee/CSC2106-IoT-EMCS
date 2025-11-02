@@ -51,6 +51,8 @@
 #define CONNACK_POLL_COUNT (50U)
 #define SUBSCRIBE_POLL_COUNT (20U)
 
+#define FILE_TRANSFER_NAME "test.txt"
+
 /*! Global variables */
 uint32_t g_last_pingresp = 0U;
 static uint32_t s_last_pingreq = 0U;
