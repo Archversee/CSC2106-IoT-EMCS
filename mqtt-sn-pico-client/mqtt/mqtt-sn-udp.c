@@ -317,9 +317,9 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
 
     retry_entry_t retry_list[MAX_PENDING_QOS_MSGS] = {0};
     size_t retry_count = 0;
-    
+
     absolute_time_t now = get_absolute_time();
-    
+
     // Phase 1: Identify entries to retry or expire (minimize time spent iterating)
     for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
         if (!g_pending_msgs[i].in_use) continue;
@@ -328,7 +328,7 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
         if (absolute_time_diff_us(g_pending_msgs[i].timestamp, now) > QOS_RETRY_INTERVAL_US) {
             // Check if max retries reached
             if (g_pending_msgs[i].retry_count >= QOS_MAX_RETRIES) {
-                printf("QoS %d Msg ID %d failed after %d retries\n", 
+                printf("QoS %d Msg ID %d failed after %d retries\n",
                        g_pending_msgs[i].qos, g_pending_msgs[i].msg_id, QOS_MAX_RETRIES);
                 g_pending_msgs[i].in_use = false;
                 continue;
@@ -342,7 +342,7 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
             retry_list[retry_count].topic_id = g_pending_msgs[i].topic_id;
             retry_list[retry_count].payload_len = g_pending_msgs[i].payload_len;
             memcpy(retry_list[retry_count].payload, g_pending_msgs[i].payload, g_pending_msgs[i].payload_len);
-            
+
             // Update retry count and timestamp immediately
             g_pending_msgs[i].retry_count++;
             g_pending_msgs[i].timestamp = get_absolute_time();
@@ -355,7 +355,7 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
     // retransmission, we're operating on our local copy
     for (size_t i = 0; i < retry_count; i++) {
         if (!retry_list[i].valid) continue;
-        
+
         if (retry_list[i].qos == 1) {
             printf("Retransmitting QoS1 PUBLISH for Msg ID %d\n", retry_list[i].msg_id);
             mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
@@ -716,14 +716,14 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
 
     // Validate deserialized metadata fields
     if (metadata.chunk_count == 0 || metadata.chunk_count > 100000) {
-        printf("ERROR: Invalid chunk count %lu (valid range: 1-100000)\n", 
+        printf("ERROR: Invalid chunk count %lu (valid range: 1-100000)\n",
                (unsigned long)metadata.chunk_count);
         return;
     }
 
-    if (metadata.total_size == 0 || metadata.total_size > 10*1024*1024) {
-        printf("ERROR: Invalid file size %lu (valid range: 1-%u bytes)\n", 
-               (unsigned long)metadata.total_size, 10*1024*1024);
+    if (metadata.total_size == 0 || metadata.total_size > 10 * 1024 * 1024) {
+        printf("ERROR: Invalid file size %lu (valid range: 1-%u bytes)\n",
+               (unsigned long)metadata.total_size, 10 * 1024 * 1024);
         return;
     }
 
