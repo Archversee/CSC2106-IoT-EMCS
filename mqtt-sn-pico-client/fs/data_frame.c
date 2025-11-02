@@ -7,6 +7,18 @@
 
 #include "../drivers/microsd_driver.h"
 
+/*! Static file context for streaming operations */
+typedef struct {
+    filesystem_info_t fs_info;
+    uint32_t file_cluster;
+    uint32_t file_size;
+    uint16_t file_crc;
+    char filename[METADATA_FILENAME_SIZE];
+    bool initialized;
+} streaming_context_t;
+
+static streaming_context_t g_stream_ctx = {0};
+
 /**
  * @brief Calculate CRC16 checksum for data buffer (CCITT-FALSE)
  * @param data Pointer to data buffer
@@ -28,7 +40,197 @@ uint16_t crc16(unsigned char* data, size_t length) {
         }
     }
 
-    return crc;
+    return crc;  // Return calculated CRC value
+}
+
+/**
+ * @brief Initialize streaming file read for chunked transmission
+ *
+ * This function prepares for streaming chunk reads without loading the entire
+ * file into memory. It only reads file metadata and caches cluster information.
+ *
+ * @param filename Name of file to prepare for streaming
+ * @param meta Pointer to Metadata structure to populate
+ * @return int 0 on success, -1 on failure
+ */
+int init_streaming_read(char* filename, struct Metadata* meta) {
+    if (filename == NULL || meta == NULL) {
+        printf("Error: NULL parameters\n");
+        return -1;
+    }
+
+    // Initialize filesystem if needed
+    if (!g_stream_ctx.initialized) {
+        if (!microsd_init_filesystem(&g_stream_ctx.fs_info)) {
+            printf("Error: Failed to initialize filesystem\n");
+            return -1;
+        }
+    }
+
+// Read file to get metadata (we need size and CRC)
+// Get the actual file size from directory entry by using a large enough buffer size
+// The read function will return the actual bytes read, which will be min(file_size, buffer_size)
+// To get the real file size, we need to try reading with increasingly larger buffers until
+// bytes_read < buffer_size, indicating we've read the entire file
+
+// HARD LIMIT: Raspberry Pi Pico W has 264KB total SRAM
+// Reserve space for stack, heap, and other operations
+#define STREAMING_FILE_SIZE_HARD_LIMIT (131072U)  // 128KB maximum file size
+
+    uint32_t file_size = 0;
+    uint8_t* full_buffer = NULL;
+
+    // Progressively calculate buffer sizes at runtime, doubling each time
+    // Start at 4KB, double until we reach the hard limit
+    uint32_t test_buffer_size = 4096;  // Start with 4KB
+
+    while (test_buffer_size <= STREAMING_FILE_SIZE_HARD_LIMIT) {
+        uint8_t* test_buffer = (uint8_t*)malloc(test_buffer_size);
+        if (test_buffer == NULL) {
+            printf("ERROR: Memory allocation failed for %u bytes\n", test_buffer_size);
+            printf("       Available RAM insufficient for file operation\n");
+            if (full_buffer) free(full_buffer);
+            return -1;
+        }
+
+        uint32_t bytes_read = 0;
+        if (!microsd_read_file(&g_stream_ctx.fs_info, filename, test_buffer,
+                               test_buffer_size, &bytes_read)) {
+            printf("ERROR: Failed to read file '%s'\n", filename);
+            free(test_buffer);
+            if (full_buffer) free(full_buffer);
+            return -1;
+        }
+
+        if (bytes_read == 0) {
+            printf("ERROR: File '%s' is empty\n", filename);
+            free(test_buffer);
+            if (full_buffer) free(full_buffer);
+            return -1;
+        }
+
+        // If we read less than buffer size, we have the entire file
+        if (bytes_read < test_buffer_size) {
+            file_size = bytes_read;
+            full_buffer = test_buffer;  // Keep this buffer
+            break;
+        }
+
+        // If we filled the buffer, need to try a larger size
+        free(test_buffer);
+
+        // Check if we've hit the hard limit
+        if (test_buffer_size == STREAMING_FILE_SIZE_HARD_LIMIT) {
+            printf("ERROR: HARD_LIMIT_REACHED\n");
+            printf("       File '%s' exceeds maximum supported size (%u bytes / %u KB)\n",
+                   filename, STREAMING_FILE_SIZE_HARD_LIMIT, STREAMING_FILE_SIZE_HARD_LIMIT / 1024);
+            printf("       This limit is imposed by Raspberry Pi Pico W's 264KB SRAM\n");
+            printf("       For larger files, use chunk-based streaming without full CRC validation\n");
+            if (full_buffer) free(full_buffer);
+            return -1;
+        }
+
+        // Double the buffer size for next attempt, but cap at hard limit
+        test_buffer_size *= 2;
+        if (test_buffer_size > STREAMING_FILE_SIZE_HARD_LIMIT) {
+            test_buffer_size = STREAMING_FILE_SIZE_HARD_LIMIT;
+        }
+    }
+    if (full_buffer == NULL || file_size == 0) {
+        printf("Error: Failed to read file\n");
+        return -1;
+    }
+
+    // Calculate file CRC from full file content
+    uint16_t file_crc = crc16(full_buffer, file_size);
+
+    free(full_buffer);
+
+    // Store in streaming context
+    g_stream_ctx.file_size = file_size;
+    g_stream_ctx.file_crc = file_crc;
+    strncpy(g_stream_ctx.filename, filename, METADATA_FILENAME_SIZE - 1);
+    g_stream_ctx.filename[METADATA_FILENAME_SIZE - 1] = '\0';
+    g_stream_ctx.initialized = true;
+
+    // Fill metadata
+    strncpy(meta->filename, filename, METADATA_FILENAME_SIZE - 1);
+    meta->filename[METADATA_FILENAME_SIZE - 1] = '\0';
+    meta->total_size = file_size;
+    meta->chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
+    meta->last_modified = 0;
+    meta->file_crc = file_crc;
+
+    // Generate session ID
+    snprintf(meta->session_id, SESSION_ID_SIZE, "stream_%lu",
+             (unsigned long)to_ms_since_boot(get_absolute_time()));
+
+    printf("Streaming read initialized:\n");
+    printf("  File: %s\n", filename);
+    printf("  Size: %u bytes\n", file_size);
+    printf("  Chunks: %u\n", meta->chunk_count);
+    printf("  CRC: 0x%04X\n", file_crc);
+
+    return 0;
+}
+
+/**
+ * @brief Read a single chunk for streaming transmission
+ *
+ * This function reads only the requested chunk from the file without loading
+ * the entire file into memory. Much more memory efficient than deconstruct().
+ *
+ * @param chunk_index Index of chunk to read (0-based)
+ * @param chunk Pointer to Payload structure to populate
+ * @return int 0 on success, -1 on failure
+ */
+int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
+    if (chunk == NULL) {
+        printf("Error: NULL chunk pointer\n");
+        return -1;
+    }
+
+    if (!g_stream_ctx.initialized) {
+        printf("Error: Streaming context not initialized\n");
+        return -1;
+    }
+
+    uint32_t chunk_count = (g_stream_ctx.file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
+
+    if (chunk_index >= chunk_count) {
+        printf("Error: Chunk index %lu out of range (max %lu)\n",
+               (unsigned long)chunk_index, (unsigned long)chunk_count);
+        return -1;
+    }
+
+    // Calculate file offset and size for this chunk
+    uint32_t file_offset = chunk_index * PAYLOAD_DATA_SIZE;
+    uint32_t remaining = g_stream_ctx.file_size - file_offset;
+    uint32_t chunk_size = (remaining < PAYLOAD_DATA_SIZE) ? remaining : PAYLOAD_DATA_SIZE;
+
+    // Read chunk directly from file using microsd_read_chunk
+    uint32_t bytes_read = 0;
+    if (!microsd_read_chunk(&g_stream_ctx.fs_info, g_stream_ctx.filename,
+                            chunk->data, PAYLOAD_DATA_SIZE,
+                            chunk_index + 1,  // microsd_read_chunk uses 1-based indexing
+                            &bytes_read)) {
+        printf("Error: Failed to read chunk %lu from file\n", (unsigned long)chunk_index);
+        return -1;
+    }
+
+    // Set chunk metadata
+    chunk->sequence = chunk_index;
+    chunk->size = bytes_read;
+    chunk->crc = crc16(chunk->data, bytes_read);
+
+    return 0;
+}
+
+/**
+ * @brief Clean up streaming context
+ */
+void cleanup_streaming_read(void) {
+    g_stream_ctx.initialized = false;
 }
 
 /**
