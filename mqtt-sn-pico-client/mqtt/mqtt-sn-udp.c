@@ -503,25 +503,29 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
                         u16_t gw_port,
                         const char* filename) {
     struct Metadata metadata = {0};
-    struct Payload* chunks = NULL;
 
-    printf("\n=== Starting File Transfer ===\n");
+    printf("\n=== Starting STREAMING File Transfer ===\n");
     printf("File: %s\n", filename);
     printf("Using QoS %d for reliable delivery\n", FILE_TRANSFER_QOS);
+    printf("Mode: STREAMING (memory efficient)\n");
 
-    // Step 1: Deconstruct file into chunks
-    if (deconstruct((char*)filename, &metadata, &chunks) != 0) {
-        printf("ERROR: Failed to chunk file\n");
+    // Step 1: Initialize streaming read
+    if (init_streaming_read((char*)filename, &metadata) != 0) {
+        printf("ERROR: Failed to initialize streaming read\n");
         return;
     }
 
-    printf("File chunked: %lu data chunks + 1 metadata\n", (unsigned long)metadata.chunk_count);
+    printf("✓ File opened for streaming:\n");
+    printf("  File size: %lu bytes\n", (unsigned long)metadata.total_size);
+    printf("  Chunks: %lu\n", (unsigned long)metadata.chunk_count);
+    printf("  Session ID: %s\n", metadata.session_id);
+    printf("  File CRC: 0x%04X\n", metadata.file_crc);
 
     // Step 2: Serialize and send metadata (chunk 0)
     uint8_t meta_buffer[PAYLOAD_SIZE];
     if (serialize_metadata(&metadata, meta_buffer) != PAYLOAD_SIZE) {
         printf("ERROR: Failed to serialize metadata\n");
-        free(chunks);
+        cleanup_streaming_read();
         return;
     }
 
@@ -529,14 +533,34 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
     uint16_t msg_id = get_next_msg_id();
     mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 3,
                              meta_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
-    printf("Sent metadata chunk (QoS %d, msg_id=%u)\n", FILE_TRANSFER_QOS, msg_id);
+    printf("Sent metadata (QoS %d, msg_id=%u)\n", FILE_TRANSFER_QOS, msg_id);
     sleep_ms(100);  // Allow time for ACK
 
-    // Step 3: Send all payload chunks
-    for (uint32_t i = 0; i < metadata.chunk_count; i++) {
-        uint8_t payload_buffer[PAYLOAD_SIZE];
+    // Step 3: Stream chunks one at a time (memory efficient!)
+    printf("Streaming chunks...\n");
+    uint32_t chunks_sent = 0;
+    absolute_time_t start_time = get_absolute_time();
 
-        if (serialize_payload(&chunks[i], payload_buffer) != PAYLOAD_SIZE) {
+    for (uint32_t i = 0; i < metadata.chunk_count; i++) {
+        struct Payload chunk = {0};
+
+        // Read chunk from SD card
+        if (read_chunk_streaming(i, &chunk) != 0) {
+            printf("ERROR: Failed to read chunk %lu\n", (unsigned long)i);
+            cleanup_streaming_read();
+            return;
+        }
+
+        // Verify chunk integrity before sending
+        if (!verify_chunk(&chunk)) {
+            printf("ERROR: Chunk %lu failed verification\n", (unsigned long)i);
+            cleanup_streaming_read();
+            return;
+        }
+
+        // Serialize chunk
+        uint8_t payload_buffer[PAYLOAD_SIZE];
+        if (serialize_payload(&chunk, payload_buffer) != PAYLOAD_SIZE) {
             printf("ERROR: Failed to serialize chunk %lu\n", (unsigned long)i);
             continue;
         }
@@ -546,11 +570,15 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
         mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 4,
                                  payload_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
 
+        chunks_sent++;
+
+        // Progress updates
         if ((i + 1) % 10 == 0 || i == metadata.chunk_count - 1) {
-            printf("Sent chunk %lu/%lu (QoS %d, msg_id=%u)\n",
+            float progress = ((float)(i + 1) / metadata.chunk_count) * 100.0f;
+            printf("  [%lu/%lu] %.1f%% complete (msg_id=%u)\n",
                    (unsigned long)(i + 1),
                    (unsigned long)metadata.chunk_count,
-                   FILE_TRANSFER_QOS,
+                   progress,
                    msg_id);
         }
 
@@ -558,11 +586,21 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
         sleep_ms(50);
     }
 
-    printf("✓ File transfer initiated: %lu packets sent\n",
-           (unsigned long)(metadata.chunk_count + 1));
-    printf("==============================\n\n");
+    absolute_time_t end_time = get_absolute_time();
+    int64_t elapsed_ms = absolute_time_diff_us(start_time, end_time) / 1000;
 
-    free(chunks);
+    // Cleanup streaming session
+    cleanup_streaming_read();
+
+    printf("✓ File transfer complete:\n");
+    printf("  Total packets: %lu (1 metadata + %lu data)\n",
+           (unsigned long)(chunks_sent + 1),
+           (unsigned long)chunks_sent);
+    printf("  Time: %lld ms\n", elapsed_ms);
+    printf("  Throughput: %.2f KB/s\n",
+           (float)metadata.total_size / (elapsed_ms / 1000.0f) / 1024.0f);
+    printf("  Peak memory: ~0.5 KB (single chunk buffer)\n");
+    printf("==============================\n\n");
 }
 
 /**

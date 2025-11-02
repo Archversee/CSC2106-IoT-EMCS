@@ -84,3 +84,21 @@ pico_enable_stdio_uart(file_transfer_demo 0)
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(file_transfer_demo)
+
+# Streaming Test Executable (memory efficient chunk reading)
+add_executable(streaming_test
+    tests/streaming_test.c
+)
+
+target_link_libraries(streaming_test
+    pico_stdlib
+    fs_lib
+    microsd_driver
+)
+
+# Enable USB output for test
+pico_enable_stdio_usb(streaming_test 1)
+pico_enable_stdio_uart(streaming_test 0)
+
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(streaming_test)
