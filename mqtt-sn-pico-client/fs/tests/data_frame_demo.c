@@ -1,8 +1,8 @@
 /*!
  * @file    data_frame_demo.c
  * @brief   Data frame deconstruction/reconstruction demonstration for MQTT QoS1
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This demo tests the file chunking algorithm for MQTT-SN data transfer
  * with 247-byte payloads and CRC32 integrity verification.

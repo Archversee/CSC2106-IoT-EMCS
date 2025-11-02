@@ -1,8 +1,8 @@
 /*!
  * @file    chunk_transfer.h
  * @brief   High-level chunk-based file transfer management for MQTT QoS1
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This module provides a higher-level abstraction over the microSD driver's
  * chunk write methods, handling session management and coordinating file

@@ -1,8 +1,8 @@
 /*!
  * @file    chunk_write_example.c
  * @brief   Example usage of chunk-based write/read for out-of-order MQTT QoS1 data
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This example demonstrates how to use the chunk-based write and read methods
  * to handle out-of-order MQTT QoS1 data packets using data_frame.h structs.

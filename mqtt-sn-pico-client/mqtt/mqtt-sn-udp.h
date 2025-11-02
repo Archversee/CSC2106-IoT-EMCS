@@ -2,6 +2,28 @@
 #ifndef MQTT_SN_UDP_H
 #define MQTT_SN_UDP_H
 
+/*
+ * MQTT-SN UDP Protocol Implementation with File Transfer Support
+ *
+ * FILE TRANSFER QOS POLICY:
+ * -------------------------
+ * File transfers ALWAYS use QoS 1 (at-least-once delivery) for reliability.
+ *
+ * QoS 1 Guarantees:
+ * - Every packet is acknowledged (PUBACK)
+ * - Unacknowledged packets are automatically retransmitted
+ * - May result in duplicate packet delivery
+ *
+ * Duplicate Handling:
+ * - Each chunk has a unique sequence number and CRC16
+ * - Bitmap tracks which chunks have been received
+ * - Duplicate chunks are detected and safely ignored
+ * - No duplicate data is written to microSD
+ *
+ * This approach ensures reliable file transfer while handling
+ * network packet loss and duplicate deliveries gracefully.
+ */
+
 #include "../config.h"
 #include "../drivers/microsd_driver.h"
 #include "../fs/chunk_transfer.h"

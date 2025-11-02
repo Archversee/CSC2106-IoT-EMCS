@@ -21,13 +21,15 @@
 #define QOS_RETRY_INTERVAL_US 2000000
 #define QOS_MAX_RETRIES 3
 
+// File Transfer Settings
+// File transfers ALWAYS use QoS 1 (at-least-once delivery)
+// This ensures reliable delivery with automatic retransmissions
+// Duplicate chunks from retransmissions are handled automatically via bitmap
+
 // GPIO Pins
 #define MESSAGEBUTTON_PIN 20
 #define QOSBUTTON_PIN 21
 #define DROP_ACK_BUTTON_PIN 22
-#define FILE_TRANSFER_BUTTON_PIN 19
-
-// Initialize File Transfer button GP19
 #define FILE_TRANSFER_BUTTON_PIN 19
 
 // MQTT-SN Topic IDs

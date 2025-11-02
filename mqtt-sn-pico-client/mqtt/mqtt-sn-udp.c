@@ -10,6 +10,9 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
+/*! File Transfer Configuration */
+#define FILE_TRANSFER_QOS 1 /*!< QoS level for file transfers (1=at-least-once with duplicates handled) */
+
 static uint16_t next_msg_id = 1;
 qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
 
@@ -447,10 +450,17 @@ void udp_recv_callback(
 
 /**
  * @brief Send a file via MQTT-SN by chunking and publishing
+ *
+ * This function ALWAYS uses QoS 1 for reliable file transfer.
+ * QoS 1 ensures each chunk is acknowledged and retransmitted if lost.
+ *
  * @param pcb UDP PCB
  * @param gw_addr Gateway address
  * @param gw_port Gateway port
  * @param filename Name of file to send from microSD
+ *
+ * @note QoS 1 may result in duplicate chunks being received, but the
+ *       chunk_transfer module handles duplicates by checking the bitmap.
  */
 void send_file_via_mqtt(struct udp_pcb* pcb,
                         const ip_addr_t* gw_addr,
@@ -461,6 +471,7 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
 
     printf("\n=== Starting File Transfer ===\n");
     printf("File: %s\n", filename);
+    printf("Using QoS %d for reliable delivery\n", FILE_TRANSFER_QOS);
 
     // Step 1: Deconstruct file into chunks
     if (deconstruct((char*)filename, &metadata, &chunks) != 0) {
@@ -478,11 +489,11 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
         return;
     }
 
-    // Publish metadata to topic ID 3 (file/meta)
+    // Publish metadata to topic ID 3 (file/meta) with QoS 1
     uint16_t msg_id = get_next_msg_id();
     mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 3,
-                             meta_buffer, PAYLOAD_SIZE, 1, msg_id, false);
-    printf("Sent metadata chunk (msg_id=%u)\n", msg_id);
+                             meta_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
+    printf("Sent metadata chunk (QoS %d, msg_id=%u)\n", FILE_TRANSFER_QOS, msg_id);
     sleep_ms(100);  // Allow time for ACK
 
     // Step 3: Send all payload chunks
@@ -494,15 +505,16 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
             continue;
         }
 
-        // Publish to topic ID 4 (file/data)
+        // Publish to topic ID 4 (file/data) with QoS 1
         msg_id = get_next_msg_id();
         mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 4,
-                                 payload_buffer, PAYLOAD_SIZE, 1, msg_id, false);
+                                 payload_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
 
         if ((i + 1) % 10 == 0 || i == metadata.chunk_count - 1) {
-            printf("Sent chunk %lu/%lu (msg_id=%u)\n",
+            printf("Sent chunk %lu/%lu (QoS %d, msg_id=%u)\n",
                    (unsigned long)(i + 1),
                    (unsigned long)metadata.chunk_count,
+                   FILE_TRANSFER_QOS,
                    msg_id);
         }
 
@@ -519,9 +531,16 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
 
 /**
  * @brief Handle received file metadata packet
+ *
+ * Processes the initial metadata chunk that describes the file transfer.
+ * Sent via QoS 1 for reliability. If duplicate metadata is received
+ * (from retransmission), the session will be reinitialized.
+ *
  * @param ctx MQTT-SN context containing session info
  * @param payload Serialized metadata payload
  * @param len Payload length
+ *
+ * @note Uses QoS 1 for reliable metadata delivery
  */
 void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len) {
     if (!ctx || !payload) {
@@ -572,9 +591,20 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
 
 /**
  * @brief Handle received file payload chunk
+ *
+ * Processes incoming file chunks sent via QoS 1.
+ * QoS 1 guarantees at-least-once delivery, which may result in duplicate chunks.
+ * Duplicates are automatically detected and safely ignored using the chunk bitmap.
+ *
  * @param ctx MQTT-SN context containing session info
  * @param payload Serialized payload chunk
  * @param len Payload length
+ *
+ * @note Duplicate chunks (from QoS 1 retransmissions) are handled gracefully:
+ *       - CRC is verified to ensure data integrity
+ *       - Bitmap is checked to detect duplicates
+ *       - Duplicates are skipped without error
+ *       - Only new chunks are written to microSD
  */
 void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len) {
     if (!ctx || !payload) {
@@ -598,13 +628,16 @@ void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t 
         return;
     }
 
-    // Verify chunk integrity
+    // Verify chunk integrity with CRC16
     if (!verify_chunk(&chunk)) {
         printf("ERROR: Chunk %lu failed CRC check\n", (unsigned long)chunk.sequence);
         return;
     }
 
     // Write chunk to microSD
+    // Note: chunk_transfer_write_payload automatically handles duplicates by checking
+    // the bitmap and skipping chunks that have already been received.
+    // This is essential for QoS 1 which may deliver duplicates.
     if (!chunk_transfer_write_payload(ctx->fs_info, ctx->file_session, &chunk)) {
         printf("ERROR: Failed to write chunk %lu\n", (unsigned long)chunk.sequence);
         return;

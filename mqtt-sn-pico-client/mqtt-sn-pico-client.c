@@ -1,8 +1,8 @@
 /*!
  * @file    mqtt-sn-pico-client.c
  * @brief   MQTT-SN Client with File Transfer Support
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * IMPORTANT: MicroSD Initialization
  * ----------------------------------
