@@ -497,6 +497,11 @@ void udp_recv_callback(
  *
  * @note QoS 1 may result in duplicate chunks being received, but the
  *       chunk_transfer module handles duplicates by checking the bitmap.
+ *
+ * @warning This function contains blocking SD card reads (~5ms per chunk).
+ *          To prevent network stack starvation, cyw43_arch_poll() is called
+ *          after each SD read and during inter-chunk delays to process
+ *          incoming PUBACKs and prevent spurious QoS 1 retransmissions.
  */
 void send_file_via_mqtt(struct udp_pcb* pcb,
                         const ip_addr_t* gw_addr,
@@ -544,12 +549,15 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
     for (uint32_t i = 0; i < metadata.chunk_count; i++) {
         struct Payload chunk = {0};
 
-        // Read chunk from SD card
+        // Read chunk from SD card (BLOCKING: ~5ms)
         if (read_chunk_streaming(i, &chunk) != 0) {
             printf("ERROR: Failed to read chunk %lu\n", (unsigned long)i);
             cleanup_streaming_read();
             return;
         }
+
+        // Poll network immediately after blocking SD read to process any pending PUBACKs
+        cyw43_arch_poll();
 
         // Verify chunk integrity before sending
         if (!verify_chunk(&chunk)) {
@@ -582,8 +590,13 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
                    msg_id);
         }
 
-        // Small delay to avoid overwhelming the network
-        sleep_ms(50);
+        // Interleaved delay with network polling to process incoming PUBACKs
+        // This prevents QoS 1 timeout/retransmission during file transfer
+        absolute_time_t delay_start = get_absolute_time();
+        while (absolute_time_diff_us(delay_start, get_absolute_time()) < 50000) {
+            cyw43_arch_poll();  // Process network events
+            sleep_us(100);      // Yield CPU briefly
+        }
     }
 
     absolute_time_t end_time = get_absolute_time();
