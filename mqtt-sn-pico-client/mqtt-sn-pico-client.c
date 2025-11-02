@@ -305,7 +305,7 @@ int main() {
             // GP 19 falling edge
             if (fs_initialized) {
                 printf("\n>>> File Transfer Button Pressed <<<\n");
-                send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "test.txt");
+                send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "praise_lord_fauzi.txt");
             } else {
                 printf("ERROR: Cannot send file - filesystem not initialized\n");
             }

@@ -629,10 +629,41 @@ static bool test_reconstruction(const char* source_filename, uint32_t expected_s
     printf("  All %u chunks verified\n", meta.chunk_count);
 
     // Step 4: Reconstruct file (receiver side)
+    // Extract base filename (strip version suffix like _1, _2 etc if present)
+    char base_filename[80];
+    strncpy(base_filename, source_filename, sizeof(base_filename) - 1);
+    base_filename[sizeof(base_filename) - 1] = '\0';
+
+    // Find extension
+    char* ext_pos = strrchr(base_filename, '.');
+    if (ext_pos != NULL) {
+        *ext_pos = '\0';  // Temporarily remove extension
+
+        // Check if filename ends with _N pattern and remove it
+        char* underscore_pos = strrchr(base_filename, '_');
+        if (underscore_pos != NULL) {
+            // Check if characters after underscore are all digits
+            bool all_digits = true;
+            for (char* p = underscore_pos + 1; *p != '\0'; p++) {
+                if (*p < '0' || *p > '9') {
+                    all_digits = false;
+                    break;
+                }
+            }
+            if (all_digits && (underscore_pos[1] != '\0')) {
+                *underscore_pos = '\0';  // Remove _N suffix
+            }
+        }
+
+        // Restore extension
+        *ext_pos = '.';
+    }
+
     char output_filename[80];
-    snprintf(output_filename, sizeof(output_filename), "RECON_%s", source_filename);
+    snprintf(output_filename, sizeof(output_filename), "RECON_%s", base_filename);
 
     printf("\nRECEIVER: Reconstructing file...\n");
+    printf("  Base filename: %s\n", base_filename);
     printf("  Output: %s\n", output_filename);
 
     absolute_time_t recon_start = get_absolute_time();
@@ -674,13 +705,40 @@ static bool test_reconstruction(const char* source_filename, uint32_t expected_s
     uint32_t original_bytes_read = 0;
     uint32_t reconstructed_bytes_read = 0;
 
+    // Read original file
     bool read_success = microsd_read_file(&fs_info, source_filename, original_buffer,
                                           expected_size, &original_bytes_read);
-    read_success &= microsd_read_file(&fs_info, output_filename, reconstructed_buffer,
-                                      expected_size, &reconstructed_bytes_read);
 
     if (!read_success) {
-        printf("ERROR: Failed to read files for comparison\n");
+        printf("ERROR: Failed to read original file '%s'\n", source_filename);
+        free(chunks);
+        free(original_buffer);
+        free(reconstructed_buffer);
+        return false;
+    }
+
+    // Try to read reconstructed file - it may have a version suffix if file already existed
+    // Try: output_filename, then output_filename_1, _2, etc.
+    bool recon_file_found = false;
+    char actual_recon_filename[80];
+
+    for (int version = 0; version < 10; version++) {
+        if (version == 0) {
+            snprintf(actual_recon_filename, sizeof(actual_recon_filename), "%s", output_filename);
+        } else {
+            snprintf(actual_recon_filename, sizeof(actual_recon_filename), "%s_%d", output_filename, version);
+        }
+
+        if (microsd_read_file(&fs_info, actual_recon_filename, reconstructed_buffer,
+                              expected_size, &reconstructed_bytes_read)) {
+            recon_file_found = true;
+            printf("  Found reconstructed file: %s\n", actual_recon_filename);
+            break;
+        }
+    }
+
+    if (!recon_file_found) {
+        printf("ERROR: Failed to read reconstructed file (tried %s and versioned names)\n", output_filename);
         free(chunks);
         free(original_buffer);
         free(reconstructed_buffer);
