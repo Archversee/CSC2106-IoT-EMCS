@@ -24,7 +24,17 @@
 // GPIO Pins
 #define MESSAGEBUTTON_PIN 20
 #define QOSBUTTON_PIN 21
-#define DROP_ACK_BUTTON_PIN 22 
+#define DROP_ACK_BUTTON_PIN 22
+#define FILE_TRANSFER_BUTTON_PIN 19
+
+// Initialize File Transfer button GP19
+#define FILE_TRANSFER_BUTTON_PIN 19
+
+// MQTT-SN Topic IDs
+#define TOPIC_ID_PICO_CMD 1     // pico/cmd - command topic
+#define TOPIC_ID_PICO_STATUS 2  // pico/status - status topic
+#define TOPIC_ID_FILE_META 3    // file/meta - file metadata
+#define TOPIC_ID_FILE_DATA 4    // file/data - file chunks
 
 #define PAYLOAD_SIZE 247
 
