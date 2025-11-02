@@ -24,7 +24,8 @@ print_usage() {
     echo -e "${YELLOW}Usage: $0 [COMMAND]${NC}"
     echo ""
     echo "Commands:"
-    echo "  pico         - Build Pico W firmware (microSD demo)"
+    echo "  build        - Build Pico W firmware (auto-detects Ninja/Make)"
+    echo "  pico         - Build Pico W firmware (legacy alias for 'build')"
     echo "  gateway      - Build MQTT-SN Gateway (UDP) for laptop"
     echo "  clean        - Clean all build artifacts"
     echo "  flash        - Flash Pico W firmware via drag-and-drop"
@@ -34,7 +35,7 @@ print_usage() {
     echo "  help         - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 pico      # Build only Pico W firmware"
+    echo "  $0 build     # Build Pico W firmware (recommended)"
     echo "  $0 gateway   # Build only MQTT-SN Gateway for laptop"
     echo "  $0 all       # Build both Pico W and Gateway"
     echo "  $0 flash     # Instructions for flashing Pico W"
@@ -97,7 +98,7 @@ build_pico() {
     # Create build directory if it doesn't exist
     if [ ! -d "$BUILD_DIR" ]; then
         mkdir -p "$BUILD_DIR"
-        echo -e "${GREEN}Created build directory${NC}"
+        echo -e "${GREEN}Created build directory: $BUILD_DIR${NC}"
     fi
     
     cd "$BUILD_DIR"
@@ -105,22 +106,52 @@ build_pico() {
     # Run cmake if CMakeCache.txt doesn't exist
     if [ ! -f "CMakeCache.txt" ]; then
         echo -e "${YELLOW}Running cmake configuration...${NC}"
-        cmake .. || {
-            echo -e "${RED}CMake configuration failed!${NC}"
-            echo -e "${YELLOW}Make sure pico_sdk_import.cmake is in the mqtt-sn-pico-client directory${NC}"
-            return 1
-        }
+        
+        # Check if Ninja is available and prefer it
+        if command -v ninja &> /dev/null; then
+            echo -e "${GREEN}Detected Ninja build system${NC}"
+            cmake -G Ninja .. || {
+                echo -e "${RED}CMake configuration with Ninja failed!${NC}"
+                echo -e "${YELLOW}Falling back to Make...${NC}"
+                cmake .. || {
+                    echo -e "${RED}CMake configuration failed!${NC}"
+                    return 1
+                }
+            }
+        else
+            echo -e "${YELLOW}Using Make build system${NC}"
+            cmake .. || {
+                echo -e "${RED}CMake configuration failed!${NC}"
+                echo -e "${YELLOW}Make sure pico_sdk_import.cmake is in the mqtt-sn-pico-client directory${NC}"
+                return 1
+            }
+        fi
     fi
     
-    # Build the project
+    # Detect build system and build accordingly
     echo -e "${YELLOW}Compiling MQTT-SN Pico W client...${NC}"
-    make mqtt_sn_pico_client || {
-        echo -e "${RED}Pico W build failed!${NC}"
-        return 1
-    }
     
-    echo -e "${GREEN}MQTT-SN Pico W client built successfully!${NC}"
-    echo -e "${GREEN}UF2 file: $BUILD_DIR/mqtt_sn_pico_client.uf2${NC}"
+    if [ -f "build.ninja" ]; then
+        echo -e "${GREEN}Building with Ninja (parallel -j12)${NC}"
+        ninja -j12 || {
+            echo -e "${RED}Ninja build failed!${NC}"
+            return 1
+        }
+    elif [ -f "Makefile" ]; then
+        echo -e "${GREEN}Building with Make (parallel -j12)${NC}"
+        make -j12 || {
+            echo -e "${RED}Make build failed!${NC}"
+            return 1
+        }
+    else
+        echo -e "${RED}No build system detected (neither Ninja nor Make)${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✓ MQTT-SN Pico W client built successfully!${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}UF2 file: $BUILD_DIR/mqtt-sn-pico-client.uf2${NC}"
     echo -e "${YELLOW}To flash: Hold BOOTSEL button, connect Pico W, drag UF2 file to RPI-RP2 drive${NC}"
     
     cd "$PROJECT_DIR"
@@ -179,11 +210,11 @@ clean_all() {
 flash_pico() {
     echo -e "${BLUE}Flashing MQTT-SN Pico W client...${NC}"
     
-    UF2_FILE="$BUILD_DIR/mqtt_sn_pico_client.uf2"
+    UF2_FILE="$BUILD_DIR/mqtt-sn-pico-client.uf2"
     
     if [ ! -f "$UF2_FILE" ]; then
         echo -e "${RED}UF2 file not found! Build the project first.${NC}"
-        echo -e "${YELLOW}Run: $0 pico${NC}"
+        echo -e "${YELLOW}Run: $0 build${NC}"
         return 1
     fi
     
@@ -196,6 +227,9 @@ flash_pico() {
     echo -e "${GREEN}   $UF2_FILE${NC}"
     echo ""
     echo "The Pico W will automatically reboot and run your program!"
+    echo ""
+    echo -e "${YELLOW}Alternatively, on macOS:${NC}"
+    echo "  cp $UF2_FILE /Volumes/RPI-RP2/"
 }
 
 monitor_pico() {
@@ -216,7 +250,7 @@ monitor_pico() {
 
 # Main script logic
 case "$1" in
-    "pico")
+    "build"|"pico")
         print_header
         build_pico
         ;;

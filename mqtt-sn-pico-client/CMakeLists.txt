@@ -56,7 +56,7 @@ add_subdirectory(fs)
 add_executable(mqtt-sn-pico-client
     #main.c
     mqtt-sn-pico-client.c
-    functions.c
+    mqtt/mqtt-sn-udp.c
 )
 
 pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
