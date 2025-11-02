@@ -50,9 +50,9 @@ typedef struct {
     bool transfer_in_progress;
 } mqtt_sn_context_t;
 
-extern qos_msg_t pending_msgs[MAX_PENDING_QOS_MSGS];
-extern uint32_t last_pingresp;
-extern bool ping_ack_received;
+extern qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
+extern uint32_t g_last_pingresp;
+extern bool g_ping_ack_received;
 
 // Public function declarations
 void mqtt_sn_connect(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
