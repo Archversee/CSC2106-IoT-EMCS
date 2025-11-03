@@ -90,7 +90,8 @@ static void example_out_of_order_chunk_write(void) {
 
     /* Step 3: Initialize transfer session (this handles metadata chunk writing) */
     printf("\n--- Step 2: Initializing Transfer Session ---\n");
-    if (!chunk_transfer_init_session(&fs_info, &file_meta, &session)) {
+    // Use false to write to original filename (standard logic)
+    if (!chunk_transfer_init_session(&fs_info, &file_meta, &session, false)) {
         printf("Failed to initialize transfer session\n");
         return;
     }

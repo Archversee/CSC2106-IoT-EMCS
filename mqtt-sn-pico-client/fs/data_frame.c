@@ -292,6 +292,15 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
         return -1;
     }
 
+    // Check if file size exceeds buffer capacity (prevent silent truncation)
+    if (file_size >= MAX_FILE_BUFFER_SIZE) {
+        printf("Error: File too large (%u bytes) for legacy deconstruct (max %u bytes)\n",
+               file_size, MAX_FILE_BUFFER_SIZE);
+        printf("       Use init_streaming_read() and read_chunk_streaming() instead\n");
+        free(file_buffer);
+        return -1;
+    }
+
     printf("File read successfully: %u bytes\n", file_size);
 
     // Calculate number of chunks needed (based on actual data capacity)

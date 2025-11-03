@@ -6,6 +6,7 @@
 
 #include "../config.h"
 #include "config.h"
+#include "hardware/sync.h"
 #include "lwip/pbuf.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
@@ -46,8 +47,12 @@ qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
  * @brief Get next unique message ID for MQTT-SN
  * @return uint16_t Next message ID (1-65535, wraps around)
  * @note Not thread-safe - assumes single-threaded access
+ * @note Message ID 0 is reserved/invalid per MQTT-SN spec, so we skip it
  */
 uint16_t get_next_msg_id(void) {
+    if (s_next_msg_id == 0U || s_next_msg_id == 0xFFFFU) {
+        s_next_msg_id = 1U;  // Start from 1, skip 0
+    }
     return s_next_msg_id++;
 }
 
@@ -185,6 +190,11 @@ void mqtt_sn_publish_topic_id(struct udp_pcb* pcb,
 
         // Store pending QoS message for retransmission if needed
         if (qos > 0 && !is_retransmit) {
+            // Disable interrupts during critical section to prevent race conditions
+            // between checking in_use and setting it to true
+            uint32_t save = save_and_disable_interrupts();
+            bool slot_found = false;
+
             for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
                 if (!g_pending_msgs[i].in_use) {
                     g_pending_msgs[i].in_use = true;
@@ -196,10 +206,22 @@ void mqtt_sn_publish_topic_id(struct udp_pcb* pcb,
                     g_pending_msgs[i].topic_id = topic_id;
                     // Store binary payload safely, truncate if needed
                     size_t copy_len = (payload_len < sizeof(g_pending_msgs[i].payload)) ? payload_len : sizeof(g_pending_msgs[i].payload);
+                    if (payload_len > sizeof(g_pending_msgs[i].payload)) {
+                        printf("WARNING: Payload truncated from %zu to %zu bytes for QoS tracking\n",
+                               payload_len, sizeof(g_pending_msgs[i].payload));
+                    }
                     memcpy(g_pending_msgs[i].payload, payload, copy_len);
                     g_pending_msgs[i].payload_len = copy_len;
+                    slot_found = true;
                     break;
                 }
+            }
+
+            restore_interrupts(save);
+
+            if (!slot_found) {
+                printf("ERROR: All QoS slots full (%d), message %d will not be tracked for retransmission\n",
+                       MAX_PENDING_QOS_MSGS, msg_id);
             }
         }
     } else {
@@ -281,8 +303,24 @@ void mqtt_sn_send_pubrel(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw
 
 // Check and handle QoS message timeouts and retransmissions
 void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port) {
+    // Snapshot entries to retry to avoid use-after-free if ACK arrives during iteration
+    typedef struct {
+        bool valid;
+        uint16_t msg_id;
+        uint8_t qos;
+        uint8_t step;
+        uint16_t topic_id;
+        uint8_t payload[247];
+        size_t payload_len;
+        bool should_expire;
+    } retry_entry_t;
+
+    retry_entry_t retry_list[MAX_PENDING_QOS_MSGS] = {0};
+    size_t retry_count = 0;
+
     absolute_time_t now = get_absolute_time();
-    // Iterate through pending QoS messages
+
+    // Phase 1: Identify entries to retry or expire (minimize time spent iterating)
     for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
         if (!g_pending_msgs[i].in_use) continue;
 
@@ -290,39 +328,57 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
         if (absolute_time_diff_us(g_pending_msgs[i].timestamp, now) > QOS_RETRY_INTERVAL_US) {
             // Check if max retries reached
             if (g_pending_msgs[i].retry_count >= QOS_MAX_RETRIES) {
-                printf("QoS %d Msg ID %d failed after retries\n", g_pending_msgs[i].qos, g_pending_msgs[i].msg_id);
+                printf("QoS %d Msg ID %d failed after %d retries\n",
+                       g_pending_msgs[i].qos, g_pending_msgs[i].msg_id, QOS_MAX_RETRIES);
                 g_pending_msgs[i].in_use = false;
                 continue;
             }
 
-            // Retransmit based on QoS level and step
-            if (g_pending_msgs[i].qos == 1) {
-                printf("Retransmitting QoS1 PUBLISH for Msg ID %d\n", g_pending_msgs[i].msg_id);
-                mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
-                                         g_pending_msgs[i].topic_id,
-                                         g_pending_msgs[i].payload,
-                                         g_pending_msgs[i].payload_len,
-                                         g_pending_msgs[i].qos,
-                                         g_pending_msgs[i].msg_id,
-                                         true);
-            } else if (g_pending_msgs[i].qos == 2) {
-                if (g_pending_msgs[i].step == 0) {
-                    printf("Retransmitting QoS2 PUBLISH for Msg ID %d\n", g_pending_msgs[i].msg_id);
-                    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
-                                             g_pending_msgs[i].topic_id,
-                                             g_pending_msgs[i].payload,
-                                             g_pending_msgs[i].payload_len,
-                                             g_pending_msgs[i].qos,
-                                             g_pending_msgs[i].msg_id,
-                                             true);
-                } else if (g_pending_msgs[i].step == 1) {
-                    printf("Retransmitting PUBREL for Msg ID %d\n", g_pending_msgs[i].msg_id);
-                    mqtt_sn_send_pubrel(pcb, gw_addr, gw_port, g_pending_msgs[i].msg_id);
-                }
-            }
+            // Copy to retry list for later retransmission
+            retry_list[retry_count].valid = true;
+            retry_list[retry_count].msg_id = g_pending_msgs[i].msg_id;
+            retry_list[retry_count].qos = g_pending_msgs[i].qos;
+            retry_list[retry_count].step = g_pending_msgs[i].step;
+            retry_list[retry_count].topic_id = g_pending_msgs[i].topic_id;
+            retry_list[retry_count].payload_len = g_pending_msgs[i].payload_len;
+            memcpy(retry_list[retry_count].payload, g_pending_msgs[i].payload, g_pending_msgs[i].payload_len);
 
+            // Update retry count and timestamp immediately
             g_pending_msgs[i].retry_count++;
             g_pending_msgs[i].timestamp = get_absolute_time();
+            retry_count++;
+        }
+    }
+
+    // Phase 2: Perform retransmissions using snapshot data
+    // This way, if ACK arrives and removes entry from g_pending_msgs during
+    // retransmission, we're operating on our local copy
+    for (size_t i = 0; i < retry_count; i++) {
+        if (!retry_list[i].valid) continue;
+
+        if (retry_list[i].qos == 1) {
+            printf("Retransmitting QoS1 PUBLISH for Msg ID %d\n", retry_list[i].msg_id);
+            mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
+                                     retry_list[i].topic_id,
+                                     retry_list[i].payload,
+                                     retry_list[i].payload_len,
+                                     retry_list[i].qos,
+                                     retry_list[i].msg_id,
+                                     true);
+        } else if (retry_list[i].qos == 2) {
+            if (retry_list[i].step == 0) {
+                printf("Retransmitting QoS2 PUBLISH for Msg ID %d\n", retry_list[i].msg_id);
+                mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port,
+                                         retry_list[i].topic_id,
+                                         retry_list[i].payload,
+                                         retry_list[i].payload_len,
+                                         retry_list[i].qos,
+                                         retry_list[i].msg_id,
+                                         true);
+            } else if (retry_list[i].step == 1) {
+                printf("Retransmitting PUBREL for Msg ID %d\n", retry_list[i].msg_id);
+                mqtt_sn_send_pubrel(pcb, gw_addr, gw_port, retry_list[i].msg_id);
+            }
         }
     }
 }
@@ -330,13 +386,25 @@ void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
 /*!
  * @brief Remove pending QoS message by message ID
  * @param msg_id Message ID to remove from pending queue
+ * @note Removes ALL matching entries to handle potential duplicates from corruption
  */
 void remove_pending_qos_msg(uint16_t msg_id) {
+    if (msg_id == 0U) {
+        printf("WARNING: Attempted to remove invalid msg_id=0\n");
+        return;
+    }
+
+    bool found = false;
     for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
         if (g_pending_msgs[i].in_use && g_pending_msgs[i].msg_id == msg_id) {
             g_pending_msgs[i].in_use = false;
-            break;
+            found = true;
+            // Continue searching to remove ALL duplicates (don't break)
         }
+    }
+
+    if (!found) {
+        printf("WARNING: msg_id %u not found in pending queue (may have already been removed)\n", msg_id);
     }
 }
 
@@ -646,6 +714,31 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
         return;
     }
 
+    // Validate deserialized metadata fields
+    if (metadata.chunk_count == 0 || metadata.chunk_count > 100000) {
+        printf("ERROR: Invalid chunk count %lu (valid range: 1-100000)\n",
+               (unsigned long)metadata.chunk_count);
+        return;
+    }
+
+    if (metadata.total_size == 0 || metadata.total_size > 10 * 1024 * 1024) {
+        printf("ERROR: Invalid file size %lu (valid range: 1-%u bytes)\n",
+               (unsigned long)metadata.total_size, 10 * 1024 * 1024);
+        return;
+    }
+
+    if (strlen(metadata.filename) == 0 || metadata.filename[0] == '\0') {
+        printf("ERROR: Empty or invalid filename\n");
+        return;
+    }
+
+    // Verify chunk count matches file size
+    uint32_t expected_chunks = (metadata.total_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
+    if (metadata.chunk_count != expected_chunks) {
+        printf("WARNING: Chunk count mismatch (expected %lu, got %lu)\n",
+               (unsigned long)expected_chunks, (unsigned long)metadata.chunk_count);
+    }
+
     printf("\n=== File Transfer Started ===\n");
     printf("Received metadata:\n");
     printf("  Session ID: %s\n", metadata.session_id);
@@ -666,7 +759,8 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
         return;
     }
 
-    if (!chunk_transfer_init_session(ctx->fs_info, &metadata, ctx->file_session)) {
+    // Use new filename (true) to avoid overwriting existing files
+    if (!chunk_transfer_init_session(ctx->fs_info, &metadata, ctx->file_session, true)) {
         printf("ERROR: Failed to init transfer session\n");
         return;
     }

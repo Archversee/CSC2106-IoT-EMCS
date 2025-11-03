@@ -21,6 +21,19 @@
 #define QOS_RETRY_INTERVAL_US 2000000
 #define QOS_MAX_RETRIES 3
 
+// Compile-time validation of configuration parameters
+#if (PINGRESP_TIMEOUT_MS <= PING_INTERVAL_MS)
+#error "PINGRESP_TIMEOUT_MS must be greater than PING_INTERVAL_MS"
+#endif
+
+#if (MAX_PENDING_QOS_MSGS < 1)
+#error "MAX_PENDING_QOS_MSGS must be at least 1"
+#endif
+
+#if (QOS_MAX_RETRIES < 1)
+#error "QOS_MAX_RETRIES must be at least 1"
+#endif
+
 // File Transfer Settings
 // File transfers ALWAYS use QoS 1 (at-least-once delivery)
 // This ensures reliable delivery with automatic retransmissions

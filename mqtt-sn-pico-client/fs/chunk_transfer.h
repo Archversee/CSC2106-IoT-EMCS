@@ -45,11 +45,13 @@ typedef struct {
  * @param fs_info Pointer to filesystem information
  * @param metadata Pointer to the received metadata structure
  * @param session Pointer to session structure to initialize
+ * @param use_new_filename If true, adds "_received" suffix to filename; if false, uses original filename
  * @return true on success, false on failure
  */
 bool chunk_transfer_init_session(filesystem_info_t* fs_info,
                                  const struct Metadata* metadata,
-                                 transfer_session_t* session);
+                                 transfer_session_t* session,
+                                 bool use_new_filename);
 
 /*!
  * @brief Write a data payload chunk to an active session
