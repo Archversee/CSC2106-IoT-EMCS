@@ -12,7 +12,8 @@
 #include "pico/stdlib.h"
 
 /*! File Transfer Configuration */
-#define FILE_TRANSFER_QOS 1 /*!< QoS level for file transfers (1=at-least-once with duplicates handled) */
+#define FILE_TRANSFER_METADATA_QOS 2 /*!< QoS level for metadata (2=exactly-once delivery) */
+#define FILE_TRANSFER_DATA_QOS 1     /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
 
 /*! MQTT-SN Protocol Message Types (as per MQTT-SN v1.2 Specification) */
 #define MQTTSN_MSG_TYPE_CONNECT (0x04U)   /*!< CONNECT message type */
@@ -465,17 +466,19 @@ void udp_recv_callback(
 
                 // Check for file transfer topics first
                 if (topic_id == 3U) {
-                    // file/meta topic
-                    printf("PUBLISH: File metadata received (Msg ID %d)\n", msg_id);
+                    // file/meta topic (expects QoS 2)
+                    printf("PUBLISH: File metadata received (QoS %d, Msg ID %d)\n", qos, msg_id);
                     handle_file_metadata(ctx, payload, payload_len);
-                    // Send PUBACK
+                    // Send appropriate QoS ACK
                     if (qos == 1U) {
                         mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id, MQTTSN_RETURN_ACCEPTED);
+                    } else if (qos == 2U) {
+                        mqtt_sn_send_pubrec(pcb, addr, port, msg_id);
                     }
                 } else if (topic_id == 4U) {
-                    // file/data topic
+                    // file/data topic (expects QoS 1)
                     handle_file_payload(ctx, payload, payload_len);
-                    // Send PUBACK
+                    // Send PUBACK for QoS 1
                     if (qos == 1U) {
                         mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id, MQTTSN_RETURN_ACCEPTED);
                     }
@@ -555,21 +558,24 @@ void udp_recv_callback(
 /**
  * @brief Send a file via MQTT-SN by chunking and publishing
  *
- * This function ALWAYS uses QoS 1 for reliable file transfer.
- * QoS 1 ensures each chunk is acknowledged and retransmitted if lost.
+ * This function uses QoS 2 for metadata and QoS 1 for data chunks.
+ * - QoS 2 (exactly-once) ensures metadata is delivered before any data chunks
+ * - QoS 1 (at-least-once) provides reliable data transfer with duplicate handling
  *
  * @param pcb UDP PCB
  * @param gw_addr Gateway address
  * @param gw_port Gateway port
  * @param filename Name of file to send from microSD
  *
- * @note QoS 1 may result in duplicate chunks being received, but the
+ * @note QoS 1 for data may result in duplicate chunks being received, but the
  *       chunk_transfer module handles duplicates by checking the bitmap.
+ * @note QoS 2 for metadata ensures the receiver initializes the session before
+ *       accepting any data chunks, preventing data loss.
  *
  * @warning This function contains blocking SD card reads (~5ms per chunk).
  *          To prevent network stack starvation, cyw43_arch_poll() is called
  *          after each SD read and during inter-chunk delays to process
- *          incoming PUBACKs and prevent spurious QoS 1 retransmissions.
+ *          incoming ACKs and prevent spurious retransmissions.
  */
 void send_file_via_mqtt(struct udp_pcb* pcb,
                         const ip_addr_t* gw_addr,
@@ -579,7 +585,8 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
 
     printf("\n=== Starting STREAMING File Transfer ===\n");
     printf("File: %s\n", filename);
-    printf("Using QoS %d for reliable delivery\n", FILE_TRANSFER_QOS);
+    printf("Using QoS %d for metadata, QoS %d for data chunks\n",
+           FILE_TRANSFER_METADATA_QOS, FILE_TRANSFER_DATA_QOS);
     printf("Mode: STREAMING (memory efficient)\n");
 
     // Step 1: Initialize streaming read
@@ -602,12 +609,12 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
         return;
     }
 
-    // Publish metadata to topic ID 3 (file/meta) with QoS 1
+    // Publish metadata to topic ID 3 (file/meta) with QoS 2 for guaranteed delivery
     uint16_t msg_id = get_next_msg_id();
     mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 3,
-                             meta_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
-    printf("Sent metadata (QoS %d, msg_id=%u)\n", FILE_TRANSFER_QOS, msg_id);
-    sleep_ms(100);  // Allow time for ACK
+                             meta_buffer, PAYLOAD_SIZE, FILE_TRANSFER_METADATA_QOS, msg_id, false);
+    printf("Sent metadata (QoS %d, msg_id=%u)\n", FILE_TRANSFER_METADATA_QOS, msg_id);
+    sleep_ms(150);  // Allow time for QoS 2 handshake (PUBREC/PUBREL/PUBCOMP)
 
     // Step 3: Stream chunks one at a time (memory efficient!)
     printf("Streaming chunks...\n");
@@ -644,7 +651,7 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
         // Publish to topic ID 4 (file/data) with QoS 1
         msg_id = get_next_msg_id();
         mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, 4,
-                                 payload_buffer, PAYLOAD_SIZE, FILE_TRANSFER_QOS, msg_id, false);
+                                 payload_buffer, PAYLOAD_SIZE, FILE_TRANSFER_DATA_QOS, msg_id, false);
 
         chunks_sent++;
 
@@ -688,14 +695,15 @@ void send_file_via_mqtt(struct udp_pcb* pcb,
  * @brief Handle received file metadata packet
  *
  * Processes the initial metadata chunk that describes the file transfer.
- * Sent via QoS 1 for reliability. If duplicate metadata is received
- * (from retransmission), the session will be reinitialized.
+ * Sent via QoS 2 for exactly-once delivery. This ensures the transfer
+ * session is properly initialized before any data chunks are accepted.
  *
  * @param ctx MQTT-SN context containing session info
  * @param payload Serialized metadata payload
  * @param len Payload length
  *
- * @note Uses QoS 1 for reliable metadata delivery
+ * @note Uses QoS 2 for guaranteed metadata delivery
+ * @note Session must be initialized successfully before data chunks are accepted
  */
 void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len) {
     if (!ctx || !payload) {
@@ -781,6 +789,7 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
  * @param payload Serialized payload chunk
  * @param len Payload length
  *
+ * @note Data chunks are REFUSED if metadata has not been received first.
  * @note Duplicate chunks (from QoS 1 retransmissions) are handled gracefully:
  *       - CRC is verified to ensure data integrity
  *       - Bitmap is checked to detect duplicates

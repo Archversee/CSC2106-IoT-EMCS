@@ -7,9 +7,15 @@
  *
  * FILE TRANSFER QOS POLICY:
  * -------------------------
- * File transfers ALWAYS use QoS 1 (at-least-once delivery) for reliability.
+ * Metadata chunks use QoS 2 (exactly-once delivery) for guaranteed reception.
+ * Data chunks use QoS 1 (at-least-once delivery) for reliable transmission.
  *
- * QoS 1 Guarantees:
+ * QoS 2 for Metadata (PUBREC/PUBREL/PUBCOMP handshake):
+ * - Guarantees exactly-once delivery
+ * - Ensures session initialization before any data chunks
+ * - No data chunks accepted without metadata
+ *
+ * QoS 1 for Data Chunks (PUBACK):
  * - Every packet is acknowledged (PUBACK)
  * - Unacknowledged packets are automatically retransmitted
  * - May result in duplicate packet delivery
