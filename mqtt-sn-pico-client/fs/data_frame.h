@@ -104,4 +104,35 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer);
  */
 int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata);
 
-#endif /* DATA_FRAME_H */
+/**
+ * @brief Initialize streaming file read for chunked transmission (memory efficient)
+ *
+ * This function prepares for streaming chunk reads without loading the entire
+ * file into memory. It only reads file metadata and caches cluster information.
+ * Use this instead of deconstruct() for better memory efficiency.
+ *
+ * @param filename Name of file to prepare for streaming
+ * @param meta Pointer to Metadata structure to populate
+ * @return int 0 on success, -1 on failure
+ */
+int init_streaming_read(char* filename, struct Metadata* meta);
+
+/**
+ * @brief Read a single chunk for streaming transmission (memory efficient)
+ *
+ * This function reads only the requested chunk from the file without loading
+ * the entire file into memory. Much more memory efficient than deconstruct().
+ * Call init_streaming_read() first.
+ *
+ * @param chunk_index Index of chunk to read (0-based)
+ * @param chunk Pointer to Payload structure to populate
+ * @return int 0 on success, -1 on failure
+ */
+int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk);
+
+/**
+ * @brief Clean up streaming context
+ */
+void cleanup_streaming_read(void);
+
+#endif  // DATA_FRAME_H

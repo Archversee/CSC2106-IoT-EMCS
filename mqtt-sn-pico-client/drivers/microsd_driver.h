@@ -1,8 +1,8 @@
 /*!
  * @file    microsd_driver.h
  * @brief   MicroSD card driver for Raspberry Pi Pico W
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  */
 
 #ifndef MICROSD_DRIVER_H
@@ -364,6 +364,7 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
                               char const* const filename,
                               uint32_t const total_chunks,
                               uint32_t const chunk_size,
+                              uint32_t const actual_file_size,
                               chunk_metadata_t* const p_metadata);
 
 /*!

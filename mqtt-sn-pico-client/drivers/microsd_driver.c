@@ -1,8 +1,8 @@
 /*!
  * @file    microsd_driver.c
  * @brief   MicroSD card driver implementation for Raspberry Pi Pico W
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  */
 
 #include "microsd_driver.h"
@@ -37,6 +37,12 @@ static bool g_log_to_file_enabled = false;
 #define MICROSD_ERROR_READ_FAILED (0x0005U)
 #define MICROSD_ERROR_WRITE_FAILED (0x0006U)
 
+/*! Read retry configuration (HIGH PRIORITY FIX) */
+#define MAX_READ_RETRIES 3      /* Maximum number of read retry attempts */
+#define READ_RETRY_DELAY_MS 50  /* Delay between read retries in milliseconds */
+#define READ_TIMEOUT_MS 2000    /* Increased timeout for read operations (was 1000 iterations) */
+#define INTER_READ_DELAY_US 100 /* Small delay between consecutive reads to prevent overwhelming card */
+
 /*! Forward declarations for log buffer functions */
 static void add_to_log_buffer(microsd_log_level_t level, const char* fmt, ...);
 static bool flush_log_to_file(filesystem_info_t const* const p_fs_info);
@@ -67,6 +73,15 @@ static bool expand_directory(filesystem_info_t const* const p_fs_info, uint32_t 
 static bool update_allocation_bitmap(filesystem_info_t const* const p_fs_info, uint32_t cluster);
 static bool mark_cluster_end(filesystem_info_t const* const p_fs_info, uint32_t cluster);
 static uint32_t find_free_cluster(filesystem_info_t const* const p_fs_info);
+static uint32_t cluster_to_sector(filesystem_info_t const* const p_fs_info, uint32_t cluster);
+static bool is_cluster_free_in_bitmap(filesystem_info_t const* const p_fs_info,
+                                      uint32_t cluster,
+                                      uint32_t bitmap_cluster);
+static uint32_t find_allocation_bitmap_cluster(filesystem_info_t const* const p_fs_info);
+static void get_fat_entry_location(filesystem_info_t const* const p_fs_info,
+                                   uint32_t cluster,
+                                   uint32_t* fat_sector,
+                                   uint32_t* entry_offset);
 
 /*!
  * @brief Transfer single byte via SPI
@@ -258,16 +273,33 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
     uint8_t response;
     int timeout;
 
-    if (NULL != p_buffer) {
+    if (NULL == p_buffer) {
+        return false;
+    }
+
+    /* HIGH PRIORITY FIX: Add retry logic for transient read failures */
+    for (int retry_attempt = 0; retry_attempt < MAX_READ_RETRIES; retry_attempt++) {
+        if (retry_attempt > 0) {
+            MICROSD_LOG(MICROSD_LOG_WARN,
+                        "Read retry attempt %d/%d for block %lu\n",
+                        retry_attempt + 1, MAX_READ_RETRIES, (unsigned long)block_num);
+            sleep_ms(READ_RETRY_DELAY_MS);
+        }
+
         MICROSD_LOG(MICROSD_LOG_DEBUG, "Reading block %lu\n", (unsigned long)block_num);
+
+        /* Add small delay before read to prevent overwhelming SD card */
+        sleep_us(INTER_READ_DELAY_US);
+
         cs_select();
 
         response = send_command(CMD17, block_num);
         if (0x00U == response) {
-            /* Wait for data token */
-            timeout = 1000;
+            /* HIGH PRIORITY FIX: Increased timeout from 1000 to 2000 iterations */
+            timeout = READ_TIMEOUT_MS;
             do {
                 response = spi_transfer(0xFFU);
+                sleep_us(1); /* Small delay to give card time to respond */
                 timeout--;
             } while ((0xFEU != response) && (timeout > 0));
 
@@ -284,6 +316,8 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
                 g_driver_info.total_reads++;
                 result = true;
                 MICROSD_LOG(MICROSD_LOG_DEBUG, "Block read successful\n");
+                cs_deselect();
+                break; /* Success - exit retry loop */
             } else {
                 MICROSD_LOG(MICROSD_LOG_ERROR, "Read timeout waiting for data token\n");
                 g_driver_info.last_error_code = MICROSD_ERROR_READ_FAILED;
@@ -294,6 +328,17 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
         }
 
         cs_deselect();
+
+        /* If not the last attempt, log that we'll retry */
+        if (!result && (retry_attempt < MAX_READ_RETRIES - 1)) {
+            MICROSD_LOG(MICROSD_LOG_WARN, "Read failed, will retry...\n");
+        }
+    }
+
+    if (!result) {
+        MICROSD_LOG(MICROSD_LOG_ERROR,
+                    "Block %lu read failed after %d attempts\n",
+                    (unsigned long)block_num, MAX_READ_RETRIES);
     }
 
     return result;
@@ -797,7 +842,75 @@ bool microsd_init_filesystem(filesystem_info_t* const p_fs_info) {
 }
 
 /*!
- * @brief Find a free cluster in the FAT
+ * @brief Check if cluster is free in allocation bitmap
+ * @param[in] p_fs_info     Pointer to filesystem info structure
+ * @param[in] cluster       Cluster number to check
+ * @param[in] bitmap_cluster First cluster of allocation bitmap
+ * @return bool             true if cluster is free (bit = 0), false if allocated (bit = 1)
+ */
+static bool is_cluster_free_in_bitmap(filesystem_info_t const* const p_fs_info,
+                                      uint32_t cluster,
+                                      uint32_t bitmap_cluster) {
+    uint8_t buffer[SD_BLOCK_SIZE];
+
+    /* Calculate which byte and bit within the bitmap (clusters start from index 2) */
+    uint32_t bit_index = cluster - 2;
+    uint32_t byte_offset = bit_index / 8;
+    uint8_t bit_offset = bit_index % 8;
+
+    /* Calculate which sector contains this byte */
+    uint32_t bitmap_sector = cluster_to_sector(p_fs_info, bitmap_cluster);
+    uint32_t sector_offset = byte_offset / SD_BLOCK_SIZE;
+    uint32_t byte_in_sector = byte_offset % SD_BLOCK_SIZE;
+
+    /* Read the bitmap sector */
+    if (!microsd_read_block(bitmap_sector + sector_offset, buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read allocation bitmap sector\n");
+        return false; /* Assume allocated if we can't read */
+    }
+
+    /* Check if the bit is 0 (free) or 1 (allocated) */
+    bool is_allocated = (buffer[byte_in_sector] & (1 << bit_offset)) != 0;
+    return !is_allocated;
+}
+
+/*!
+ * @brief Find allocation bitmap cluster in root directory
+ * @param[in] p_fs_info     Pointer to filesystem info structure
+ * @return uint32_t         Allocation bitmap cluster, or 0 if not found
+ */
+static uint32_t find_allocation_bitmap_cluster(filesystem_info_t const* const p_fs_info) {
+    uint8_t buffer[SD_BLOCK_SIZE];
+    uint32_t root_sector = cluster_to_sector(p_fs_info, p_fs_info->root_cluster);
+
+    /* Read root directory to find allocation bitmap directory entry */
+    if (!microsd_read_block(root_sector, buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory for bitmap search\n");
+        return 0;
+    }
+
+    /* Search for allocation bitmap directory entry (TypeCode = 1, TypeImportance = 0) */
+    for (int i = 0; i < SD_BLOCK_SIZE; i += 32) {
+        uint8_t entry_type = buffer[i];
+
+        /* Check if this is an allocation bitmap directory entry */
+        if (entry_type == 0x81) { /* 0x81 = TypeCode=1, TypeImportance=0, TypeCategory=0, InUse=1 */
+            /* Extract FirstCluster from bytes 20-23 */
+            uint32_t bitmap_cluster = *(uint32_t*)&buffer[i + 20];
+            return bitmap_cluster;
+        }
+
+        /* Stop at end-of-directory marker */
+        if (entry_type == 0x00) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+/*!
+ * @brief Find a free cluster in the FAT (checks both FAT and allocation bitmap)
  * @param[in] p_fs_info     Pointer to filesystem info structure
  * @return uint32_t         Free cluster number, or 0 if none found
  */
@@ -809,6 +922,12 @@ static uint32_t find_free_cluster(filesystem_info_t const* const p_fs_info) {
     MICROSD_LOG(MICROSD_LOG_DEBUG,
                 "Searching for free cluster in FAT (partition offset: %lu)\n",
                 (unsigned long)p_fs_info->partition_offset);
+
+    /* Find allocation bitmap cluster */
+    uint32_t bitmap_cluster = find_allocation_bitmap_cluster(p_fs_info);
+    if (bitmap_cluster == 0) {
+        MICROSD_LOG(MICROSD_LOG_WARN, "Allocation bitmap not found, using FAT only\n");
+    }
 
     /* Search through FAT sectors */
     for (uint32_t sector = 0; sector < p_fs_info->fat_length; sector++) {
@@ -840,10 +959,26 @@ static uint32_t find_free_cluster(filesystem_info_t const* const p_fs_info) {
                 break; /* Beyond valid cluster range */
             }
 
+            /* Check if cluster is free in FAT */
             if (fat_entries[entry] == 0) {
-                MICROSD_LOG(
-                    MICROSD_LOG_DEBUG, "Found free cluster: %lu\n", (unsigned long)cluster);
-                return cluster;
+                /* Also check allocation bitmap if available */
+                if (bitmap_cluster != 0) {
+                    if (is_cluster_free_in_bitmap(p_fs_info, cluster, bitmap_cluster)) {
+                        MICROSD_LOG(MICROSD_LOG_DEBUG,
+                                    "Found free cluster: %lu (FAT and bitmap both show free)\n",
+                                    (unsigned long)cluster);
+                        return cluster;
+                    } else {
+                        MICROSD_LOG(MICROSD_LOG_DEBUG,
+                                    "Cluster %lu free in FAT but allocated in bitmap, skipping\n",
+                                    (unsigned long)cluster);
+                    }
+                } else {
+                    /* No bitmap available, trust FAT */
+                    MICROSD_LOG(
+                        MICROSD_LOG_DEBUG, "Found free cluster: %lu\n", (unsigned long)cluster);
+                    return cluster;
+                }
             }
         }
     }
@@ -860,10 +995,9 @@ static uint32_t find_free_cluster(filesystem_info_t const* const p_fs_info) {
  */
 static bool mark_cluster_end(filesystem_info_t const* const p_fs_info, uint32_t cluster) {
     uint8_t buffer[SD_BLOCK_SIZE];
-    uint32_t entries_per_sector = SD_BLOCK_SIZE / sizeof(uint32_t);
-    uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                          ((cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-    uint32_t entry_offset = ((cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+    uint32_t fat_sector, entry_offset;
+
+    get_fat_entry_location(p_fs_info, cluster, &fat_sector, &entry_offset);
 
     /* Read FAT sector */
     if (!microsd_read_block(fat_sector, buffer)) {
@@ -896,6 +1030,35 @@ static bool mark_cluster_end(filesystem_info_t const* const p_fs_info, uint32_t 
 static uint32_t cluster_to_sector(filesystem_info_t const* const p_fs_info, uint32_t cluster) {
     return p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
            (cluster - 2) * p_fs_info->sectors_per_cluster;
+}
+
+/*!
+ * @brief Calculate FAT sector and offset for a given cluster number
+ *
+ * This function centralizes the FAT entry location calculation to ensure
+ * consistency across all FAT access operations. In exFAT, each FAT entry
+ * is 4 bytes (32 bits), so for cluster N, the FAT entry is at byte offset
+ * N * 4 from the start of the FAT.
+ *
+ * @param[in]  p_fs_info    Pointer to filesystem info structure
+ * @param[in]  cluster      Cluster number to locate in FAT
+ * @param[out] fat_sector   Pointer to store the absolute sector number
+ * @param[out] entry_offset Pointer to store the byte offset within sector
+ * @return void
+ */
+static void get_fat_entry_location(filesystem_info_t const* const p_fs_info,
+                                   uint32_t cluster,
+                                   uint32_t* fat_sector,
+                                   uint32_t* entry_offset) {
+    /* Each FAT entry is 4 bytes (32 bits) in exFAT */
+    uint32_t byte_offset = cluster * sizeof(uint32_t);
+
+    /* Calculate which sector contains this FAT entry */
+    *fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
+                  (byte_offset / SD_BLOCK_SIZE);
+
+    /* Calculate byte offset within that sector */
+    *entry_offset = byte_offset % SD_BLOCK_SIZE;
 }
 
 /*!
@@ -941,9 +1104,8 @@ static bool expand_directory(filesystem_info_t const* const p_fs_info, uint32_t 
         last_cluster = current_cluster;
 
         /* Read FAT entry for current cluster */
-        uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                              ((current_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-        uint32_t entry_offset = ((current_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+        uint32_t fat_sector, entry_offset;
+        get_fat_entry_location(p_fs_info, current_cluster, &fat_sector, &entry_offset);
 
         if (!microsd_read_block(fat_sector, buffer)) {
             MICROSD_LOG(
@@ -964,9 +1126,8 @@ static bool expand_directory(filesystem_info_t const* const p_fs_info, uint32_t 
         MICROSD_LOG_DEBUG, "Last cluster in directory chain: %lu\n", (unsigned long)last_cluster);
 
     /* Link the last cluster to the new cluster */
-    uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                          ((last_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-    uint32_t entry_offset = ((last_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+    uint32_t fat_sector, entry_offset;
+    get_fat_entry_location(p_fs_info, last_cluster, &fat_sector, &entry_offset);
 
     if (!microsd_read_block(fat_sector, buffer)) {
         MICROSD_LOG(MICROSD_LOG_ERROR,
@@ -1053,9 +1214,8 @@ static bool ensure_directory_space(filesystem_info_t const* const p_fs_info,
         }
 
         /* Move to next cluster in chain */
-        uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                              ((current_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-        uint32_t entry_offset = ((current_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+        uint32_t fat_sector, entry_offset;
+        get_fat_entry_location(p_fs_info, current_cluster, &fat_sector, &entry_offset);
 
         if (!microsd_read_block(fat_sector, buffer)) {
             MICROSD_LOG(
@@ -1324,9 +1484,8 @@ static bool allocate_cluster_chain(filesystem_info_t const* const p_fs_info,
         /* Link previous cluster to this one */
         if (prev_cluster != 0) {
             uint8_t buffer[SD_BLOCK_SIZE];
-            uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                                  ((prev_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-            uint32_t entry_offset = ((prev_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+            uint32_t fat_sector, entry_offset;
+            get_fat_entry_location(p_fs_info, prev_cluster, &fat_sector, &entry_offset);
 
             if (!microsd_read_block(fat_sector, buffer)) {
                 MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT sector for linking\n");
@@ -1341,10 +1500,12 @@ static bool allocate_cluster_chain(filesystem_info_t const* const p_fs_info,
                 return false;
             }
 
-            MICROSD_LOG(MICROSD_LOG_DEBUG,
-                        "Linked cluster %lu -> %lu\n",
+            MICROSD_LOG(MICROSD_LOG_INFO,
+                        "Linked cluster %lu -> %lu (FAT sector %lu, offset %lu)\n",
                         (unsigned long)prev_cluster,
-                        (unsigned long)cluster);
+                        (unsigned long)cluster,
+                        (unsigned long)fat_sector,
+                        (unsigned long)entry_offset);
         }
 
         /* Update allocation bitmap for this cluster */
@@ -1438,9 +1599,8 @@ static bool write_cluster_chain_data(filesystem_info_t const* const p_fs_info,
 
         /* Move to next cluster in chain */
         if (bytes_written < data_length) {
-            uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
-                                  ((current_cluster - 2) * sizeof(uint32_t)) / SD_BLOCK_SIZE;
-            uint32_t entry_offset = ((current_cluster - 2) * sizeof(uint32_t)) % SD_BLOCK_SIZE;
+            uint32_t fat_sector, entry_offset;
+            get_fat_entry_location(p_fs_info, current_cluster, &fat_sector, &entry_offset);
 
             if (!microsd_read_block(fat_sector, buffer)) {
                 MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT for next cluster\n");
@@ -1694,16 +1854,61 @@ bool microsd_create_file(filesystem_info_t const* const p_fs_info,
             return false;
         }
 
-        /* Re-read the directory after expansion */
+        /* Find the expanded cluster by following the FAT chain */
+        uint32_t current_dir_cluster = p_fs_info->root_cluster;
+        uint32_t last_cluster = current_dir_cluster;
+        uint32_t cluster_iteration = 0;
+        const uint32_t max_clusters = 100;
+
+        while (cluster_iteration < max_clusters) {
+            cluster_iteration++;
+
+            /* Get next cluster from FAT */
+            uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
+                                  (current_dir_cluster * 4) / SD_BLOCK_SIZE;
+            uint32_t fat_offset = (current_dir_cluster * 4) % SD_BLOCK_SIZE;
+
+            if (!microsd_read_block(fat_sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT during directory expansion\n");
+                return false;
+            }
+
+            uint32_t* fat_entry = (uint32_t*)&buffer[fat_offset];
+            uint32_t next_cluster = *fat_entry;
+
+            /* Check for end of chain or invalid cluster */
+            if (next_cluster >= 0xFFFFFFF8 || next_cluster < 2 ||
+                next_cluster >= p_fs_info->cluster_count + 2) {
+                /* We've reached the end - last_cluster is the newly expanded one */
+                break;
+            }
+
+            last_cluster = current_dir_cluster;
+            current_dir_cluster = next_cluster;
+        }
+
+        /* Update root_sector to point to the newly expanded cluster */
+        root_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
+                      ((current_dir_cluster - 2) * p_fs_info->sectors_per_cluster);
+
+        MICROSD_LOG(MICROSD_LOG_INFO,
+                    "Directory expanded: now writing to cluster %lu (sector %lu)\n",
+                    (unsigned long)current_dir_cluster,
+                    (unsigned long)root_sector);
+
+        /* Read the newly expanded cluster (should be mostly empty) */
         if (!microsd_read_block(root_sector, buffer)) {
-            MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to re-read expanded directory\n");
+            MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read expanded directory cluster\n");
             return false;
         }
 
-        /* Update available entries count */
-        available_entries = (SD_BLOCK_SIZE / 32) - entry_index;
+        /* Reset entry_index to 0 since this is a new cluster */
+        entry_index = 0;
+
+        /* Update available entries count - new cluster should have full capacity */
+        available_entries = (SD_BLOCK_SIZE / 32);
         MICROSD_LOG(MICROSD_LOG_INFO,
-                    "Directory expanded successfully, now have %lu available entries\n",
+                    "Directory expanded successfully, now have %lu available entries in new cluster\n",
                     (unsigned long)available_entries);
     }
 
@@ -1956,74 +2161,134 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
 
     MICROSD_LOG(MICROSD_LOG_INFO, "Reading file: %s\n", filename);
 
-    /* Calculate root directory sector */
-    root_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
-                  ((p_fs_info->root_cluster - 2) * p_fs_info->sectors_per_cluster);
+    /* Search through all directory clusters (not just the first one) */
+    uint32_t current_dir_cluster = p_fs_info->root_cluster;
+    uint32_t cluster_iteration = 0;
+    const uint32_t max_clusters = 100; /* Safety limit to prevent infinite loops */
 
-    /* Read root directory */
-    if (!microsd_read_block(root_sector, buffer)) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory\n");
-        return false;
-    }
+    while (current_dir_cluster != 0xFFFFFFFF && current_dir_cluster >= 2 &&
+           current_dir_cluster < p_fs_info->cluster_count + 2 &&
+           !file_found && cluster_iteration < max_clusters) {
+        cluster_iteration++;
 
-    /* Search for the file in the directory */
-    for (uint32_t i = 0; i < (SD_BLOCK_SIZE / 32); i++) {
-        uint8_t entry_type = buffer[i * 32];
+        /* Calculate sector for this directory cluster */
+        root_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
+                      ((current_dir_cluster - 2) * p_fs_info->sectors_per_cluster);
 
-        if (entry_type == 0x00) {
-            /* End of directory */
-            break;
-        }
+        MICROSD_LOG(MICROSD_LOG_INFO, "Searching directory cluster %lu (sector %lu)\n",
+                    (unsigned long)current_dir_cluster, (unsigned long)root_sector);
 
-        if (entry_type == 0x85) { /* File entry */
-            uint8_t secondary_count = buffer[i * 32 + 1];
-
-            /* Extract filename from name entries */
-            char current_filename[256] = "";
-            uint32_t char_index = 0;
-
-            /* Look for stream extension entry (should be next entry) */
-            if ((i + 1) < (SD_BLOCK_SIZE / 32) && buffer[(i + 1) * 32] == 0xC0) {
-                /* Get file size from stream extension */
-                uint32_t* stream_data = (uint32_t*)&buffer[(i + 1) * 32];
-                file_size = stream_data[2];    /* DataLength at offset 8 */
-                file_cluster = stream_data[5]; /* FirstCluster at offset 20 */
-            }
-
-            /* Extract filename from name entries */
-            for (uint32_t j = 2; j <= secondary_count && (i + j) < (SD_BLOCK_SIZE / 32); j++) {
-                uint8_t name_entry_type = buffer[(i + j) * 32];
-                if (name_entry_type == 0xC1) { /* Name entry */
-                    uint16_t* utf16_chars = (uint16_t*)&buffer[(i + j) * 32 + 2];
-                    for (uint32_t k = 0; k < 15 && char_index < 255; k++) {
-                        if (utf16_chars[k] == 0)
-                            break;                  /* End of filename */
-                        if (utf16_chars[k] < 128) { /* ASCII character */
-                            current_filename[char_index++] = (char)utf16_chars[k];
-                        }
-                    }
-                }
-            }
-            current_filename[char_index] = '\0';
-
-            /* Check if this is the file we're looking for */
-            if (strcmp(current_filename, filename) == 0) {
-                MICROSD_LOG(MICROSD_LOG_INFO,
-                            "Found file '%s' at cluster %lu, size %lu bytes\n",
-                            filename,
-                            (unsigned long)file_cluster,
-                            (unsigned long)file_size);
-                file_found = true;
+        /* Read all sectors in this directory cluster */
+        bool sector_read_failed = false;
+        for (uint32_t sec = 0; sec < p_fs_info->sectors_per_cluster && !file_found && !sector_read_failed; sec++) {
+            if (!microsd_read_block(root_sector + sec, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory sector %lu (cluster %lu)\n",
+                            (unsigned long)(root_sector + sec), (unsigned long)current_dir_cluster);
+                /* Directory read failure - stop searching this cluster chain */
+                sector_read_failed = true;
                 break;
             }
 
-            /* Skip past this file's entries */
-            i += secondary_count;
+            /* Search for the file in this directory sector */
+            for (uint32_t i = 0; i < (SD_BLOCK_SIZE / 32); i++) {
+                uint8_t entry_type = buffer[i * 32];
+
+                /* Log all entry types for debugging */
+                if (entry_type != 0x00 && entry_type != 0x85 && entry_type != 0xC0 && entry_type != 0xC1) {
+                    MICROSD_LOG(MICROSD_LOG_INFO, "Found entry type 0x%02X at cluster %lu, sector offset %lu, entry %lu\n",
+                                entry_type, (unsigned long)current_dir_cluster, (unsigned long)sec, (unsigned long)i);
+                }
+
+                if (entry_type == 0x00) {
+                    /* End of directory entries in this sector */
+                    break;
+                }
+
+                if (entry_type == 0x85) { /* File entry */
+                    MICROSD_LOG(MICROSD_LOG_INFO, "Found file entry (0x85) at cluster %lu, sector offset %lu, entry %lu\n",
+                                (unsigned long)current_dir_cluster, (unsigned long)sec, (unsigned long)i);
+                    uint8_t secondary_count = buffer[i * 32 + 1];
+
+                    /* Extract filename from name entries */
+                    char current_filename[256] = "";
+                    uint32_t char_index = 0;
+
+                    /* Look for stream extension entry (should be next entry) */
+                    if ((i + 1) < (SD_BLOCK_SIZE / 32) && buffer[(i + 1) * 32] == 0xC0) {
+                        /* Get file size from stream extension */
+                        uint32_t* stream_data = (uint32_t*)&buffer[(i + 1) * 32];
+                        file_size = stream_data[2];    /* DataLength at offset 8 */
+                        file_cluster = stream_data[5]; /* FirstCluster at offset 20 */
+                    }
+
+                    /* Extract filename from name entries */
+                    for (uint32_t j = 2; j <= secondary_count && (i + j) < (SD_BLOCK_SIZE / 32); j++) {
+                        uint8_t name_entry_type = buffer[(i + j) * 32];
+                        if (name_entry_type == 0xC1) { /* Name entry */
+                            uint16_t* utf16_chars = (uint16_t*)&buffer[(i + j) * 32 + 2];
+                            for (uint32_t k = 0; k < 15 && char_index < 255; k++) {
+                                if (utf16_chars[k] == 0)
+                                    break;                  /* End of filename */
+                                if (utf16_chars[k] < 128) { /* ASCII character */
+                                    current_filename[char_index++] = (char)utf16_chars[k];
+                                }
+                            }
+                        }
+                    }
+                    current_filename[char_index] = '\0';
+
+                    /* Check if this is the file we're looking for */
+                    if (strcmp(current_filename, filename) == 0) {
+                        MICROSD_LOG(MICROSD_LOG_INFO,
+                                    "Found file '%s' at cluster %lu, size %lu bytes\n",
+                                    filename,
+                                    (unsigned long)file_cluster,
+                                    (unsigned long)file_size);
+                        file_found = true;
+                        break;
+                    }
+
+                    /* Skip past this file's entries */
+                    i += secondary_count;
+                }
+            } /* end for each directory entry */
+        } /* end for each sector in cluster */
+
+        /* Get next cluster in directory chain from FAT */
+        if (!file_found) {
+            uint32_t fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset +
+                                  (current_dir_cluster * 4) / SD_BLOCK_SIZE;
+            uint32_t fat_offset = (current_dir_cluster * 4) % SD_BLOCK_SIZE;
+
+            if (!microsd_read_block(fat_sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT sector %lu\n",
+                            (unsigned long)fat_sector);
+                /* FAT read failure - stop searching */
+                break;
+            }
+
+            uint32_t* fat_entry = (uint32_t*)&buffer[fat_offset];
+            uint32_t next_cluster = *fat_entry;
+
+            /* Check for valid cluster range or end-of-chain markers */
+            if (next_cluster == 0xFFFFFFFF || next_cluster == 0xFFFFFFF8 ||
+                next_cluster < 2 || next_cluster >= p_fs_info->cluster_count + 2) {
+                /* End of chain or invalid cluster */
+                MICROSD_LOG(MICROSD_LOG_DEBUG, "End of directory chain at cluster %lu (next=0x%08lX)\n",
+                            (unsigned long)current_dir_cluster, (unsigned long)next_cluster);
+                break;
+            }
+
+            current_dir_cluster = next_cluster;
+
+            MICROSD_LOG(MICROSD_LOG_DEBUG, "Next directory cluster: %lu\n",
+                        (unsigned long)current_dir_cluster);
         }
-    }
+    } /* end while traversing directory clusters */
 
     if (!file_found) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "File '%s' not found\n", filename);
+        MICROSD_LOG(MICROSD_LOG_ERROR, "File '%s' not found (searched %lu directory clusters)\n",
+                    filename, (unsigned long)cluster_iteration);
         return false;
     }
 
@@ -2033,7 +2298,6 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
         *p_bytes_read = 0;
         return true;
     }
-
     if (file_cluster == 0) {
         MICROSD_LOG(MICROSD_LOG_ERROR, "Invalid cluster number for file '%s'\n", filename);
         return false;
@@ -2042,25 +2306,75 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
     /* Calculate how many bytes to read */
     uint32_t bytes_to_read = (file_size < buffer_size) ? file_size : buffer_size;
 
-    /* Read file data from cluster */
-    uint32_t file_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
-                           ((file_cluster - 2) * p_fs_info->sectors_per_cluster);
+    /* Read file data from cluster(s) - may span multiple sectors */
+    uint32_t bytes_read = 0;
+    uint32_t current_cluster = file_cluster;
 
-    MICROSD_LOG(
-        MICROSD_LOG_DEBUG, "Reading file data from sector %lu\n", (unsigned long)file_sector);
+    while (bytes_read < bytes_to_read && current_cluster != 0xFFFFFFFF) {
+        /* Calculate sector for this cluster */
+        uint32_t cluster_sector = p_fs_info->partition_offset + p_fs_info->cluster_heap_offset +
+                                  ((current_cluster - 2) * p_fs_info->sectors_per_cluster);
 
-    if (!microsd_read_block(file_sector, buffer)) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read file data\n");
-        return false;
+        MICROSD_LOG(MICROSD_LOG_DEBUG,
+                    "Reading from cluster %lu, sector %lu\n",
+                    (unsigned long)current_cluster,
+                    (unsigned long)cluster_sector);
+
+        /* Read all sectors in this cluster */
+        for (uint32_t sector = 0; sector < p_fs_info->sectors_per_cluster && bytes_read < bytes_to_read; sector++) {
+            if (!microsd_read_block(cluster_sector + sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR,
+                            "Failed to read file data from sector %lu\n",
+                            (unsigned long)(cluster_sector + sector));
+                return false;
+            }
+
+            /* Calculate how many bytes to copy from this sector */
+            uint32_t bytes_in_sector = SD_BLOCK_SIZE;
+            if (bytes_read + bytes_in_sector > bytes_to_read) {
+                bytes_in_sector = bytes_to_read - bytes_read;
+            }
+
+            /* Copy data from sector to output buffer */
+            memcpy(p_buffer + bytes_read, buffer, bytes_in_sector);
+            bytes_read += bytes_in_sector;
+        }
+
+        /* Move to next cluster in chain if we need more data */
+        if (bytes_read < bytes_to_read) {
+            /* Read FAT entry to get next cluster */
+            uint32_t fat_sector, entry_offset;
+            get_fat_entry_location(p_fs_info, current_cluster, &fat_sector, &entry_offset);
+
+            if (!microsd_read_block(fat_sector, buffer)) {
+                MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read FAT for next cluster\n");
+                return false;
+            }
+
+            uint32_t* fat_entry = (uint32_t*)(buffer + entry_offset);
+            uint32_t prev_cluster_for_log = current_cluster;
+            current_cluster = *fat_entry;
+
+            MICROSD_LOG(MICROSD_LOG_INFO,
+                        "Reading FAT chain: cluster %lu -> 0x%08lX (FAT sector %lu, offset %lu)\n",
+                        (unsigned long)prev_cluster_for_log,
+                        (unsigned long)current_cluster,
+                        (unsigned long)fat_sector,
+                        (unsigned long)entry_offset);
+
+            if (current_cluster >= 0xFFFFFFF8) {
+                /* End of cluster chain */
+                MICROSD_LOG(MICROSD_LOG_INFO, "Reached end of cluster chain (0x%08lX)\n", (unsigned long)current_cluster);
+                break;
+            }
+        }
     }
 
-    /* Copy file data to output buffer */
-    memcpy(p_buffer, buffer, bytes_to_read);
-    *p_bytes_read = bytes_to_read;
+    *p_bytes_read = bytes_read;
 
     MICROSD_LOG(MICROSD_LOG_INFO,
                 "Successfully read %lu bytes from file '%s'\n",
-                (unsigned long)bytes_to_read,
+                (unsigned long)bytes_read,
                 filename);
 
     return true;
@@ -2077,9 +2391,8 @@ static uint32_t get_next_cluster(filesystem_info_t const* const p_fs_info, uint3
     uint32_t fat_sector, fat_offset;
     uint32_t next_cluster;
 
-    /* Calculate FAT sector and offset */
-    fat_sector = p_fs_info->partition_offset + p_fs_info->fat_offset + (cluster / 128);
-    fat_offset = (cluster % 128) * 4;
+    /* Calculate FAT sector and offset using centralized function */
+    get_fat_entry_location(p_fs_info, cluster, &fat_sector, &fat_offset);
 
     /* Read FAT sector */
     if (!microsd_read_block(fat_sector, buffer)) {
@@ -2453,8 +2766,8 @@ bool microsd_create_large_file_chunked(filesystem_info_t const* const p_fs_info,
             /* Move to next cluster if needed */
             if (chunk_offset < bytes_to_write) {
                 /* Read FAT to get next cluster */
-                uint32_t fat_sector = p_fs_info->fat_offset + (current_cluster * 4) / 512;
-                uint32_t fat_offset = (current_cluster * 4) % 512;
+                uint32_t fat_sector, fat_offset;
+                get_fat_entry_location(p_fs_info, current_cluster, &fat_sector, &fat_offset);
 
                 uint8_t fat_buffer[512];
                 if (!microsd_read_block(fat_sector, fat_buffer)) {
@@ -2626,6 +2939,7 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
                               char const* const filename,
                               uint32_t const total_chunks,
                               uint32_t const chunk_size,
+                              uint32_t const actual_file_size,
                               chunk_metadata_t* const p_metadata) {
     if (NULL == p_fs_info || NULL == filename || NULL == p_metadata || total_chunks == 0 ||
         chunk_size == 0) {
@@ -2640,8 +2954,8 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
         return false;
     }
 
-    /* Calculate total file size (exclude chunk 0 which is metadata) */
-    uint32_t total_file_size = (total_chunks - 1) * chunk_size;
+    /* Use actual file size if provided, otherwise calculate from chunks */
+    uint32_t total_file_size = (actual_file_size > 0) ? actual_file_size : ((total_chunks - 1) * chunk_size);
 
     MICROSD_LOG(MICROSD_LOG_INFO,
                 "Initializing chunk write: file='%s', chunks=%lu, chunk_size=%lu, total_size=%lu\n",
@@ -2671,8 +2985,102 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
     return true;
 }
 
+/*! Sector cache for optimized chunk writes */
+typedef struct {
+    uint32_t sector_number;         // Cached sector number
+    uint8_t buffer[SD_BLOCK_SIZE];  // Sector data
+    bool valid;                     // Is cache valid?
+    bool dirty;                     // Does cache need to be written?
+} sector_cache_t;
+
+static sector_cache_t g_sector_cache = {0};
+
 /*!
- * @brief Write a single chunk to the file (can be out-of-order)
+ * @brief Flush cached sector to SD card if dirty
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @return bool                 true on success, false on failure
+ */
+static bool flush_sector_cache(filesystem_info_t const* const p_fs_info) {
+    if (!g_sector_cache.valid || !g_sector_cache.dirty) {
+        return true;  // Nothing to flush
+    }
+
+    if (!microsd_write_block(g_sector_cache.sector_number, g_sector_cache.buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR,
+                    "Failed to flush cached sector %lu\n",
+                    (unsigned long)g_sector_cache.sector_number);
+        g_sector_cache.valid = false;
+        g_sector_cache.dirty = false;
+        return false;
+    }
+
+    MICROSD_LOG(MICROSD_LOG_DEBUG,
+                "Flushed cached sector %lu\n",
+                (unsigned long)g_sector_cache.sector_number);
+
+    g_sector_cache.dirty = false;
+    return true;
+}
+
+/*!
+ * @brief Get a sector for writing (from cache or SD card)
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @param[in] sector_number     Sector number to get
+ * @param[out] sector_buffer    Buffer to receive sector data
+ * @return bool                 true on success, false on failure
+ */
+static bool get_sector_for_write(filesystem_info_t const* const p_fs_info,
+                                 uint32_t sector_number,
+                                 uint8_t** sector_buffer) {
+    // Check if requested sector is already cached
+    if (g_sector_cache.valid && g_sector_cache.sector_number == sector_number) {
+        *sector_buffer = g_sector_cache.buffer;
+        return true;
+    }
+
+    // Flush current cache if dirty
+    if (!flush_sector_cache(p_fs_info)) {
+        return false;
+    }
+
+    // Read new sector into cache
+    if (!microsd_read_block(sector_number, g_sector_cache.buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR,
+                    "Failed to read sector %lu into cache\n",
+                    (unsigned long)sector_number);
+        g_sector_cache.valid = false;
+        return false;
+    }
+
+    g_sector_cache.sector_number = sector_number;
+    g_sector_cache.valid = true;
+    g_sector_cache.dirty = false;
+
+    *sector_buffer = g_sector_cache.buffer;
+    return true;
+}
+
+/*!
+ * @brief Mark cached sector as dirty (needs to be flushed)
+ */
+static void mark_sector_dirty(void) {
+    g_sector_cache.dirty = true;
+}
+
+/*!
+ * @brief Invalidate sector cache
+ */
+static void invalidate_sector_cache(void) {
+    g_sector_cache.valid = false;
+    g_sector_cache.dirty = false;
+}
+
+/*!
+ * @brief Write a single chunk to the file with sector caching (can be out-of-order)
+ *
+ * This optimized version uses sector caching to reduce read-modify-write operations
+ * when multiple chunks target the same sector (sequential writes).
+ *
  * @param[in] p_fs_info         Pointer to filesystem info structure
  * @param[in,out] p_metadata    Pointer to chunk metadata structure
  * @param[in] chunk_index       Index of the chunk (0-based, 0 is metadata)
@@ -2756,12 +3164,14 @@ bool microsd_write_chunk(filesystem_info_t const* const p_fs_info,
         uint32_t cluster_start_sector = cluster_to_sector(p_fs_info, current_cluster);
         uint32_t sector_in_cluster = offset_in_cluster / SD_BLOCK_SIZE;
         uint32_t offset_in_sector = offset_in_cluster % SD_BLOCK_SIZE;
+        uint32_t target_sector = cluster_start_sector + sector_in_cluster;
 
-        /* Read the sector first (for partial sector writes) */
-        uint8_t sector_buffer[SD_BLOCK_SIZE];
-        if (!microsd_read_block(cluster_start_sector + sector_in_cluster, sector_buffer)) {
+        /* Get sector (from cache or SD card) */
+        uint8_t* sector_buffer = NULL;
+        if (!get_sector_for_write(p_fs_info, target_sector, &sector_buffer)) {
             MICROSD_LOG(MICROSD_LOG_ERROR,
-                        "Failed to read sector for chunk write\n");
+                        "Failed to get sector %lu for chunk write\n",
+                        (unsigned long)target_sector);
             return false;
         }
 
@@ -2774,13 +3184,8 @@ bool microsd_write_chunk(filesystem_info_t const* const p_fs_info,
 
         memcpy(sector_buffer + offset_in_sector, p_chunk_data + bytes_written, bytes_in_sector);
 
-        /* Write the sector back */
-        if (!microsd_write_block(cluster_start_sector + sector_in_cluster, sector_buffer)) {
-            MICROSD_LOG(MICROSD_LOG_ERROR,
-                        "Failed to write sector for chunk %lu\n",
-                        (unsigned long)chunk_index);
-            return false;
-        }
+        /* Mark sector as dirty (will be flushed later) */
+        mark_sector_dirty();
 
         bytes_written += bytes_in_sector;
         offset_in_cluster += bytes_in_sector;
@@ -2793,6 +3198,14 @@ bool microsd_write_chunk(filesystem_info_t const* const p_fs_info,
             /* Continue in same cluster, next sector */
             offset_in_sector = 0;
         }
+    }
+
+    /* Flush sector cache to ensure data is written */
+    if (!flush_sector_cache(p_fs_info)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR,
+                    "Failed to flush sector cache after chunk %lu\n",
+                    (unsigned long)chunk_index);
+        return false;
     }
 
     /* Mark this chunk as received */
@@ -2834,6 +3247,15 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
         return false;
     }
 
+    /* Ensure all cached sectors are flushed before finalizing */
+    if (!flush_sector_cache(p_fs_info)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to flush sector cache during finalization\n");
+        return false;
+    }
+
+    /* Invalidate cache to prevent stale data */
+    invalidate_sector_cache();
+
     /* Check if all chunks were received */
     if (!microsd_check_all_chunks_received(p_metadata)) {
         MICROSD_LOG(MICROSD_LOG_WARN,
@@ -2861,33 +3283,91 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
 
     /* Create directory entry for the file */
     uint8_t buffer[SD_BLOCK_SIZE];
-    uint32_t root_sector = cluster_to_sector(p_fs_info, p_fs_info->root_cluster);
-
-    if (!microsd_read_block(root_sector, buffer)) {
-        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory\n");
-        return false;
-    }
-
-    /* Find free directory entry */
-    uint32_t entry_index = 0;
     uint32_t filename_len = strlen(p_metadata->filename);
     uint32_t name_entries_needed = (filename_len + 14) / 15;
     uint32_t total_entries = 2 + name_entries_needed;
 
-    /* Find end of directory */
-    while (entry_index < (SD_BLOCK_SIZE / 32)) {
-        if (buffer[entry_index * 32] == 0x00) {
+    /* Scan directory sectors to find free space */
+    /* Only scan within the first cluster of the directory */
+    uint32_t sector_offset = 0;
+    uint32_t entry_index = 0;
+    uint32_t max_sectors = p_fs_info->sectors_per_cluster;  // Only scan first cluster
+    bool found_space = false;
+    uint32_t target_sector = 0;
+    uint32_t root_base_sector = cluster_to_sector(p_fs_info, p_fs_info->root_cluster);
+
+    for (sector_offset = 0; sector_offset < max_sectors; sector_offset++) {
+        uint32_t root_sector = root_base_sector + sector_offset;
+
+        if (!microsd_read_block(root_sector, buffer)) {
+            MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to read root directory sector %lu (offset %lu)\n",
+                        (unsigned long)root_sector, (unsigned long)sector_offset);
+            continue;
+        }
+
+        /* Find end of directory or deleted entries in this sector */
+        entry_index = 0;
+        uint32_t consecutive_free = 0;
+        uint32_t free_start_index = 0;
+
+        while (entry_index < (SD_BLOCK_SIZE / 32)) {
+            uint8_t entry_type = buffer[entry_index * 32];
+
+            /* Check if entry is free (0x00) or deleted (high bit clear on in-use entries) */
+            if (entry_type == 0x00) {
+                /* Found end of directory - all remaining entries are free */
+                if (consecutive_free == 0) {
+                    free_start_index = entry_index;
+                }
+                consecutive_free = (SD_BLOCK_SIZE / 32) - entry_index;
+                MICROSD_LOG(MICROSD_LOG_INFO,
+                            "Sector %lu: Found 0x00 at entry %lu, %lu entries available\n",
+                            (unsigned long)sector_offset, (unsigned long)entry_index,
+                            (unsigned long)consecutive_free);
+                break;
+            }
+
+            /* Continue counting consecutive free/deleted entries */
+            if (consecutive_free > 0) {
+                consecutive_free++;
+            } else {
+                consecutive_free = 0;
+            }
+
+            entry_index++;
+        }
+
+        /* Log if sector is completely full */
+        if (consecutive_free == 0 && entry_index >= (SD_BLOCK_SIZE / 32)) {
+            MICROSD_LOG(MICROSD_LOG_WARN,
+                        "Sector %lu: Completely full (all %lu entries occupied)\n",
+                        (unsigned long)sector_offset, (unsigned long)(SD_BLOCK_SIZE / 32));
+        }
+
+        /* Check if we have enough consecutive free space */
+        if (consecutive_free >= total_entries) {
+            target_sector = root_sector;
+            entry_index = free_start_index;
+            found_space = true;
+            MICROSD_LOG(MICROSD_LOG_INFO,
+                        "Found space in directory at sector %lu (offset %lu) entry %lu (%lu entries available)\n",
+                        (unsigned long)root_sector, (unsigned long)sector_offset,
+                        (unsigned long)entry_index, (unsigned long)consecutive_free);
             break;
         }
-        entry_index++;
     }
 
-    uint32_t available_entries = (SD_BLOCK_SIZE / 32) - entry_index;
-    if (available_entries < total_entries) {
+    if (!found_space) {
         MICROSD_LOG(MICROSD_LOG_ERROR,
-                    "Not enough space in directory (%lu needed, %lu available)\n",
+                    "Not enough space in directory (%lu needed, searched %lu sectors)\n",
                     (unsigned long)total_entries,
-                    (unsigned long)available_entries);
+                    (unsigned long)sector_offset);
+        return false;
+    }
+
+    /* Re-read the target sector to ensure we have the correct buffer */
+    if (!microsd_read_block(target_sector, buffer)) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to re-read target directory sector\n");
         return false;
     }
 
@@ -2940,8 +3420,8 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
         memset(&buffer[next_entry_index * 32], 0, 32);
     }
 
-    /* Write directory back */
-    if (!microsd_write_block(root_sector, buffer)) {
+    /* Write directory back to the correct sector */
+    if (!microsd_write_block(target_sector, buffer)) {
         MICROSD_LOG(MICROSD_LOG_ERROR, "Failed to write directory entry\n");
         return false;
     }

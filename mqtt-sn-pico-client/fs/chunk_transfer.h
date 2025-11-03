@@ -1,12 +1,18 @@
 /*!
  * @file    chunk_transfer.h
- * @brief   High-level chunk-based file transfer management for MQTT QoS1
- * @author  INF2004 Team
- * @date    2024
+ * @brief   High-level chunk-based file transfer management for MQTT
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This module provides a higher-level abstraction over the microSD driver's
  * chunk write methods, handling session management and coordinating file
  * transfers with metadata tracking.
+ *
+ * TRANSFER POLICY:
+ * - Metadata chunks use QoS 2 (exactly-once delivery)
+ * - Data chunks use QoS 1 (at-least-once delivery)
+ * - Data chunks are REFUSED if no metadata has been received
+ * - Session must be active (metadata received) before data is accepted
  */
 
 #ifndef CHUNK_TRANSFER_H
@@ -39,17 +45,23 @@ typedef struct {
  * @brief Initialize a new chunk transfer session from metadata
  *
  * This function should be called when the metadata chunk (chunk 0) is received
- * via MQTT QoS1. It establishes the session context and prepares the microSD
- * for receiving data chunks.
+ * via MQTT QoS 2. It establishes the session context and prepares the microSD
+ * for receiving data chunks. Once initialized, the session becomes active and
+ * data chunks can be accepted.
  *
  * @param fs_info Pointer to filesystem information
  * @param metadata Pointer to the received metadata structure
  * @param session Pointer to session structure to initialize
+ * @param use_new_filename If true, adds "_received" suffix to filename; if false, uses original filename
  * @return true on success, false on failure
+ *
+ * @note Sets session->active to true on success
+ * @note QoS 2 ensures this is called exactly once per transfer
  */
 bool chunk_transfer_init_session(filesystem_info_t* fs_info,
                                  const struct Metadata* metadata,
-                                 transfer_session_t* session);
+                                 transfer_session_t* session,
+                                 bool use_new_filename);
 
 /*!
  * @brief Write a data payload chunk to an active session
@@ -62,6 +74,10 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
  * @param session Pointer to the active transfer session
  * @param payload Pointer to the payload chunk to write
  * @return true on success, false on failure
+ *
+ * @note REFUSES data chunks if session is not active (metadata not received)
+ * @note Handles duplicate chunks gracefully using bitmap
+ * @note Received via QoS 1, so duplicates may occur
  */
 bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
                                   transfer_session_t* session,

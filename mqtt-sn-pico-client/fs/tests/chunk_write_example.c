@@ -1,8 +1,8 @@
 /*!
  * @file    chunk_write_example.c
  * @brief   Example usage of chunk-based write/read for out-of-order MQTT QoS1 data
- * @author  INF2004 Team
- * @date    2024
+ * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
+ * @date    2025
  *
  * This example demonstrates how to use the chunk-based write and read methods
  * to handle out-of-order MQTT QoS1 data packets using data_frame.h structs.
@@ -90,7 +90,8 @@ static void example_out_of_order_chunk_write(void) {
 
     /* Step 3: Initialize transfer session (this handles metadata chunk writing) */
     printf("\n--- Step 2: Initializing Transfer Session ---\n");
-    if (!chunk_transfer_init_session(&fs_info, &file_meta, &session)) {
+    // Use false to write to original filename (standard logic)
+    if (!chunk_transfer_init_session(&fs_info, &file_meta, &session, false)) {
         printf("Failed to initialize transfer session\n");
         return;
     }
