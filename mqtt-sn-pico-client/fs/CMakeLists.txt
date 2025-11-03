@@ -102,3 +102,21 @@ pico_enable_stdio_uart(streaming_test 0)
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(streaming_test)
+
+# Automated Chunk Transfer Test Executable
+add_executable(automated_chunk_test
+    tests/automated_chunk_test.c
+)
+
+target_link_libraries(automated_chunk_test
+    pico_stdlib
+    fs_lib
+    microsd_driver
+)
+
+# Enable USB output for test
+pico_enable_stdio_usb(automated_chunk_test 1)
+pico_enable_stdio_uart(automated_chunk_test 0)
+
+# Create map/bin/hex/uf2 files
+pico_add_extra_outputs(automated_chunk_test)
