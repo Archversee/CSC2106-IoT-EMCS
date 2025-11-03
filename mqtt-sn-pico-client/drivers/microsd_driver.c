@@ -37,6 +37,12 @@ static bool g_log_to_file_enabled = false;
 #define MICROSD_ERROR_READ_FAILED (0x0005U)
 #define MICROSD_ERROR_WRITE_FAILED (0x0006U)
 
+/*! Read retry configuration (HIGH PRIORITY FIX) */
+#define MAX_READ_RETRIES 3      /* Maximum number of read retry attempts */
+#define READ_RETRY_DELAY_MS 50  /* Delay between read retries in milliseconds */
+#define READ_TIMEOUT_MS 2000    /* Increased timeout for read operations (was 1000 iterations) */
+#define INTER_READ_DELAY_US 100 /* Small delay between consecutive reads to prevent overwhelming card */
+
 /*! Forward declarations for log buffer functions */
 static void add_to_log_buffer(microsd_log_level_t level, const char* fmt, ...);
 static bool flush_log_to_file(filesystem_info_t const* const p_fs_info);
@@ -267,16 +273,33 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
     uint8_t response;
     int timeout;
 
-    if (NULL != p_buffer) {
+    if (NULL == p_buffer) {
+        return false;
+    }
+
+    /* HIGH PRIORITY FIX: Add retry logic for transient read failures */
+    for (int retry_attempt = 0; retry_attempt < MAX_READ_RETRIES; retry_attempt++) {
+        if (retry_attempt > 0) {
+            MICROSD_LOG(MICROSD_LOG_WARN,
+                        "Read retry attempt %d/%d for block %lu\n",
+                        retry_attempt + 1, MAX_READ_RETRIES, (unsigned long)block_num);
+            sleep_ms(READ_RETRY_DELAY_MS);
+        }
+
         MICROSD_LOG(MICROSD_LOG_DEBUG, "Reading block %lu\n", (unsigned long)block_num);
+
+        /* Add small delay before read to prevent overwhelming SD card */
+        sleep_us(INTER_READ_DELAY_US);
+
         cs_select();
 
         response = send_command(CMD17, block_num);
         if (0x00U == response) {
-            /* Wait for data token */
-            timeout = 1000;
+            /* HIGH PRIORITY FIX: Increased timeout from 1000 to 2000 iterations */
+            timeout = READ_TIMEOUT_MS;
             do {
                 response = spi_transfer(0xFFU);
+                sleep_us(1); /* Small delay to give card time to respond */
                 timeout--;
             } while ((0xFEU != response) && (timeout > 0));
 
@@ -293,6 +316,8 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
                 g_driver_info.total_reads++;
                 result = true;
                 MICROSD_LOG(MICROSD_LOG_DEBUG, "Block read successful\n");
+                cs_deselect();
+                break; /* Success - exit retry loop */
             } else {
                 MICROSD_LOG(MICROSD_LOG_ERROR, "Read timeout waiting for data token\n");
                 g_driver_info.last_error_code = MICROSD_ERROR_READ_FAILED;
@@ -303,6 +328,17 @@ bool microsd_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
         }
 
         cs_deselect();
+
+        /* If not the last attempt, log that we'll retry */
+        if (!result && (retry_attempt < MAX_READ_RETRIES - 1)) {
+            MICROSD_LOG(MICROSD_LOG_WARN, "Read failed, will retry...\n");
+        }
+    }
+
+    if (!result) {
+        MICROSD_LOG(MICROSD_LOG_ERROR,
+                    "Block %lu read failed after %d attempts\n",
+                    (unsigned long)block_num, MAX_READ_RETRIES);
     }
 
     return result;

@@ -1,4 +1,14 @@
 ```
+clear
+Last login: Mon Nov  3 11:43:15 on ttys003
+
+ • mqtt-sn-pico-client/build clear                                        cantabile ht
+STARTING TESTS IN 3 SECONDS
+STARTING TESTS IN 3 SECONDS
+STARTING TESTS IN 3 SECONDS
+STARTING TESTS IN 3 SECONDS
+
+
 ================================================================================
               AUTOMATED MICROSD DRIVER UNIT TESTS
 ================================================================================
@@ -24,8 +34,10 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
+[MICROSD_DRV_v1.0.0:INFO] Volume dirty bit is set - clearing it
+[MICROSD_DRV_v1.0.0:INFO] Volume dirty bit cleared successfully
 ✓ PASS: MicroSD and filesystem initialized successfully
 
 [IT-2 Init] Iteration 2/20
@@ -37,7 +49,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -50,7 +62,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -63,7 +75,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -76,7 +88,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -89,7 +101,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -102,7 +114,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -115,7 +127,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -128,7 +140,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -141,7 +153,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -154,7 +166,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -167,7 +179,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -180,7 +192,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -193,7 +205,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -206,7 +218,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -219,7 +231,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -232,7 +244,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -245,7 +257,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -258,7 +270,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -271,7 +283,7 @@ ERROR: Initialization failed
 [MICROSD_DRV_v1.0.0:INFO] SPI speed increased to 10MHz
   ✓ Initialized in 68 ms
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 ✓ PASS: MicroSD and filesystem initialized successfully
 
@@ -531,7 +543,7 @@ Target executions: 30
 === TEST IT-2: File Operations ===
 Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] MBR with partition table detected
-[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 16384
+[MICROSD_DRV_v1.0.0:INFO] Found exFAT partition at sector 8192
 [MICROSD_DRV_v1.0.0:INFO] exFAT filesystem confirmed in partition
 
 [IT-2 File Ops] Iteration 1/25
@@ -541,36 +553,26 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772808058, DataLength=224
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772794437, DataLength=224
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
 [MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
 [MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772808316, DataLength=224
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772795208, DataLength=224
 [MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
 [MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772793877, DataLength=224
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3772802396, DataLength=224
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 11
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 8
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_001.TXT'
-[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 3 (invalid cluster 3772808058)
-[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 6 (invalid cluster 3772808316)
-[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 9 (invalid cluster 3772793877)
-[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 13 (invalid cluster 3772802396)
-[MICROSD_DRV_v1.0.0:INFO] Cleaned 13 corrupted directory entries
+[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 3 (invalid cluster 3772794437)
+[MICROSD_DRV_v1.0.0:INFO] Cleaning corrupted file entry 6 (invalid cluster 3772795208)
+[MICROSD_DRV_v1.0.0:INFO] Cleaned 6 corrupted directory entries
 [MICROSD_DRV_v1.0.0:INFO] Cleaned directory written successfully
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -584,12 +586,12 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_001.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_001.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_001.TXT' at cluster 11, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_001.TXT' at cluster 8, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_001.TXT'
 ✓ PASS: File TEST_001.TXT created and verified (154 bytes)
 
@@ -600,9 +602,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -610,7 +612,7 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 6: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 25
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 12
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_002.TXT'
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
@@ -628,13 +630,13 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_002.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_002.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_002.TXT' at cluster 25, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_002.TXT' at cluster 12, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_002.TXT'
 ✓ PASS: File TEST_002.TXT created and verified (154 bytes)
 
@@ -645,9 +647,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -659,7 +661,7 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 9: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 48
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 47
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_003.TXT'
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
@@ -680,14 +682,14 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_003.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_003.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_003.TXT' at cluster 48, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_003.TXT' at cluster 47, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_003.TXT'
 ✓ PASS: File TEST_003.TXT created and verified (154 bytes)
 
@@ -698,9 +700,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -716,7 +718,7 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 12: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 53
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 52
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_004.TXT'
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
@@ -740,15 +742,15 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_004.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_004.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_004.TXT' at cluster 53, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_004.TXT' at cluster 52, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_004.TXT'
 ✓ PASS: File TEST_004.TXT created and verified (154 bytes)
 
@@ -759,9 +761,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -781,18 +783,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 58
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 57
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_005.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -812,8 +814,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 4 -> 63
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 63 (sector 20544)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 5 -> 62
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 62 (sector 18176)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -824,17 +826,17 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_005.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_005.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_005.TXT' at cluster 58, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_005.TXT' at cluster 57, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_005.TXT'
 ✓ PASS: File TEST_005.TXT created and verified (154 bytes)
 
@@ -845,9 +847,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -867,18 +869,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 68
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 67
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_006.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -898,8 +900,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 63 -> 72
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 72 (sector 21120)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 62 -> 71
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 71 (sector 18752)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -910,19 +912,19 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_006.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_006.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_006.TXT' at cluster 68, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_006.TXT' at cluster 67, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_006.TXT'
 ✓ PASS: File TEST_006.TXT created and verified (154 bytes)
 
@@ -933,9 +935,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -955,18 +957,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 78
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 95
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_007.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -986,8 +988,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 72 -> 92
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 92 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 71 -> 96
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 96 (sector 20352)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -998,21 +1000,21 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_007.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_007.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_007.TXT' at cluster 78, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_007.TXT' at cluster 95, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_007.TXT'
 ✓ PASS: File TEST_007.TXT created and verified (154 bytes)
 
@@ -1023,9 +1025,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1045,18 +1047,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 93
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 99
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_008.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1076,8 +1078,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 92 -> 98
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 98 (sector 22784)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 96 -> 100
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 100 (sector 20608)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1088,23 +1090,23 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_008.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_008.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_008.TXT' at cluster 93, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_008.TXT' at cluster 99, size 154 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_008.TXT'
 ✓ PASS: File TEST_008.TXT created and verified (154 bytes)
 
@@ -1115,9 +1117,103 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 103
+[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_009.TXT'
+[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 100 -> 104
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
+[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
+[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_009.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_009.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_009.TXT' at cluster 103, size 154 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_009.TXT'
+✓ PASS: File TEST_009.TXT created and verified (154 bytes)
+
+[IT-2 File Ops] Iteration 10/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_010.TXT (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1138,17 +1234,17 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 107
-[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 154 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_009.TXT'
+[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_010.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1168,8 +1264,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 98 -> 108
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 104 -> 108
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1178,42 +1274,42 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_009.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_009.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read root directory sector 21177 (cluster 72)
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_010.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_010.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_009.TXT' at cluster 107, size 154 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 154 bytes from file 'TEST_009.TXT'
-✓ PASS: File TEST_009.TXT created and verified (154 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_010.TXT' at cluster 107, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_010.TXT'
+✓ PASS: File TEST_010.TXT created and verified (155 bytes)
 
-[IT-2 File Ops] Iteration 10/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_010.TXT (155 bytes)
+[IT-2 File Ops] Iteration 11/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_011.TXT (155 bytes)
 [MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1235,16 +1331,16 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 111
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_010.TXT'
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_011.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1264,8 +1360,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 108 -> 114
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 114 (sector 23808)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 108 -> 112
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 112 (sector 21376)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1274,42 +1370,44 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_010.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_010.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_011.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_011.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_010.TXT' at cluster 111, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_010.TXT'
-✓ PASS: File TEST_010.TXT created and verified (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_011.TXT' at cluster 111, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_011.TXT'
+✓ PASS: File TEST_011.TXT created and verified (155 bytes)
 
-[IT-2 File Ops] Iteration 11/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_011.TXT (155 bytes)
+[IT-2 File Ops] Iteration 12/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_012.TXT (155 bytes)
 [MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1331,114 +1429,16 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 115
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_011.TXT'
-[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 114 -> 121
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
-[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
-[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_011.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_011.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_011.TXT' at cluster 115, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_011.TXT'
-✓ PASS: File TEST_011.TXT created and verified (155 bytes)
-
-[IT-2 File Ops] Iteration 12/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_012.TXT (155 bytes)
-[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 122
-[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_012.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1458,8 +1458,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 121 -> 125
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 125 (sector 24512)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 112 -> 116
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 116 (sector 21632)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1470,33 +1470,31 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_012.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_012.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read root directory sector 21145 (cluster 72)
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_012.TXT' at cluster 122, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_012.TXT' at cluster 115, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_012.TXT'
 ✓ PASS: File TEST_012.TXT created and verified (155 bytes)
 
@@ -1507,9 +1505,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1529,18 +1527,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 126
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 119
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_013.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1560,8 +1558,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 125 -> 130
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 130 (sector 24832)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 116 -> 120
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 120 (sector 21888)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1572,33 +1570,33 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_013.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_013.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_013.TXT' at cluster 126, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_013.TXT' at cluster 119, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_013.TXT'
 ✓ PASS: File TEST_013.TXT created and verified (155 bytes)
 
@@ -1609,9 +1607,219 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 123
+[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_014.TXT'
+[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 120 -> 124
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
+[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
+[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_014.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_014.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_014.TXT' at cluster 123, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_014.TXT'
+✓ PASS: File TEST_014.TXT created and verified (155 bytes)
+
+[IT-2 File Ops] Iteration 15/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_015.TXT (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 127
+[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_015.TXT'
+[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
+[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 124 -> 128
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
+[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
+[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
+[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
+[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_015.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_015.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_015.TXT' at cluster 127, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_015.TXT'
+✓ PASS: File TEST_015.TXT created and verified (155 bytes)
+
+[IT-2 File Ops] Iteration 16/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_016.TXT (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
+[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
+[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
+[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
+[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1633,16 +1841,16 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 131
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_014.TXT'
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_016.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1662,8 +1870,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 130 -> 134
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 134 (sector 25088)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 128 -> 132
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 132 (sector 22656)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1672,52 +1880,54 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_014.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_014.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_016.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_016.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_014.TXT' at cluster 131, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_014.TXT'
-✓ PASS: File TEST_014.TXT created and verified (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_016.TXT' at cluster 131, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_016.TXT'
+✓ PASS: File TEST_016.TXT created and verified (155 bytes)
 
-[IT-2 File Ops] Iteration 15/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_015.TXT (155 bytes)
+[IT-2 File Ops] Iteration 17/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_017.TXT (155 bytes)
 [MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read allocation bitmap sector
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1739,16 +1949,16 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 135
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_015.TXT'
+[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_017.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1768,8 +1978,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 134 -> 138
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 138 (sector 25344)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 132 -> 136
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 136 (sector 22912)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -1778,52 +1988,56 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_015.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_015.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] File 'TEST_017.TXT' created successfully
+[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_017.TXT
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_015.TXT' at cluster 135, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_015.TXT'
-✓ PASS: File TEST_015.TXT created and verified (155 bytes)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_017.TXT' at cluster 135, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_017.TXT'
+✓ PASS: File TEST_017.TXT created and verified (155 bytes)
 
-[IT-2 File Ops] Iteration 16/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_016.TXT (155 bytes)
+[IT-2 File Ops] Iteration 18/25
+[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_018.TXT (155 bytes)
 [MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -1845,234 +2059,16 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
 [MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 139
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_016.TXT'
-[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 138 -> 142
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
-[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
-[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_016.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_016.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_016.TXT' at cluster 139, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_016.TXT'
-✓ PASS: File TEST_016.TXT created and verified (155 bytes)
-
-[IT-2 File Ops] Iteration 17/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_017.TXT (155 bytes)
-[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 145
-[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
-[MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_017.TXT'
-[MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 142 -> 146
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
-[MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
-[MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: File (secondary_count=2)
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Stream Extension
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: File Name
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
-[MICROSD_DRV_v1.0.0:INFO] File 'TEST_017.TXT' created successfully
-[MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_017.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_017.TXT' at cluster 145, size 155 bytes
-[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_017.TXT'
-✓ PASS: File TEST_017.TXT created and verified (155 bytes)
-
-[IT-2 File Ops] Iteration 18/25
-[MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_018.TXT (155 bytes)
-[MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
-[MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
-[MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
-[MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 5: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 6: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 7: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 8: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 9: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 10: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 11: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 12: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
-[MICROSD_DRV_v1.0.0:INFO] Entry 13: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 14: Type=0xC1[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=1)
-[MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
-[MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
-[MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 154
-[MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_018.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2092,8 +2088,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 146 -> 155
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 155 (sector 26432)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 136 -> 140
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 140 (sector 23168)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2104,43 +2100,43 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_018.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_018.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_018.TXT' at cluster 154, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_018.TXT' at cluster 139, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_018.TXT'
 ✓ PASS: File TEST_018.TXT created and verified (155 bytes)
 
@@ -2151,9 +2147,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2173,18 +2169,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 158
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 143
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_019.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2204,8 +2200,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 155 -> 159
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 159 (sector 26688)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 140 -> 144
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 144 (sector 23424)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2216,62 +2212,58 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_019.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_019.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_019.TXT' at cluster 158, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_019.TXT' at cluster 143, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_019.TXT'
 ✓ PASS: File TEST_019.TXT created and verified (155 bytes)
 
 [IT-2 File Ops] Iteration 20/25
 [MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_020.TXT (155 bytes)
 [MICROSD_DRV_v1.0.0:INFO] Allocating cluster chain for 155 bytes (1 clusters)
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read allocation bitmap sector
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read allocation bitmap sector
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2291,18 +2283,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 162
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 147
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_020.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2322,8 +2314,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 159 -> 163
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 163 (sector 26944)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 144 -> 148
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 148 (sector 23680)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2334,47 +2326,47 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_020.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_020.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_020.TXT' at cluster 162, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_020.TXT' at cluster 147, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_020.TXT'
 ✓ PASS: File TEST_020.TXT created and verified (155 bytes)
 
@@ -2385,9 +2377,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2407,18 +2399,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 166
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 151
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_021.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2438,8 +2430,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 163 -> 167
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 167 (sector 27200)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 148 -> 152
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 152 (sector 23936)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2450,49 +2442,49 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_021.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_021.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 167 (sector 27200)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 167, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_021.TXT' at cluster 166, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 152 (sector 23936)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 152, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_021.TXT' at cluster 151, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_021.TXT'
 ✓ PASS: File TEST_021.TXT created and verified (155 bytes)
 
@@ -2503,9 +2495,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2525,18 +2517,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 170
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 155
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_022.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2556,8 +2548,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 167 -> 171
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 171 (sector 27456)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 152 -> 156
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 156 (sector 24192)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2568,51 +2560,51 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_022.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_022.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 167 (sector 27200)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 167, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 171 (sector 27456)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 171, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_022.TXT' at cluster 170, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 152 (sector 23936)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 152, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 156 (sector 24192)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 156, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_022.TXT' at cluster 155, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_022.TXT'
 ✓ PASS: File TEST_022.TXT created and verified (155 bytes)
 
@@ -2623,9 +2615,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2645,18 +2637,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 174
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 159
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_023.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2676,8 +2668,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 171 -> 175
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 175 (sector 27712)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 156 -> 160
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 160 (sector 24448)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2688,54 +2680,55 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_023.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_023.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 167 (sector 27200)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 167, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 171 (sector 27456)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 171, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read root directory sector 27477 (cluster 171)
-[MICROSD_DRV_v1.0.0:ERROR] File 'TEST_023.TXT' not found (searched 19 directory clusters)
-✗ FAIL: File read failed
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 152 (sector 23936)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 152, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 156 (sector 24192)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 156, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 160 (sector 24448)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 160, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_023.TXT' at cluster 159, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_023.TXT'
+✓ PASS: File TEST_023.TXT created and verified (155 bytes)
 
 [IT-2 File Ops] Iteration 24/25
 [MICROSD_DRV_v1.0.0:INFO] Creating file: TEST_024.TXT (155 bytes)
@@ -2744,9 +2737,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2766,18 +2759,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 178
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 163
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_024.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2797,8 +2790,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 175 -> 179
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 179 (sector 27968)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 160 -> 164
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 164 (sector 24704)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2809,57 +2802,55 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_024.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_024.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 167 (sector 27200)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 167, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 171 (sector 27456)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 171, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 175 (sector 27712)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 175, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read root directory sector 27769 (cluster 175)
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 179 (sector 27968)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 179, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_024.TXT' at cluster 178, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 152 (sector 23936)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 152, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 156 (sector 24192)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 156, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 160 (sector 24448)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 160, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 164 (sector 24704)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 164, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_024.TXT' at cluster 163, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_024.TXT'
 ✓ PASS: File TEST_024.TXT created and verified (155 bytes)
 
@@ -2870,9 +2861,9 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2892,22 +2883,18 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 182
+[MICROSD_DRV_v1.0.0:INFO] Successfully allocated cluster chain: 1 clusters starting at 167
 [MICROSD_DRV_v1.0.0:INFO] Successfully wrote 155 bytes across cluster chain
 [MICROSD_DRV_v1.0.0:INFO] Using unique filename: 'TEST_025.TXT'
 [MICROSD_DRV_v1.0.0:WARN] Root directory cluster full (need 3 entries, only 1 available)
-[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 4
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read allocation bitmap sector
-[MICROSD_DRV_v1.0.0:ERROR] Read timeout waiting for data token
-[MICROSD_DRV_v1.0.0:ERROR] Failed to read allocation bitmap sector
+[MICROSD_DRV_v1.0.0:INFO] Expanding directory cluster 5
 [MICROSD_DRV_v1.0.0:INFO] === Root Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Entry 0: Type=0x83[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=3, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 1: Type=0x81[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=1, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=2048
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=2, DataLength=60864
 [MICROSD_DRV_v1.0.0:INFO] Entry 2: Type=0x82[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=2, Importance=0, Category=0)
-[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=3, DataLength=5836
+[MICROSD_DRV_v1.0.0:INFO]         FirstCluster=4, DataLength=5836
 [MICROSD_DRV_v1.0.0:INFO] Entry 3: Type=0x85[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=5, Importance=0, Category=0)
 [MICROSD_DRV_v1.0.0:INFO]         FirstCluster=0, DataLength=0
 [MICROSD_DRV_v1.0.0:INFO] Entry 4: Type=0xC0[MICROSD_DRV_v1.0.0:INFO]  (TypeCode=0, Importance=0, Category=1)
@@ -2927,8 +2914,8 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] Entry 15: End-of-directory marker
 [MICROSD_DRV_v1.0.0:INFO] === End Directory Entries ===
 [MICROSD_DRV_v1.0.0:INFO] Found allocation bitmap at cluster 2
-[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 179 -> 183
-[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 183 (sector 28224)
+[MICROSD_DRV_v1.0.0:INFO] Successfully expanded directory: linked cluster 164 -> 168
+[MICROSD_DRV_v1.0.0:INFO] Directory expanded: now writing to cluster 168 (sector 24960)
 [MICROSD_DRV_v1.0.0:INFO] Directory expanded successfully, now have 16 available entries in new cluster
 [MICROSD_DRV_v1.0.0:INFO] Directory write verification successful
 [MICROSD_DRV_v1.0.0:INFO] === Final Root Directory Structure ===
@@ -2939,57 +2926,57 @@ Target executions: 25
 [MICROSD_DRV_v1.0.0:INFO] === End Final Directory Structure ===
 [MICROSD_DRV_v1.0.0:INFO] File 'TEST_025.TXT' created successfully
 [MICROSD_DRV_v1.0.0:INFO] Reading file: TEST_025.TXT
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 4 (sector 16768)
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 4, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 4, sector offset 0, entry 1
-[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 4, sector offset 0, entry 2
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 3
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 6
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 9
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 4, sector offset 0, entry 12
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 63 (sector 20544)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 63, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 72 (sector 21120)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 72, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 92 (sector 22400)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 92, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 98 (sector 22784)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 98, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 5 (sector 14528)
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x83 at cluster 5, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x81 at cluster 5, sector offset 0, entry 1
+[MICROSD_DRV_v1.0.0:INFO] Found entry type 0x82 at cluster 5, sector offset 0, entry 2
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 3
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 6
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 9
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 5, sector offset 0, entry 12
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 62 (sector 18176)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 62, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 71 (sector 18752)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 71, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 96 (sector 20352)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 96, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 100 (sector 20608)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 100, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 104 (sector 20864)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 104, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 108 (sector 21120)
 [MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 108, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 114 (sector 23808)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 114, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 121 (sector 24256)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 121, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 125 (sector 24512)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 125, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 130 (sector 24832)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 130, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 134 (sector 25088)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 134, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 138 (sector 25344)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 138, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 142 (sector 25600)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 142, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 146 (sector 25856)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 146, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 155 (sector 26432)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 155, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 159 (sector 26688)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 159, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 163 (sector 26944)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 163, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 167 (sector 27200)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 167, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 171 (sector 27456)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 171, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 175 (sector 27712)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 175, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 179 (sector 27968)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 179, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 183 (sector 28224)
-[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 183, sector offset 0, entry 0
-[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_025.TXT' at cluster 182, size 155 bytes
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 112 (sector 21376)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 112, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 116 (sector 21632)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 116, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 120 (sector 21888)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 120, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 124 (sector 22144)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 124, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 128 (sector 22400)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 128, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 132 (sector 22656)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 132, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 136 (sector 22912)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 136, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 140 (sector 23168)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 140, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 144 (sector 23424)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 144, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 148 (sector 23680)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 148, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 152 (sector 23936)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 152, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 156 (sector 24192)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 156, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 160 (sector 24448)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 160, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 164 (sector 24704)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 164, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Searching directory cluster 168 (sector 24960)
+[MICROSD_DRV_v1.0.0:INFO] Found file entry (0x85) at cluster 168, sector offset 0, entry 0
+[MICROSD_DRV_v1.0.0:INFO] Found file 'TEST_025.TXT' at cluster 167, size 155 bytes
 [MICROSD_DRV_v1.0.0:INFO] Successfully read 155 bytes from file 'TEST_025.TXT'
 ✓ PASS: File TEST_025.TXT created and verified (155 bytes)
 
@@ -2998,8 +2985,8 @@ Target executions: 25
 ================================================================================
 
 Total test executions: 125
-Passed:  124 (99.2%)
-Failed:  1 (0.8%)
+Passed:  125 (100.0%)
+Failed:  0 (0.0%)
 Errors:  1
 
 Test Breakdown:
