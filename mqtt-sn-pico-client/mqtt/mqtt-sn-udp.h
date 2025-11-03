@@ -7,9 +7,15 @@
  *
  * FILE TRANSFER QOS POLICY:
  * -------------------------
- * File transfers ALWAYS use QoS 1 (at-least-once delivery) for reliability.
+ * Metadata chunks use QoS 2 (exactly-once delivery) for guaranteed reception.
+ * Data chunks use QoS 1 (at-least-once delivery) for reliable transmission.
  *
- * QoS 1 Guarantees:
+ * QoS 2 for Metadata (PUBREC/PUBREL/PUBCOMP handshake):
+ * - Guarantees exactly-once delivery
+ * - Ensures session initialization before any data chunks
+ * - No data chunks accepted without metadata
+ *
+ * QoS 1 for Data Chunks (PUBACK):
  * - Every packet is acknowledged (PUBACK)
  * - Unacknowledged packets are automatically retransmitted
  * - May result in duplicate packet delivery
@@ -30,6 +36,87 @@
 #include "../fs/data_frame.h"
 #include "lwip/ip_addr.h"
 #include "lwip/udp.h"
+
+/*! File Transfer Configuration */
+#define FILE_TRANSFER_METADATA_QOS 2    /*!< QoS level for metadata (2=exactly-once delivery) */
+#define FILE_TRANSFER_DATA_QOS 1        /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
+#define FILE_TRANSFER_TOPIC_METADATA 3U /*!< Topic ID for file metadata (file/meta) */
+#define FILE_TRANSFER_TOPIC_DATA 4U     /*!< Topic ID for file data chunks (file/data) */
+
+/*! MQTT-SN Packet Structure Constants */
+#define MQTTSN_HEADER_SIZE 2U          /*!< Minimum header size (length + type) */
+#define MQTTSN_CONNECT_FIXED_LEN 6U    /*!< CONNECT packet fixed fields length */
+#define MQTTSN_SUBSCRIBE_LEN 7U        /*!< SUBSCRIBE packet length */
+#define MQTTSN_PUBACK_LEN 7U           /*!< PUBACK packet length */
+#define MQTTSN_PUBREC_LEN 5U           /*!< PUBREC packet length */
+#define MQTTSN_PUBCOMP_LEN 5U          /*!< PUBCOMP packet length */
+#define MQTTSN_PUBREL_LEN 4U           /*!< PUBREL packet length */
+#define MQTTSN_PINGREQ_LEN 2U          /*!< PINGREQ packet length */
+#define MQTTSN_MAX_PACKET_LEN 255U     /*!< Maximum MQTT-SN packet length (1-byte length field) */
+#define MQTTSN_PUBLISH_HEADER_LEN 7U   /*!< PUBLISH packet header length (without payload) */
+#define MQTTSN_RETRY_PAYLOAD_SIZE 247U /*!< Max payload size for retry buffer (255 - 7 - 1) */
+
+/*! MQTT-SN Packet Field Offsets */
+#define MQTTSN_OFFSET_LENGTH 0U        /*!< Offset: packet length field */
+#define MQTTSN_OFFSET_MSG_TYPE 1U      /*!< Offset: message type field */
+#define MQTTSN_OFFSET_FLAGS 2U         /*!< Offset: flags field */
+#define MQTTSN_OFFSET_PROTOCOL_ID 3U   /*!< Offset: protocol ID field */
+#define MQTTSN_OFFSET_DURATION_HIGH 4U /*!< Offset: duration high byte */
+#define MQTTSN_OFFSET_DURATION_LOW 5U  /*!< Offset: duration low byte */
+#define MQTTSN_OFFSET_CLIENT_ID 6U     /*!< Offset: client ID field in CONNECT */
+#define MQTTSN_OFFSET_TOPIC_ID_HIGH 3U /*!< Offset: topic ID high byte in PUBLISH */
+#define MQTTSN_OFFSET_TOPIC_ID_LOW 4U  /*!< Offset: topic ID low byte in PUBLISH */
+#define MQTTSN_OFFSET_MSG_ID_HIGH 5U   /*!< Offset: message ID high byte */
+#define MQTTSN_OFFSET_MSG_ID_LOW 6U    /*!< Offset: message ID low byte */
+#define MQTTSN_OFFSET_PAYLOAD 7U       /*!< Offset: payload start in PUBLISH */
+#define MQTTSN_OFFSET_RETURN_CODE 2U   /*!< Offset: return code in CONNACK */
+
+/*! QoS Levels */
+#define QOS_LEVEL_0 0 /*!< QoS 0: At most once (fire and forget) */
+#define QOS_LEVEL_1 1 /*!< QoS 1: At least once (acknowledged delivery) */
+#define QOS_LEVEL_2 2 /*!< QoS 2: Exactly once (assured delivery) */
+
+/*! Bit Manipulation Constants */
+#define BITS_PER_BYTE 8U /*!< Number of bits in a byte */
+
+/*! LED Command Constants */
+#define LED_ON_CMD_LEN 6U  /*!< Length of "led on" command */
+#define LED_OFF_CMD_LEN 7U /*!< Length of "led off" command */
+
+/*! File Transfer Validation Limits */
+#define MAX_CHUNK_COUNT 100000U                   /*!< Maximum allowed chunk count */
+#define MAX_FILE_SIZE_BYTES (10U * 1024U * 1024U) /*!< Maximum file size: 10 MB */
+
+/*! Timing Constants */
+#define QOS2_HANDSHAKE_DELAY_MS 150U /*!< Delay for QoS 2 handshake completion */
+#define INTER_CHUNK_DELAY_US 50000U  /*!< Inter-chunk delay (microseconds) */
+#define POLL_YIELD_DELAY_US 100U     /*!< CPU yield delay during polling */
+#define PROGRESS_UPDATE_INTERVAL 10U /*!< Report progress every N chunks */
+
+/*! MQTT-SN Protocol Message Types (as per MQTT-SN v1.2 Specification) */
+#define MQTTSN_MSG_TYPE_CONNECT (0x04U)   /*!< CONNECT message type */
+#define MQTTSN_MSG_TYPE_CONNACK (0x05U)   /*!< CONNACK message type */
+#define MQTTSN_MSG_TYPE_PUBLISH (0x0CU)   /*!< PUBLISH message type */
+#define MQTTSN_MSG_TYPE_PUBACK (0x0DU)    /*!< PUBACK message type */
+#define MQTTSN_MSG_TYPE_PUBCOMP (0x0EU)   /*!< PUBCOMP message type */
+#define MQTTSN_MSG_TYPE_PUBREC (0x0FU)    /*!< PUBREC message type */
+#define MQTTSN_MSG_TYPE_PUBREL (0x10U)    /*!< PUBREL message type */
+#define MQTTSN_MSG_TYPE_SUBSCRIBE (0x12U) /*!< SUBSCRIBE message type */
+#define MQTTSN_MSG_TYPE_SUBACK (0x13U)    /*!< SUBACK message type */
+#define MQTTSN_MSG_TYPE_PINGREQ (0x16U)   /*!< PINGREQ message type */
+#define MQTTSN_MSG_TYPE_PINGRESP (0x17U)  /*!< PINGRESP message type */
+
+/*! MQTT-SN Protocol Constants */
+#define MQTTSN_FLAG_CLEAN_SESSION (0x04U)    /*!< Clean session flag */
+#define MQTTSN_PROTOCOL_ID (0x01U)           /*!< MQTT-SN Protocol ID v1.2 */
+#define MQTTSN_FLAG_TOPIC_PREDEFINED (0x01U) /*!< Predefined topic type */
+#define MQTTSN_FLAG_QOS1 (0x20U)             /*!< QoS level 1 flag (bit 5) */
+#define MQTTSN_FLAG_QOS2 (0x40U)             /*!< QoS level 2 flag (bit 6) */
+#define MQTTSN_FLAG_QOS_MASK (0x03U)         /*!< QoS mask for extraction */
+#define MQTTSN_QOS_SHIFT (5U)                /*!< QoS bit shift position */
+#define MQTTSN_RETURN_ACCEPTED (0x00U)       /*!< Return code: accepted */
+#define MQTTSN_SUBSCRIBE_FLAGS_QOS2 (0x41U)  /*!< Subscribe with QoS2 + Predefined topic */
+#define MQTTSN_BYTE_MASK (0xFFU)             /*!< Byte mask for extraction */
 
 typedef struct {
     uint16_t msg_id;

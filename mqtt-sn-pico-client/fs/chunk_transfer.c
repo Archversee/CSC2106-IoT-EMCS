@@ -106,7 +106,9 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
     }
 
     if (!session->active) {
-        printf("ERROR: Session is not active\n");
+        printf("ERROR: Session is not active - metadata chunk must be received first\n");
+        printf("       Refusing data payload chunk %lu (no active transfer session)\n",
+               (unsigned long)payload->sequence);
         return false;
     }
 
