@@ -1,16 +1,17 @@
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client/fs)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client/drivers)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src)
-
+# Global include paths for all targets
+include_directories(${CMAKE_CURRENT_LIST_DIR})
+include_directories(${CMAKE_CURRENT_LIST_DIR}/fs)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/drivers)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
@@ -40,7 +41,13 @@ if(NOT DEFINED PICO_SDK_PATH)
     endif()
 endif()
 
+set(PICO_NO_PICOTOOL 1)
+
+
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+
+
 
 # Prevent CMake from adding macOS-specific flags to cross-compiler
 set(CMAKE_SYSTEM_NAME Generic)
@@ -53,6 +60,12 @@ project(mqtt-sn-pico-client C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+# lwIP headers
+include_directories(${PICO_SDK_PATH}/lib/lwip/src/include)
+include_directories(${PICO_SDK_PATH}/lib/lwip/src/include/ipv4)
+include_directories(${PICO_SDK_PATH}/lib/lwip/src/include/ipv6)
+include_directories(${PICO_SDK_PATH}/src/rp2_common/pico_lwip/include)
+include_directories(${PICO_SDK_PATH}/src/common/pico_rand/include)
 # Add subdirectories for drivers and fs
 add_subdirectory(drivers)
 add_subdirectory(fs)
@@ -62,7 +75,7 @@ add_executable(mqtt-sn-pico-client
     #main.c
     mqtt-sn-pico-client.c
     mqtt/mqtt-sn-udp.c
-    mqtt-sn-pico-client/mqttsn_bridge.c
+    mqttsn_bridge.c
 
 )
 

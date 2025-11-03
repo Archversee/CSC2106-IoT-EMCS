@@ -6,7 +6,6 @@
  */
 
 #include "chunk_transfer.h"
-#include "mqttsn_bridge.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -90,7 +89,6 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
     session->active = true;
 
     //Publish file transfer status
-    mqttsn_pub_file_status(DEVICE_ID, session->filename, "active", NULL);
 
     printf("✓ Transfer session initialized:\n");
     printf("  Session ID: %s\n", session->session_id);
@@ -168,7 +166,6 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
     printf("DEBUG: Chunk %u/%u, size=%u, checksum=0x%x\n", 
            seq, total, payload->size, sum);
 
-    mqttsn_pub_file_progress(DEVICE_ID, seq, total, seq, sum);
 
     return true;
 }
@@ -200,7 +197,6 @@ bool chunk_transfer_finalize(filesystem_info_t* fs_info,
                (unsigned long)session->chunk_meta.chunks_received,
                (unsigned long)session->chunk_meta.total_chunks);
         
-               mqttsn_pub_file_status(DEVICE_ID, session->filename, "failed", "incomplete chunks");
                return false;
     }
 
@@ -208,12 +204,9 @@ bool chunk_transfer_finalize(filesystem_info_t* fs_info,
     if (!microsd_finalize_chunk_write(fs_info, &session->chunk_meta)) {
         printf("ERROR: Failed to finalize microSD chunk write\n");
         
-        mqttsn_pub_file_status(DEVICE_ID, session->filename, "failed", "write error");
         return false;
     }
 
-    mqttsn_pub_file_validation(DEVICE_ID, "success", "expected", "actual");
-    mqttsn_pub_file_status(DEVICE_ID, session->filename, "completed", NULL);
 
     printf("✓ Transfer session finalized:\n");
     printf("  Session ID: %s\n", session->session_id);

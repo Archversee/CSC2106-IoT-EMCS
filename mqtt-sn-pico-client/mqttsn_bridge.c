@@ -25,9 +25,23 @@ static void mqttsn_send_publish(const char *topic, const char *payload) {
         return;
     }
 
-    int len = MQTTSNSerialize_publish(g_sendbuf, sizeof(g_sendbuf), 0, 0, 0, 0,
-                                      topic, (unsigned char*)payload, strlen(payload));
-    
+    MQTTSN_topicid topicId;
+    topicId.type = MQTTSN_TOPIC_TYPE_NORMAL;  // long topic name
+    topicId.data.long_.name = (unsigned char *)topic;
+    topicId.data.long_.len  = (int)strlen(topic);
+
+
+    int len = MQTTSNSerialize_publish(
+        g_sendbuf,
+        sizeof(g_sendbuf),
+        0,                  // dup
+        0,                  // qos (0 is fine for dashboard status)
+        0,                  // retained
+        0,                  // msgId (0 when using topic name)
+        topicId,            // <-- struct, not char*
+        (unsigned char *)payload,
+        (int)strlen(payload)
+    );
     if (len > 0) {
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
         if (p) {

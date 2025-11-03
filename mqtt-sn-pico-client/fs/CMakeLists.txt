@@ -4,8 +4,10 @@ add_library(fs_lib
     chunk_transfer.c
 )
 
-target_include_directories(fs_lib PUBLIC
+include_directories(fs_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PICO_SDK_PATH}/src/common/pico_rand/include  
+
 )
 
 target_link_libraries(fs_lib
