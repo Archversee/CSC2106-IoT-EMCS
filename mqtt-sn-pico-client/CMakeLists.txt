@@ -6,6 +6,11 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client/fs)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt-sn-pico-client/drivers)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src)
+
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
@@ -57,6 +62,13 @@ add_executable(mqtt-sn-pico-client
     #main.c
     mqtt-sn-pico-client.c
     functions.c
+    mqtt-sn-pico-client/mqttsn_bridge.c
+    mqtt-sn-pico-client/fs/chunk_transfer.c
+    mqtt-sn-pico-client/fs/data_frame.c
+    mqtt-sn-pico-client/drivers/microsd_driver.c
+    mqtt-sn-pico-client/drivers/microsd_spi.c
+    paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src/MQTTSNPacket.c
+    paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src/MQTTSNSerializePublish.c
 )
 
 pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")

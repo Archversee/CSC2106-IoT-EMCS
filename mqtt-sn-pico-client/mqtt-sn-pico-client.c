@@ -4,6 +4,12 @@
 #include "lwip/ip_addr.h"
 #include "config.h" 
 #include "functions.h" 
+#include "mqttsn_bridge.h"
+
+#ifndef DEVICE_ID
+#define DEVICE_ID "pico-001" 
+#endif
+
 
 uint32_t last_pingresp = 0;
 static uint32_t last_pingreq = 0;
@@ -66,6 +72,8 @@ int main() {
     // setup MQTT-SN Gateway address
     ip_addr_t gateway_addr;
     IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3); //RMB to change to your gateway IP
+
+    mqttsn_bridge_init(pcb, &gateway_addr, UDP_PORT);
 
     sleep_ms(1000);
 
