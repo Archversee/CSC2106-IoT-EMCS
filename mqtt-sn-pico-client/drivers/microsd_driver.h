@@ -31,8 +31,7 @@ typedef enum {
 } microsd_log_level_t;
 
 /*! Driver status structure */
-typedef struct
-{
+typedef struct {
     char driver_id[32];
     char driver_uuid[64];
     uint8_t version_major;
@@ -70,8 +69,7 @@ typedef struct
 #pragma pack(push, 1)
 
 /*! MBR partition entry structure */
-typedef struct
-{
+typedef struct {
     uint8_t status;         /*!< Partition status (0x80 = bootable, 0x00 = non-bootable) */
     uint8_t first_head;     /*!< First head (CHS addressing) */
     uint8_t first_sector;   /*!< First sector (CHS addressing) */
@@ -85,16 +83,14 @@ typedef struct
 } mbr_partition_entry_t;
 
 /*! MBR (Master Boot Record) structure */
-typedef struct
-{
+typedef struct {
     uint8_t boot_code[446];              /*!< Boot loader code */
     mbr_partition_entry_t partitions[4]; /*!< Partition table (4 entries) */
     uint16_t signature;                  /*!< MBR signature (0xAA55) */
 } mbr_t;
 
 /*! exFAT boot sector structure */
-typedef struct
-{
+typedef struct {
     uint8_t jump_boot[3];              /*!< Jump instruction */
     uint8_t filesystem_name[8];        /*!< "EXFAT   " */
     uint8_t must_be_zero[53];          /*!< Must be zero */
@@ -128,8 +124,7 @@ typedef struct
 #define EXFAT_TYPE_FILE_NAME (0xC1)
 
 /*! exFAT file directory entry */
-typedef struct
-{
+typedef struct {
     uint8_t entry_type;                   /*!< Entry type (0x85) */
     uint8_t secondary_count;              /*!< Number of secondary entries */
     uint16_t set_checksum;                /*!< Set checksum */
@@ -147,8 +142,7 @@ typedef struct
 } exfat_file_entry_t;
 
 /*! exFAT stream extension directory entry */
-typedef struct
-{
+typedef struct {
     uint8_t entry_type;         /*!< Entry type (0xC0) */
     uint8_t general_flags;      /*!< General flags */
     uint8_t reserved1;          /*!< Reserved */
@@ -162,8 +156,7 @@ typedef struct
 } exfat_stream_entry_t;
 
 /*! exFAT file name directory entry */
-typedef struct
-{
+typedef struct {
     uint8_t entry_type;     /*!< Entry type (0xC1) */
     uint8_t general_flags;  /*!< General flags */
     uint16_t file_name[15]; /*!< File name (UTF-16) */
@@ -172,8 +165,7 @@ typedef struct
 #pragma pack(pop)
 
 /*! File system information structure */
-typedef struct
-{
+typedef struct {
     bool is_exfat;                /*!< Is exFAT filesystem */
     uint32_t partition_offset;    /*!< Partition start sector (0 for no partitions) */
     uint32_t bytes_per_sector;    /*!< Bytes per sector */
@@ -259,10 +251,8 @@ bool microsd_init_filesystem(filesystem_info_t* const p_fs_info);
  * @param[in] data_length   Length of file data in bytes
  * @return bool             true on success, false on failure
  */
-bool microsd_create_file(filesystem_info_t const* const p_fs_info,
-                         char const* const filename,
-                         uint8_t const* const p_data,
-                         uint32_t const data_length);
+bool microsd_create_file(filesystem_info_t const* const p_fs_info, char const* const filename,
+                         uint8_t const* const p_data, uint32_t const data_length);
 
 /*!
  * @brief Create a large file using chunked writing to avoid memory limitations
@@ -276,10 +266,8 @@ bool microsd_create_file(filesystem_info_t const* const p_fs_info,
  */
 bool microsd_create_large_file_chunked(filesystem_info_t const* const p_fs_info,
                                        char const* const filename,
-                                       uint8_t const* const p_chunk_data,
-                                       uint32_t const chunk_size,
-                                       uint32_t const total_size,
-                                       uint32_t const num_chunks);
+                                       uint8_t const* const p_chunk_data, uint32_t const chunk_size,
+                                       uint32_t const total_size, uint32_t const num_chunks);
 
 /*!
  * @brief Read a large file from the exFAT filesystem using chunked reading
@@ -292,10 +280,8 @@ bool microsd_create_large_file_chunked(filesystem_info_t const* const p_fs_info,
  * @return bool                 true on success, false on failure
  */
 bool microsd_read_large_file_chunked(filesystem_info_t const* const p_fs_info,
-                                     char const* const filename,
-                                     uint8_t* const p_chunk_buffer,
-                                     uint32_t const chunk_size,
-                                     uint32_t const max_file_size,
+                                     char const* const filename, uint8_t* const p_chunk_buffer,
+                                     uint32_t const chunk_size, uint32_t const max_file_size,
                                      uint32_t* const p_total_bytes_read);
 
 /*!
@@ -307,10 +293,8 @@ bool microsd_read_large_file_chunked(filesystem_info_t const* const p_fs_info,
  * @param[out] p_bytes_read Pointer to store actual bytes read
  * @return bool             true on success, false on failure
  */
-bool microsd_read_file(filesystem_info_t const* const p_fs_info,
-                       char const* const filename,
-                       uint8_t* const p_buffer,
-                       uint32_t const buffer_size,
+bool microsd_read_file(filesystem_info_t const* const p_fs_info, char const* const filename,
+                       uint8_t* const p_buffer, uint32_t const buffer_size,
                        uint32_t* const p_bytes_read);
 
 /*!
@@ -324,10 +308,8 @@ bool microsd_read_file(filesystem_info_t const* const p_fs_info,
  * @return bool             true on success, false on failure
  */
 bool microsd_read_large_file_chunked(filesystem_info_t const* const p_fs_info,
-                                     char const* const filename,
-                                     uint8_t* const p_chunk_data,
-                                     uint32_t const chunk_size,
-                                     uint32_t const max_size,
+                                     char const* const filename, uint8_t* const p_chunk_data,
+                                     uint32_t const chunk_size, uint32_t const max_size,
                                      uint32_t* const p_total_read);
 
 /*!
@@ -340,8 +322,7 @@ void microsd_enable_file_logging(bool enable);
 uint32_t get_current_time();
 
 /*! Chunk metadata structure for tracking out-of-order chunk writes */
-typedef struct
-{
+typedef struct {
     uint32_t total_chunks;    /*!< Total number of chunks expected */
     uint32_t chunk_size;      /*!< Size of each chunk in bytes */
     uint32_t chunks_received; /*!< Number of chunks received so far */
@@ -360,12 +341,9 @@ typedef struct
  * @param[out] p_metadata       Pointer to metadata structure to initialize
  * @return bool                 true on success, false on failure
  */
-bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
-                              char const* const filename,
-                              uint32_t const total_chunks,
-                              uint32_t const chunk_size,
-                              uint32_t const actual_file_size,
-                              chunk_metadata_t* const p_metadata);
+bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info, char const* const filename,
+                              uint32_t const total_chunks, uint32_t const chunk_size,
+                              uint32_t const actual_file_size, chunk_metadata_t* const p_metadata);
 
 /*!
  * @brief Write a single chunk to the file (can be out-of-order)
@@ -377,10 +355,8 @@ bool microsd_init_chunk_write(filesystem_info_t const* const p_fs_info,
  * @return bool                 true on success, false on failure
  */
 bool microsd_write_chunk(filesystem_info_t const* const p_fs_info,
-                         chunk_metadata_t* const p_metadata,
-                         uint32_t const chunk_index,
-                         uint8_t const* const p_chunk_data,
-                         uint32_t const chunk_data_size);
+                         chunk_metadata_t* const p_metadata, uint32_t const chunk_index,
+                         uint8_t const* const p_chunk_data, uint32_t const chunk_data_size);
 
 /*!
  * @brief Finalize chunk-based writing and create directory entry
@@ -401,12 +377,9 @@ bool microsd_finalize_chunk_write(filesystem_info_t const* const p_fs_info,
  * @param[out] p_bytes_read     Pointer to store actual bytes read
  * @return bool                 true on success, false on failure
  */
-bool microsd_read_chunk(filesystem_info_t const* const p_fs_info,
-                        char const* const filename,
-                        uint8_t* const p_chunk_data,
-                        uint32_t const chunk_size,
-                        uint32_t const chunk_index,
-                        uint32_t* const p_bytes_read);
+bool microsd_read_chunk(filesystem_info_t const* const p_fs_info, char const* const filename,
+                        uint8_t* const p_chunk_data, uint32_t const chunk_size,
+                        uint32_t const chunk_index, uint32_t* const p_bytes_read);
 
 /*!
  * @brief Check if all chunks have been received
@@ -414,5 +387,23 @@ bool microsd_read_chunk(filesystem_info_t const* const p_fs_info,
  * @return bool                 true if all chunks received, false otherwise
  */
 bool microsd_check_all_chunks_received(chunk_metadata_t const* const p_metadata);
+
+/*!
+ * @brief List all files in the root directory of the SD card
+ * @param[in] p_fs_info         Pointer to filesystem info structure
+ * @return bool                 true on success, false on failure
+ * @note This function prints file information to the console
+ */
+bool microsd_list_directory(filesystem_info_t const* const p_fs_info);
+
+/*!
+ * @brief Dump hex contents of SD card sectors for debugging/repair
+ * @param[in] start_sector      Starting sector number to dump
+ * @param[in] num_sectors       Number of sectors to dump
+ * @return bool                 true on success, false on failure
+ * @note Prints hex dump to console in readable format
+ * @note Use this to diagnose filesystem corruption or verify data
+ */
+bool microsd_hex_dump(uint32_t const start_sector, uint32_t const num_sectors);
 
 #endif /* MICROSD_DRIVER_H */

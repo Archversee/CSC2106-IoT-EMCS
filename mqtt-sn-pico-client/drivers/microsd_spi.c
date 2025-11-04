@@ -123,7 +123,7 @@ uint8_t microsd_spi_send_command(uint8_t const cmd, uint32_t const arg) {
  * @param[out] p_buffer     Pointer to buffer for read data (must be SD_BLOCK_SIZE bytes)
  * @return bool             true on success, false on failure
  */
-bool microsd_spi_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
+bool microsd_spi_read_block(uint32_t const block_num, uint8_t *const p_buffer) {
     bool result = false;
     uint8_t response;
     int timeout;
@@ -166,7 +166,7 @@ bool microsd_spi_read_block(uint32_t const block_num, uint8_t* const p_buffer) {
  * @param[in] p_buffer      Pointer to data buffer (must be SD_BLOCK_SIZE bytes)
  * @return bool             true on success, false on failure
  */
-bool microsd_spi_write_block(uint32_t const block_num, uint8_t const* const p_buffer) {
+bool microsd_spi_write_block(uint32_t const block_num, uint8_t const *const p_buffer) {
     bool result = false;
     uint8_t response;
     int timeout;

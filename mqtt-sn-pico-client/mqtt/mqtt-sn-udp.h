@@ -38,10 +38,12 @@
 #include "lwip/udp.h"
 
 /*! File Transfer Configuration */
-#define FILE_TRANSFER_METADATA_QOS 2    /*!< QoS level for metadata (2=exactly-once delivery) */
-#define FILE_TRANSFER_DATA_QOS 1        /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
-#define FILE_TRANSFER_TOPIC_METADATA 3U /*!< Topic ID for file metadata (file/meta) */
-#define FILE_TRANSFER_TOPIC_DATA 4U     /*!< Topic ID for file data chunks (file/data) */
+#define FILE_TRANSFER_METADATA_QOS 2U /*!< QoS level for metadata (2=exactly-once delivery) */
+#define FILE_TRANSFER_DATA_QOS \
+    1U                                     /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
+#define FILE_TRANSFER_TOPIC_METADATA 3U    /*!< Topic ID for file metadata (file/meta) */
+#define FILE_TRANSFER_TOPIC_DATA 4U        /*!< Topic ID for file data chunks (file/data) */
+#define METADATA_CONFIRM_TIMEOUT_MS 5000U  // 5 second timeout
 
 /*! MQTT-SN Packet Structure Constants */
 #define MQTTSN_HEADER_SIZE 2U          /*!< Minimum header size (length + type) */
@@ -144,31 +146,30 @@ extern bool g_ping_ack_received;
 // Public function declarations
 void mqtt_sn_connect(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
 void mqtt_sn_pingreq(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
-void mqtt_sn_subscribe_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port, u16_t topic_id);
-void mqtt_sn_publish_topic_id(struct udp_pcb* pcb,
-                              const ip_addr_t* gw_addr,
-                              u16_t gw_port,
-                              uint16_t topic_id,
-                              const uint8_t* payload,
-                              size_t payload_len,
-                              int qos,
-                              uint16_t msg_id,
-                              bool is_retransmit);
-void mqtt_sn_send_pubrel(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port, uint16_t msg_id);
-void mqtt_sn_send_puback(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port, uint16_t topic_id, uint16_t msg_id, uint8_t return_code);
-void mqtt_sn_send_pubrec(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port, uint16_t msg_id);
-void mqtt_sn_send_pubcomp(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port, uint16_t msg_id);
-void udp_recv_callback(void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr, u16_t port);
+void mqtt_sn_subscribe_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                                u16_t topic_id);
+void mqtt_sn_publish_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                              uint16_t topic_id, const uint8_t* payload, size_t payload_len,
+                              int qos, uint16_t msg_id, bool is_retransmit);
+void mqtt_sn_send_pubrel(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                         uint16_t msg_id);
+void mqtt_sn_send_puback(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                         uint16_t topic_id, uint16_t msg_id, uint8_t return_code);
+void mqtt_sn_send_pubrec(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                         uint16_t msg_id);
+void mqtt_sn_send_pubcomp(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                          uint16_t msg_id);
+void udp_recv_callback(void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr,
+                       u16_t port);
 void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
 void remove_pending_qos_msg(uint16_t msg_id);
 uint16_t get_next_msg_id(void);
 
 // File transfer functions
-void send_file_via_mqtt(struct udp_pcb* pcb,
-                        const ip_addr_t* gw_addr,
-                        u16_t gw_port,
+void send_file_via_mqtt(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                         const char* filename);
-void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len);
+void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                          struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port);
 void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len);
 
 #endif  // MQTT_SN_UDP_H

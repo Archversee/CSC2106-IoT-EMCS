@@ -10,10 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
-bool chunk_transfer_init_session(filesystem_info_t* fs_info,
-                                 const struct Metadata* metadata,
-                                 transfer_session_t* session,
-                                 bool use_new_filename) {
+bool chunk_transfer_init_session(filesystem_info_t *fs_info, const struct Metadata *metadata,
+                                 transfer_session_t *session, bool use_new_filename) {
     if (!fs_info || !metadata || !session) {
         printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
         return false;
@@ -34,8 +32,8 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
     if (use_new_filename) {
         /* Modify filename to add "_received" suffix before extension */
         char new_filename[METADATA_FILENAME_SIZE];
-        const char* original_filename = metadata->filename;
-        const char* dot = strrchr(original_filename, '.');
+        const char *original_filename = metadata->filename;
+        const char *dot = strrchr(original_filename, '.');
 
         if (dot && dot != original_filename) {
             /* File has extension, insert "_received" before extension */
@@ -47,8 +45,8 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
                 base_len = METADATA_FILENAME_SIZE - strlen("_received") - strlen(dot) - 1;
             }
 
-            snprintf(new_filename, METADATA_FILENAME_SIZE, "%.*s_received%s",
-                     (int)base_len, original_filename, dot);
+            snprintf(new_filename, METADATA_FILENAME_SIZE, "%.*s_received%s", (int)base_len,
+                     original_filename, dot);
         } else {
             /* No extension, just append "_received" */
             snprintf(new_filename, METADATA_FILENAME_SIZE, "%s_received", original_filename);
@@ -69,14 +67,15 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
 
     /* Initialize microSD chunk write with actual file size from metadata */
     if (!microsd_init_chunk_write(fs_info, session->filename, session->total_chunks,
-                                  session->chunk_size, metadata->total_size, &session->chunk_meta)) {
+                                  session->chunk_size, metadata->total_size,
+                                  &session->chunk_meta)) {
         printf("ERROR: Failed to initialize microSD chunk write\n");
         return false;
     }
 
     /* Write metadata chunk (chunk 0) to microSD */
-    if (!microsd_write_chunk(fs_info, &session->chunk_meta, 0,
-                             (uint8_t*)metadata, sizeof(struct Metadata))) {
+    if (!microsd_write_chunk(fs_info, &session->chunk_meta, 0, (uint8_t *)metadata,
+                             sizeof(struct Metadata))) {
         printf("ERROR: Failed to write metadata chunk\n");
         return false;
     }
@@ -90,16 +89,14 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
     } else {
         printf("  Filename: %s\n", session->filename);
     }
-    printf("  Total chunks: %lu (1 metadata + %lu data)\n",
-           (unsigned long)session->total_chunks,
+    printf("  Total chunks: %lu (1 metadata + %lu data)\n", (unsigned long)session->total_chunks,
            (unsigned long)metadata->chunk_count);
 
     return true;
 }
 
-bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
-                                  transfer_session_t* session,
-                                  const struct Payload* payload) {
+bool chunk_transfer_write_payload(filesystem_info_t *fs_info, transfer_session_t *session,
+                                  const struct Payload *payload) {
     if (!fs_info || !session || !payload) {
         printf("ERROR: NULL parameter in chunk_transfer_write_payload\n");
         return false;
@@ -115,8 +112,7 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
     /* Verify chunk is within valid range */
     if (payload->sequence < 1 || payload->sequence > session->metadata.chunk_count) {
         printf("ERROR: Invalid sequence number %lu (valid: 1-%lu)\n",
-               (unsigned long)payload->sequence,
-               (unsigned long)session->metadata.chunk_count);
+               (unsigned long)payload->sequence, (unsigned long)session->metadata.chunk_count);
         return false;
     }
 
@@ -138,17 +134,16 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
     }
 
     /* Write chunk to microSD */
-    if (!microsd_write_chunk(fs_info, &session->chunk_meta, payload->sequence,
-                             payload->data, payload->size)) {
-        printf("ERROR: Failed to write chunk %lu to microSD\n",
-               (unsigned long)payload->sequence);
+    if (!microsd_write_chunk(fs_info, &session->chunk_meta, payload->sequence, payload->data,
+                             payload->size)) {
+        printf("ERROR: Failed to write chunk %lu to microSD\n", (unsigned long)payload->sequence);
         return false;
     }
 
     return true;
 }
 
-bool chunk_transfer_is_complete(const transfer_session_t* session) {
+bool chunk_transfer_is_complete(const transfer_session_t *session) {
     if (!session || !session->active) {
         return false;
     }
@@ -156,8 +151,7 @@ bool chunk_transfer_is_complete(const transfer_session_t* session) {
     return microsd_check_all_chunks_received(&session->chunk_meta);
 }
 
-bool chunk_transfer_finalize(filesystem_info_t* fs_info,
-                             transfer_session_t* session) {
+bool chunk_transfer_finalize(filesystem_info_t *fs_info, transfer_session_t *session) {
     if (!fs_info || !session) {
         printf("ERROR: NULL parameter in chunk_transfer_finalize\n");
         return false;
@@ -171,8 +165,7 @@ bool chunk_transfer_finalize(filesystem_info_t* fs_info,
     /* Check if all chunks received */
     if (!chunk_transfer_is_complete(session)) {
         printf("ERROR: Cannot finalize - not all chunks received\n");
-        printf("  Received: %lu/%lu chunks\n",
-               (unsigned long)session->chunk_meta.chunks_received,
+        printf("  Received: %lu/%lu chunks\n", (unsigned long)session->chunk_meta.chunks_received,
                (unsigned long)session->chunk_meta.total_chunks);
         return false;
     }
@@ -192,12 +185,13 @@ bool chunk_transfer_finalize(filesystem_info_t* fs_info,
     return true;
 }
 
-void chunk_transfer_get_progress(const transfer_session_t* session,
-                                 uint32_t* chunks_received,
-                                 uint32_t* total_chunks) {
+void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *chunks_received,
+                                 uint32_t *total_chunks) {
     if (!session) {
-        if (chunks_received) *chunks_received = 0;
-        if (total_chunks) *total_chunks = 0;
+        if (chunks_received)
+            *chunks_received = 0;
+        if (total_chunks)
+            *total_chunks = 0;
         return;
     }
 
@@ -209,7 +203,7 @@ void chunk_transfer_get_progress(const transfer_session_t* session,
     }
 }
 
-void chunk_transfer_print_session_info(const transfer_session_t* session) {
+void chunk_transfer_print_session_info(const transfer_session_t *session) {
     if (!session) {
         printf("Session: NULL\n");
         return;
@@ -219,12 +213,10 @@ void chunk_transfer_print_session_info(const transfer_session_t* session) {
     printf("  Session ID: %s\n", session->session_id);
     printf("  Filename: %s\n", session->filename);
     printf("  Status: %s\n", session->active ? "ACTIVE" : "INACTIVE");
-    printf("  Progress: %lu/%lu chunks\n",
-           (unsigned long)session->chunk_meta.chunks_received,
+    printf("  Progress: %lu/%lu chunks\n", (unsigned long)session->chunk_meta.chunks_received,
            (unsigned long)session->chunk_meta.total_chunks);
     printf("  Chunk size: %lu bytes\n", (unsigned long)session->chunk_size);
-    printf("  Total file size: %lu bytes\n",
-           (unsigned long)session->metadata.total_size);
+    printf("  Total file size: %lu bytes\n", (unsigned long)session->metadata.total_size);
 
     /* Show which chunks have been received */
     printf("  Chunks received: ");
