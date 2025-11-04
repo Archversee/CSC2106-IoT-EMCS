@@ -73,7 +73,7 @@ Makefile
 pico_sdk_import.cmake
 
 # VSCode Pico SDK settings
-.vscode/
+mqtt-sn-pico-client/.vscode/
 .vscode/c_cpp_properties.json
 
 # IDE and editor files
