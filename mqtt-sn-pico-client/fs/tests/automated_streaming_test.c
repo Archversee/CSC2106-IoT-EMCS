@@ -66,7 +66,7 @@ static test_results_t g_results = {0};
 /*!
  * @brief Print test header
  */
-static void print_test_header(const char *test_name, uint32_t iteration, uint32_t total) {
+static void print_test_header(const char* test_name, uint32_t iteration, uint32_t total) {
     if (iteration == 1 || iteration == total || iteration % 5 == 0) {
         printf("\r" COLOR_BLUE "[%s] Iteration %lu/%lu" COLOR_RESET, test_name,
                (unsigned long)iteration, (unsigned long)total);
@@ -77,7 +77,7 @@ static void print_test_header(const char *test_name, uint32_t iteration, uint32_
 /*!
  * @brief Print test result
  */
-static void print_result(bool passed, const char *message, bool verbose) {
+static void print_result(bool passed, const char* message, bool verbose) {
     if (!passed || verbose) {
         if (passed) {
             printf("\n" COLOR_GREEN "✓ PASS" COLOR_RESET ": %s\n", message);
@@ -97,7 +97,7 @@ static void print_result(bool passed, const char *message, bool verbose) {
 /*!
  * @brief Print error message
  */
-static void print_error(const char *message) {
+static void print_error(const char* message) {
     printf("\n" COLOR_RED "ERROR" COLOR_RESET ": %s\n", message);
     g_results.errors++;
 }
@@ -204,7 +204,7 @@ static void test_init_streaming(void) {
         print_test_header("ST-1 Init", i, TEST_INIT_STREAMING_EXECUTIONS);
 
         // Alternate between test files
-        const char *test_file = (i % 3 == 0)   ? TEST_FILE_LARGE
+        const char* test_file = (i % 3 == 0)   ? TEST_FILE_LARGE
                                 : (i % 2 == 0) ? TEST_FILE_MEDIUM
                                                : TEST_FILE_SMALL;
 
@@ -212,7 +212,7 @@ static void test_init_streaming(void) {
         memset(&metadata, 0, sizeof(metadata));
 
         // Initialize streaming read
-        int result = init_streaming_read((char *)test_file, &metadata);
+        int result = init_streaming_read((char*)test_file, &metadata);
 
         if (result != 0) {
             char msg[128];

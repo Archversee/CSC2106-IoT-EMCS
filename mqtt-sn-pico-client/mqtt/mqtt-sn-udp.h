@@ -31,7 +31,6 @@
  */
 
 #include "../config.h"
-#include "../drivers/microsd_driver.h"
 #include "../fs/chunk_transfer.h"
 #include "../fs/data_frame.h"
 #include "lwip/ip_addr.h"
@@ -150,7 +149,6 @@ typedef struct {
 typedef struct {
     bool drop_acks;
     transfer_session_t *file_session;
-    filesystem_info_t *fs_info;
     bool transfer_in_progress;
     topic_entry_t custom_topics[MAX_CUSTOM_TOPICS]; /*!< Custom topic tracking */
 } mqtt_sn_context_t;

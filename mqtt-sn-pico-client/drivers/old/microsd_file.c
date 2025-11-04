@@ -30,7 +30,7 @@
  * @param p_fs_info Pointer to filesystem info structure
  * @return bool true on success, false on failure
  */
-static bool clear_volume_dirty_bit(filesystem_info_t const *const p_fs_info) {
+static bool clear_volume_dirty_bit(filesystem_info_t const* const p_fs_info) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t boot_sector_num = p_fs_info->partition_offset;
 
@@ -41,7 +41,7 @@ static bool clear_volume_dirty_bit(filesystem_info_t const *const p_fs_info) {
     }
 
     /* exFAT boot sector structure - VolumeFlags at offset 106 (0x6A) */
-    exfat_boot_sector_t *boot_sector = (exfat_boot_sector_t *)buffer;
+    exfat_boot_sector_t* boot_sector = (exfat_boot_sector_t*)buffer;
 
     /* Check if dirty bit is set */
     if (boot_sector->volume_flags & 0x0002) {
@@ -68,7 +68,7 @@ static bool clear_volume_dirty_bit(filesystem_info_t const *const p_fs_info) {
  * @param length Length of filename
  * @return uint16_t Hash value
  */
-static uint16_t calculate_exfat_name_hash(char const *const filename, uint32_t length) {
+static uint16_t calculate_exfat_name_hash(char const* const filename, uint32_t length) {
     uint16_t hash = 0;
 
     for (uint32_t i = 0; i < length; i++) {
@@ -89,7 +89,7 @@ static uint16_t calculate_exfat_name_hash(char const *const filename, uint32_t l
  * @param count Number of entries
  * @return uint16_t Calculated checksum
  */
-static uint16_t calculate_entry_checksum(uint8_t const *const p_entries, uint32_t count) {
+static uint16_t calculate_entry_checksum(uint8_t const* const p_entries, uint32_t count) {
     uint16_t checksum = 0;
 
     for (uint32_t i = 0; i < count * 32; i++) {
@@ -112,8 +112,8 @@ static uint16_t calculate_entry_checksum(uint8_t const *const p_entries, uint32_
  * @param data_length Length of data to write
  * @return bool true on success, false on failure
  */
-static bool write_cluster_chain_data(filesystem_info_t const *const p_fs_info,
-                                     uint32_t first_cluster, uint8_t const *const p_data,
+static bool write_cluster_chain_data(filesystem_info_t const* const p_fs_info,
+                                     uint32_t first_cluster, uint8_t const* const p_data,
                                      uint32_t data_length) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t current_cluster = first_cluster;
@@ -174,7 +174,7 @@ static bool write_cluster_chain_data(filesystem_info_t const *const p_fs_info,
                 return false;
             }
 
-            uint32_t *fat_entry = (uint32_t *)(buffer + entry_offset);
+            uint32_t* fat_entry = (uint32_t*)(buffer + entry_offset);
             current_cluster = *fat_entry;
         }
     }
@@ -197,7 +197,7 @@ static bool write_cluster_chain_data(filesystem_info_t const *const p_fs_info,
  * @param cluster Current cluster number
  * @return uint32_t Next cluster number, or 0xFFFFFFFF if end of chain
  */
-static uint32_t get_next_cluster(filesystem_info_t const *const p_fs_info, uint32_t cluster) {
+static uint32_t get_next_cluster(filesystem_info_t const* const p_fs_info, uint32_t cluster) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t fat_sector, fat_offset;
     uint32_t next_cluster;
@@ -232,8 +232,8 @@ static uint32_t get_next_cluster(filesystem_info_t const *const p_fs_info, uint3
  * @param p_filename Output buffer for filename
  * @param max_filename_len Maximum length of filename buffer
  */
-static void extract_filename_from_entries(uint8_t const *const p_entry_buffer, uint32_t entry_index,
-                                          uint8_t secondary_count, char *const p_filename,
+static void extract_filename_from_entries(uint8_t const* const p_entry_buffer, uint32_t entry_index,
+                                          uint8_t secondary_count, char* const p_filename,
                                           uint32_t max_filename_len) {
     uint32_t char_index = 0;
 
@@ -241,8 +241,8 @@ static void extract_filename_from_entries(uint8_t const *const p_entry_buffer, u
     for (uint32_t j = 2; j <= secondary_count && (entry_index + j) < (SD_BLOCK_SIZE / 32); j++) {
         uint8_t name_entry_type = p_entry_buffer[(entry_index + j) * 32];
         if (name_entry_type == 0xC1) { /* Name entry */
-            uint16_t const *utf16_chars =
-                (uint16_t const *)&p_entry_buffer[(entry_index + j) * 32 + 2];
+            uint16_t const* utf16_chars =
+                (uint16_t const*)&p_entry_buffer[(entry_index + j) * 32 + 2];
             for (uint32_t k = 0; k < 15 && char_index < (max_filename_len - 1); k++) {
                 if (utf16_chars[k] == 0)
                     break;                  /* End of filename */
@@ -264,11 +264,11 @@ static void extract_filename_from_entries(uint8_t const *const p_entry_buffer, u
  * @param p_file_size Output pointer for file size
  * @return bool true if file found, false otherwise
  */
-static bool search_directory_sector_for_file(filesystem_info_t const *const p_fs_info,
-                                             uint8_t const *const sector_buffer,
-                                             char const *const target_filename,
-                                             uint32_t *const p_file_cluster,
-                                             uint32_t *const p_file_size) {
+static bool search_directory_sector_for_file(filesystem_info_t const* const p_fs_info,
+                                             uint8_t const* const sector_buffer,
+                                             char const* const target_filename,
+                                             uint32_t* const p_file_cluster,
+                                             uint32_t* const p_file_size) {
     char current_filename[256];
 
     /* Search for the file in this directory sector */
@@ -286,7 +286,7 @@ static bool search_directory_sector_for_file(filesystem_info_t const *const p_fs
             /* Look for stream extension entry (should be next entry) */
             if ((i + 1) < (SD_BLOCK_SIZE / 32) && sector_buffer[(i + 1) * 32] == 0xC0) {
                 /* Get file size and cluster from stream extension */
-                uint32_t const *stream_data = (uint32_t const *)&sector_buffer[(i + 1) * 32];
+                uint32_t const* stream_data = (uint32_t const*)&sector_buffer[(i + 1) * 32];
                 *p_file_size = stream_data[2];    /* DataLength at offset 8 */
                 *p_file_cluster = stream_data[5]; /* FirstCluster at offset 20 */
             }
@@ -319,9 +319,9 @@ static bool search_directory_sector_for_file(filesystem_info_t const *const p_fs
  * @param p_file_size Output pointer for file size
  * @return bool true if file found, false otherwise
  */
-static bool find_file_in_directory(filesystem_info_t const *const p_fs_info,
-                                   char const *const filename, uint32_t *const p_file_cluster,
-                                   uint32_t *const p_file_size) {
+static bool find_file_in_directory(filesystem_info_t const* const p_fs_info,
+                                   char const* const filename, uint32_t* const p_file_cluster,
+                                   uint32_t* const p_file_size) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t current_dir_cluster = p_fs_info->root_cluster;
     uint32_t cluster_iteration = 0;
@@ -366,7 +366,7 @@ static bool find_file_in_directory(filesystem_info_t const *const p_fs_info,
             return false;
         }
 
-        uint32_t const *fat_entry = (uint32_t const *)&buffer[fat_offset];
+        uint32_t const* fat_entry = (uint32_t const*)&buffer[fat_offset];
         uint32_t next_cluster = *fat_entry;
 
         /* Check for valid cluster range or end-of-chain markers */
@@ -386,6 +386,69 @@ static bool find_file_in_directory(filesystem_info_t const *const p_fs_info,
     return false;
 }
 
+/*!
+ * @brief Get file information without reading file contents
+ * @param p_fs_info Pointer to filesystem info structure
+ * @param filename Filename to look up (null-terminated string)
+ * @param p_file_size Output pointer for file size
+ * @param p_first_cluster Output pointer for first cluster number
+ * @return bool true on success, false if file not found
+ */
+bool microsd_get_file_info(filesystem_info_t const* const p_fs_info, char const* const filename,
+                           uint32_t* const p_file_size, uint32_t* const p_first_cluster) {
+    uint32_t file_cluster = 0;
+    uint32_t file_size = 0;
+    uint32_t filename_len;
+
+    /* Validate parameters */
+    if (NULL == p_fs_info || NULL == filename || NULL == p_file_size || NULL == p_first_cluster) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Invalid parameters for file info\n");
+        return false;
+    }
+
+    *p_file_size = 0;
+    *p_first_cluster = 0;
+
+    if (!p_fs_info->is_exfat) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Not an exFAT filesystem\n");
+        return false;
+    }
+
+    filename_len = strlen(filename);
+    if (filename_len == 0 || filename_len > 255) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Invalid filename length: %lu\n",
+                    (unsigned long)filename_len);
+        return false;
+    }
+
+    MICROSD_LOG(MICROSD_LOG_DEBUG, "Getting file info for: %s\n", filename);
+
+    /* Search for the file in the directory tree */
+    if (!find_file_in_directory(p_fs_info, filename, &file_cluster, &file_size)) {
+        return false; /* File not found */
+    }
+
+    /* Validate file parameters */
+    if (file_size == 0) {
+        MICROSD_LOG(MICROSD_LOG_DEBUG, "File '%s' is empty\n", filename);
+        *p_file_size = 0;
+        *p_first_cluster = file_cluster;
+        return true;
+    }
+    if (file_cluster == 0) {
+        MICROSD_LOG(MICROSD_LOG_ERROR, "Invalid cluster number for file '%s'\n", filename);
+        return false;
+    }
+
+    *p_file_size = file_size;
+    *p_first_cluster = file_cluster;
+
+    MICROSD_LOG(MICROSD_LOG_INFO, "File '%s': size=%lu bytes, first_cluster=%lu\n", filename,
+                (unsigned long)file_size, (unsigned long)file_cluster);
+
+    return true;
+}
+
 /**
  * @brief Read file data from cluster chain
  * @param p_fs_info Pointer to filesystem info structure
@@ -395,9 +458,9 @@ static bool find_file_in_directory(filesystem_info_t const *const p_fs_info,
  * @param p_bytes_read Output pointer for actual bytes read
  * @return bool true on success, false on failure
  */
-static bool read_file_data_from_clusters(filesystem_info_t const *const p_fs_info,
-                                         uint32_t first_cluster, uint8_t *const p_output_buffer,
-                                         uint32_t bytes_to_read, uint32_t *const p_bytes_read) {
+static bool read_file_data_from_clusters(filesystem_info_t const* const p_fs_info,
+                                         uint32_t first_cluster, uint8_t* const p_output_buffer,
+                                         uint32_t bytes_to_read, uint32_t* const p_bytes_read) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t bytes_read = 0;
     uint32_t current_cluster = first_cluster;
@@ -459,8 +522,8 @@ static bool read_file_data_from_clusters(filesystem_info_t const *const p_fs_inf
  * @param data_length Length of file data in bytes
  * @return bool true on success, false on failure
  */
-bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *const filename,
-                         uint8_t const *const p_data, uint32_t const data_length) {
+bool microsd_create_file(filesystem_info_t const* const p_fs_info, char const* const filename,
+                         uint8_t const* const p_data, uint32_t const data_length) {
     uint8_t buffer[SD_BLOCK_SIZE];
     uint32_t root_sector, free_cluster;
     uint32_t filename_len;
@@ -505,7 +568,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
     /* Extract base filename and extension once */
     char base_name[240];
     char extension[16] = "";
-    char *dot_pos = strrchr(filename, '.');
+    char* dot_pos = strrchr(filename, '.');
 
     if (dot_pos != NULL) {
         /* Has extension */
@@ -562,7 +625,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
                          j++) {
                         uint8_t name_entry_type = buffer[(i + j) * 32];
                         if (name_entry_type == 0xC1) { /* Name entry */
-                            uint16_t *utf16_chars = (uint16_t *)&buffer[(i + j) * 32 + 2];
+                            uint16_t* utf16_chars = (uint16_t*)&buffer[(i + j) * 32 + 2];
                             for (uint32_t k = 0; k < 15 && char_index < 255; k++) {
                                 if (utf16_chars[k] == 0)
                                     break;                  /* End of filename */
@@ -619,7 +682,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
             uint8_t entry_type = buffer[i * 32];
             if (entry_type == 0x85) { /* File entry */
                 /* Check for corrupted FirstCluster values */
-                uint32_t first_cluster = *((uint32_t *)&buffer[i * 32 + 20]);
+                uint32_t first_cluster = *((uint32_t*)&buffer[i * 32 + 20]);
                 if (first_cluster >
                     1000000) { /* Clearly invalid cluster number for small SD cards */
                     MICROSD_LOG(MICROSD_LOG_INFO,
@@ -726,7 +789,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
                 return false;
             }
 
-            uint32_t *fat_entry = (uint32_t *)&buffer[fat_offset];
+            uint32_t* fat_entry = (uint32_t*)&buffer[fat_offset];
             uint32_t next_cluster = *fat_entry;
 
             /* Check for end of chain or invalid cluster */
@@ -770,7 +833,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
     memset(entries, 0, sizeof(entries));
 
     /* File entry */
-    exfat_file_entry_t *file_entry = (exfat_file_entry_t *)&entries[0];
+    exfat_file_entry_t* file_entry = (exfat_file_entry_t*)&entries[0];
     file_entry->entry_type = EXFAT_TYPE_FILE;
     file_entry->secondary_count =
         total_entries - 1;              /* Stream + Name entries (excluding file entry itself) */
@@ -783,7 +846,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
     file_entry->last_modified_10ms_increment = 0;
 
     /* Stream extension entry */
-    exfat_stream_entry_t *stream_entry = (exfat_stream_entry_t *)&entries[32];
+    exfat_stream_entry_t* stream_entry = (exfat_stream_entry_t*)&entries[32];
     stream_entry->entry_type = EXFAT_TYPE_STREAM_EXTENSION;
     stream_entry->general_flags = 0x01; /* Allocation possible */
     stream_entry->name_length = filename_len;
@@ -798,7 +861,7 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
     /* Create name entries (multiple entries for long filenames) */
     uint32_t char_index = 0;
     for (uint32_t name_entry_idx = 0; name_entry_idx < name_entries_needed; name_entry_idx++) {
-        exfat_name_entry_t *name_entry = (exfat_name_entry_t *)&entries[64 + (name_entry_idx * 32)];
+        exfat_name_entry_t* name_entry = (exfat_name_entry_t*)&entries[64 + (name_entry_idx * 32)];
         name_entry->entry_type = EXFAT_TYPE_FILE_NAME;
         name_entry->general_flags = 0x00;
 
@@ -865,9 +928,9 @@ bool microsd_create_file(filesystem_info_t const *const p_fs_info, char const *c
  * @param p_bytes_read Pointer to store actual bytes read
  * @return bool true on success, false on failure
  */
-bool microsd_read_file(filesystem_info_t const *const p_fs_info, char const *const filename,
-                       uint8_t *const p_buffer, uint32_t const buffer_size,
-                       uint32_t *const p_bytes_read) {
+bool microsd_read_file(filesystem_info_t const* const p_fs_info, char const* const filename,
+                       uint8_t* const p_buffer, uint32_t const buffer_size,
+                       uint32_t* const p_bytes_read) {
     uint32_t file_cluster = 0;
     uint32_t file_size = 0;
     uint32_t filename_len;

@@ -29,14 +29,16 @@
 #include <string.h>
 
 #include "config.h"
-#include "drivers/microsd_driver.h"
+#include "ff.h"
 #include "fs/chunk_transfer.h"
 #include "fs/data_frame.h"
+#include "hw_config.h"
 #include "lwip/ip_addr.h"
 #include "lwip/udp.h"
 #include "mqtt/mqtt-sn-udp.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "sd_card.h"
 
 /*! Application constants */
 #define WIFI_CONNECT_TIMEOUT_MS (10000U)
@@ -62,21 +64,33 @@ bool g_ping_ack_received = true;
 /*!
  * @brief Initialize microSD card with retry logic
  *
- * Due to SPI communication nature and microSD initialization requirements,
- * the card needs a few seconds to properly initialize, especially on first boot
+ * Uses FatFS library for filesystem operations.
+ * The card needs a few seconds to properly initialize, especially on first boot
  * or when the card is freshly inserted or reinserted.
  *
- * @param fs_info Pointer to filesystem_info_t structure to initialize
  * @param max_attempts Maximum number of initialization attempts
  * @param verbose Print detailed status messages
  * @return true if initialization succeeded, false otherwise
  */
-static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts, bool verbose) {
+static bool initialize_microsd(uint8_t max_attempts, bool verbose) {
+    static FATFS fs;
+    static bool driver_initialized = false;
     uint8_t sd_init_attempts = 0U;
 
     if (verbose) {
         printf("Initializing microSD card...\n");
         printf("(This may take a few seconds on first boot or after card insertion)\n");
+    }
+
+    // Initialize SD card driver hardware (only once)
+    if (!driver_initialized) {
+        printf("Initializing SD card driver...\n");
+        if (!sd_init_driver()) {
+            printf("✗ ERROR: SD card driver initialization failed\n");
+            return false;
+        }
+        driver_initialized = true;
+        printf("✓ SD card driver initialized\n");
     }
 
     while (sd_init_attempts < max_attempts) {
@@ -88,24 +102,17 @@ static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts,
         // Allow time for SPI communication to stabilize
         sleep_ms(1000);
 
-        if (microsd_init()) {
-            // Additional delay for filesystem to be ready
-            sleep_ms(500);
-
-            if (microsd_init_filesystem(fs_info)) {
-                if (verbose) {
-                    printf("✓ MicroSD card initialized successfully\n");
-                    printf("MicroSD ready for file operations.\n");
-                }
-                return true;
-            } else {
-                if (verbose) {
-                    printf("Failed to initialize filesystem\n");
-                }
+        // Mount the filesystem
+        FRESULT fr = f_mount(&fs, "", 1);
+        if (fr == FR_OK) {
+            if (verbose) {
+                printf("✓ MicroSD card initialized successfully\n");
+                printf("MicroSD ready for file operations.\n");
             }
+            return true;
         } else {
             if (verbose) {
-                printf("Failed to initialize microSD card\n");
+                printf("Failed to mount filesystem (error %d)\n", fr);
             }
         }
 
@@ -130,18 +137,14 @@ static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts,
  * @brief Check if microSD card is still accessible
  *
  * This is a lightweight check to detect if the card was removed.
- * We check if the filesystem info still indicates a valid filesystem.
+ * We attempt to stat the root directory.
  *
- * @param fs_info Pointer to filesystem_info_t structure
  * @return true if card is accessible, false if removed or error
  */
-static bool check_microsd_present(filesystem_info_t *fs_info) {
-    if (!fs_info)
-        return false;
-
-    // Simple check: verify filesystem is still marked as valid
-    // A valid exFAT filesystem will have is_exfat=true and non-zero root_cluster
-    return (fs_info->is_exfat && fs_info->root_cluster > 0);
+static bool check_microsd_present(void) {
+    FILINFO fno;
+    FRESULT fr = f_stat("0:", &fno); // Check root directory of drive 0
+    return (fr == FR_OK);
 }
 
 int main() {
@@ -171,19 +174,16 @@ int main() {
     gpio_set_dir(DROP_ACK_BUTTON_PIN, GPIO_IN);
     gpio_pull_up(DROP_ACK_BUTTON_PIN);
 
-    // Initialize filesystem and transfer session
-    static filesystem_info_t fs_info = {0};
+    // Initialize transfer session
     static transfer_session_t file_session = {0};
     bool fs_initialized = false;
 
     // Initial microSD card initialization
-    fs_initialized = initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true);
+    fs_initialized = initialize_microsd(MICROSD_INIT_MAX_ATTEMPTS, true);
 
-    // Always pass fs_info pointer - let handlers check if it's valid
-    mqtt_sn_context_t mqtt_ctx = {.drop_acks = false,
-                                  .file_session = &file_session,
-                                  .fs_info = &fs_info,
-                                  .transfer_in_progress = false};
+    // MQTT context (no fs_info pointer needed with FatFS)
+    mqtt_sn_context_t mqtt_ctx = {
+        .drop_acks = false, .file_session = &file_session, .transfer_in_progress = false};
 
     uint8_t qos_level = 0U;
 
@@ -222,6 +222,9 @@ int main() {
     IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3);
 
     sleep_ms(MQTT_CONNECT_DELAY_MS);
+
+    // print client ID
+    printf("Client ID: %s\n", MQTT_SN_CLIENT_ID);
 
     // Connect to MQTT-SN Gateway
     mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
@@ -333,7 +336,7 @@ int main() {
                 printf("⚠ MicroSD card not initialized. Attempting to initialize...\n");
 
                 // Attempt to initialize SD card
-                if (initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true)) {
+                if (initialize_microsd(MICROSD_INIT_MAX_ATTEMPTS, true)) {
                     printf("✓ MicroSD card successfully initialized!\n");
                     fs_initialized = true;
                     sd_was_initialized = true;
@@ -399,20 +402,17 @@ int main() {
 
             if (fs_initialized) {
                 // Card was initialized, check if it's still present
-                if (!check_microsd_present(&fs_info)) {
+                if (!check_microsd_present()) {
                     printf("\n⚠ WARNING: MicroSD card removed!\n");
                     printf("File transfer features disabled.\n");
                     fs_initialized = false;
                     sd_was_initialized = false;
                     mqtt_ctx.transfer_in_progress = false;
-
-                    // Clear filesystem info (keep pointer valid but mark as uninitialized)
-                    memset(&fs_info, 0, sizeof(filesystem_info_t));
                 }
             } else if (!sd_was_initialized) {
                 // Card was not initialized, check if one was inserted
                 printf("Checking for microSD card...\n");
-                if (initialize_microsd(&fs_info, 1, false)) {
+                if (initialize_microsd(1, false)) {
                     printf("✓ MicroSD card detected and initialized!\n");
                     printf("File transfer features now enabled.\n");
                     fs_initialized = true;

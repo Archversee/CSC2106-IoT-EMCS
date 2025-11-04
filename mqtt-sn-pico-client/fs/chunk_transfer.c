@@ -3,23 +3,41 @@
  * @brief   High-level chunk-based file transfer management implementation
  * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
  * @date    2025
+ *
+ * CHUNKED WRITE IMPLEMENTATION with FatFS:
+ * ========================================
+ * This implementation handles out-of-order chunk reception for MQTT file transfers.
+ * Uses FatFS library for file I/O operations.
+ *
+ * Key features:
+ * 1. Out-of-order chunk reception with bitmap tracking
+ * 2. Duplicate chunk detection and handling
+ * 3. Session-based transfer management
+ * 4. Metadata chunk (chunk 0) stored separately
+ * 5. Data chunks written to temporary file, finalized when complete
+ *
+ * Implementation details:
+ * - Metadata is stored as chunk 0 in a separate .meta file
+ * - Data chunks are written to a .tmp file with sparse writes
+ * - When all chunks received, .tmp is renamed to final filename
+ * - Bitmap tracks received chunks (max 256 chunks with 32-byte bitmap)
  */
 
 #include "chunk_transfer.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-bool chunk_transfer_init_session(filesystem_info_t *fs_info, const struct Metadata *metadata,
-                                 transfer_session_t *session, bool use_new_filename) {
-    if (!fs_info || !metadata || !session) {
-        printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
-        return false;
-    }
+#include "chunk_transfer.h"
+#include "ff.h"
+#include "hw_config.h"
+#include <stdio.h>
 
-    /* Verify filesystem is initialized by checking critical fields */
-    if (fs_info->bytes_per_sector == 0 || fs_info->cluster_count == 0) {
-        printf("ERROR: Filesystem not properly initialized\n");
+bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_session_t *session,
+                                 bool use_new_filename) {
+    if (!metadata || !session) {
+        printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
         return false;
     }
 
@@ -65,20 +83,92 @@ bool chunk_transfer_init_session(filesystem_info_t *fs_info, const struct Metada
     session->chunk_size = PAYLOAD_DATA_SIZE;
     session->active = false;
 
-    /* Initialize microSD chunk write with actual file size from metadata */
-    if (!microsd_init_chunk_write(fs_info, session->filename, session->total_chunks,
-                                  session->chunk_size, metadata->total_size,
-                                  &session->chunk_meta)) {
-        printf("ERROR: Failed to initialize microSD chunk write\n");
+    /* Initialize chunk metadata structure */
+    session->chunk_meta.total_chunks = session->total_chunks;
+    session->chunk_meta.chunk_size = PAYLOAD_DATA_SIZE;
+    session->chunk_meta.chunks_received = 0;
+    session->chunk_meta.total_file_size = metadata->total_size;
+
+    /* Calculate bitmap size needed (1 bit per chunk, rounded up to bytes) */
+    session->chunk_meta.bitmap_size = (session->total_chunks + 7) / 8;
+
+    /* Dynamically allocate bitmap */
+    session->chunk_meta.chunk_bitmap = (uint8_t *)malloc(session->chunk_meta.bitmap_size);
+    if (!session->chunk_meta.chunk_bitmap) {
+        printf("ERROR: Failed to allocate bitmap (%lu bytes for %lu chunks)\n",
+               (unsigned long)session->chunk_meta.bitmap_size,
+               (unsigned long)session->total_chunks);
         return false;
     }
 
-    /* Write metadata chunk (chunk 0) to microSD */
-    if (!microsd_write_chunk(fs_info, &session->chunk_meta, 0, (uint8_t *)metadata,
-                             sizeof(struct Metadata))) {
-        printf("ERROR: Failed to write metadata chunk\n");
+    /* Initialize bitmap to zeros */
+    memset(session->chunk_meta.chunk_bitmap, 0, session->chunk_meta.bitmap_size);
+
+    strncpy(session->chunk_meta.filename, session->filename, 63);
+    session->chunk_meta.filename[63] = '\0';
+
+    /* Create temporary filename for chunk writes */
+    char tmp_filename[METADATA_FILENAME_SIZE + 5];
+    snprintf(tmp_filename, sizeof(tmp_filename), "%s.tmp", session->filename);
+
+    /* Create and open temporary file (keep it open for entire session) */
+    session->tmp_file_open = false;
+    FRESULT fr = f_open(&session->tmp_file, tmp_filename, FA_CREATE_ALWAYS | FA_WRITE);
+    if (fr != FR_OK) {
+        printf("ERROR: Failed to create temporary file %s (error %d)\n", tmp_filename, fr);
+        free(session->chunk_meta.chunk_bitmap);
+        session->chunk_meta.chunk_bitmap = NULL;
         return false;
     }
+    session->tmp_file_open = true;
+
+    /* Pre-allocate file size by seeking to end and writing a byte */
+    /* This ensures the file has enough space for all chunks */
+    uint32_t total_data_size = metadata->chunk_count * PAYLOAD_DATA_SIZE;
+    if (total_data_size > 0) {
+        fr = f_lseek(&session->tmp_file, total_data_size - 1);
+        if (fr == FR_OK) {
+            uint8_t dummy = 0;
+            UINT bw;
+            f_write(&session->tmp_file, &dummy, 1, &bw);
+        }
+    }
+    /* Don't close - keep file open for chunk writes */
+
+    /* Save metadata to .meta file (separate operation) */
+    char meta_filename[METADATA_FILENAME_SIZE + 6];
+    snprintf(meta_filename, sizeof(meta_filename), "%s.meta", session->filename);
+
+    FIL meta_file;
+    fr = f_open(&meta_file, meta_filename, FA_CREATE_ALWAYS | FA_WRITE);
+    if (fr != FR_OK) {
+        printf("ERROR: Failed to create metadata file %s (error %d)\n", meta_filename, fr);
+        f_close(&session->tmp_file); /* Close temp file */
+        session->tmp_file_open = false;
+        f_unlink(tmp_filename); /* Clean up temp file */
+        free(session->chunk_meta.chunk_bitmap);
+        session->chunk_meta.chunk_bitmap = NULL;
+        return false;
+    }
+
+    UINT bw;
+    fr = f_write(&meta_file, metadata, sizeof(struct Metadata), &bw);
+    f_close(&meta_file);
+
+    if (fr != FR_OK || bw != sizeof(struct Metadata)) {
+        printf("ERROR: Failed to write metadata chunk\n");
+        f_close(&session->tmp_file); /* Close temp file */
+        session->tmp_file_open = false;
+        f_unlink(tmp_filename);
+        f_unlink(meta_filename);
+        free(session->chunk_meta.chunk_bitmap);
+        session->chunk_meta.chunk_bitmap = NULL;
+        return false;
+    }
+
+    /* Mark metadata chunk (chunk 0) as received */
+    session->chunk_meta.chunk_bitmap[0] |= 1;
+    session->chunk_meta.chunks_received = 1;
 
     session->active = true;
     printf("✓ Transfer session initialized:\n");
@@ -95,9 +185,8 @@ bool chunk_transfer_init_session(filesystem_info_t *fs_info, const struct Metada
     return true;
 }
 
-bool chunk_transfer_write_payload(filesystem_info_t *fs_info, transfer_session_t *session,
-                                  const struct Payload *payload) {
-    if (!fs_info || !session || !payload) {
+bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payload *payload) {
+    if (!session || !payload) {
         printf("ERROR: NULL parameter in chunk_transfer_write_payload\n");
         return false;
     }
@@ -121,24 +210,56 @@ bool chunk_transfer_write_payload(filesystem_info_t *fs_info, transfer_session_t
     uint32_t bit_idx = payload->sequence % 8;
 
     /* Defensive check: ensure bitmap index is within allocated bounds */
-    uint32_t bitmap_size_bytes = (session->chunk_meta.total_chunks + 7) / 8;
-    if (byte_idx >= bitmap_size_bytes) {
-        printf("ERROR: Bitmap index out of bounds (byte_idx=%lu, bitmap_size=%lu)\n",
-               (unsigned long)byte_idx, (unsigned long)bitmap_size_bytes);
+    if (byte_idx >= session->chunk_meta.bitmap_size) {
+        printf("ERROR: Bitmap index out of bounds (seq=%lu, byte_idx=%lu, bitmap_size=%lu)\n",
+               (unsigned long)payload->sequence, (unsigned long)byte_idx,
+               (unsigned long)session->chunk_meta.bitmap_size);
         return false;
     }
+
     if (session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx)) {
         printf("WARNING: Chunk %lu already received, skipping duplicate\n",
                (unsigned long)payload->sequence);
         return true; /* Not an error, just skip */
     }
 
-    /* Write chunk to microSD */
-    if (!microsd_write_chunk(fs_info, &session->chunk_meta, payload->sequence, payload->data,
-                             payload->size)) {
-        printf("ERROR: Failed to write chunk %lu to microSD\n", (unsigned long)payload->sequence);
+    /* Verify temp file is still open */
+    if (!session->tmp_file_open) {
+        printf("ERROR: Temporary file is not open\n");
         return false;
     }
+
+    /* Calculate offset for this chunk (chunk 1 goes at offset 0) */
+    uint32_t offset = (payload->sequence - 1) * PAYLOAD_DATA_SIZE;
+
+    /* Seek to the appropriate position */
+    FRESULT fr = f_lseek(&session->tmp_file, offset);
+    if (fr != FR_OK) {
+        printf("ERROR: Failed to seek to offset %lu (error %d)\n", (unsigned long)offset, fr);
+        return false;
+    }
+
+    /* Write the chunk data */
+    UINT bw;
+    fr = f_write(&session->tmp_file, payload->data, payload->size, &bw);
+
+    if (fr != FR_OK || bw != payload->size) {
+        printf("ERROR: Failed to write chunk %lu (error %d, wrote %u/%lu bytes)\n",
+               (unsigned long)payload->sequence, fr, bw, (unsigned long)payload->size);
+        return false;
+    }
+
+    /* Sync every 100 chunks to ensure data is committed to SD card periodically */
+    if (session->chunk_meta.chunks_received % 100 == 0) {
+        f_sync(&session->tmp_file);
+    }
+
+    /* Mark chunk as received in bitmap */
+    session->chunk_meta.chunk_bitmap[byte_idx] |= (1 << bit_idx);
+    session->chunk_meta.chunks_received++;
+
+    printf("✓ Chunk %lu/%lu written (%u bytes)\n", (unsigned long)payload->sequence,
+           (unsigned long)session->metadata.chunk_count, payload->size);
 
     return true;
 }
@@ -148,11 +269,25 @@ bool chunk_transfer_is_complete(const transfer_session_t *session) {
         return false;
     }
 
-    return microsd_check_all_chunks_received(&session->chunk_meta);
+    /* Check if all chunks have been received */
+    if (session->chunk_meta.chunks_received != session->chunk_meta.total_chunks) {
+        return false;
+    }
+
+    /* Verify all bits in bitmap are set */
+    for (uint32_t i = 0; i < session->chunk_meta.total_chunks; i++) {
+        uint32_t byte_idx = i / 8;
+        uint32_t bit_idx = i % 8;
+        if (!(session->chunk_meta.chunk_bitmap[byte_idx] & (1 << bit_idx))) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
-bool chunk_transfer_finalize(filesystem_info_t *fs_info, transfer_session_t *session) {
-    if (!fs_info || !session) {
+bool chunk_transfer_finalize(transfer_session_t *session) {
+    if (!session) {
         printf("ERROR: NULL parameter in chunk_transfer_finalize\n");
         return false;
     }
@@ -170,16 +305,56 @@ bool chunk_transfer_finalize(filesystem_info_t *fs_info, transfer_session_t *ses
         return false;
     }
 
-    /* Finalize microSD write */
-    if (!microsd_finalize_chunk_write(fs_info, &session->chunk_meta)) {
-        printf("ERROR: Failed to finalize microSD chunk write\n");
+    /* Close the temporary file handle before renaming */
+    if (session->tmp_file_open) {
+        f_sync(&session->tmp_file); /* Final sync to ensure all data is written */
+        f_close(&session->tmp_file);
+        session->tmp_file_open = false;
+    }
+
+    /* Rename temporary file to final filename */
+    char tmp_filename[METADATA_FILENAME_SIZE + 5];
+    snprintf(tmp_filename, sizeof(tmp_filename), "%s.tmp", session->filename);
+
+    /* Check if final file exists and delete it */
+    FIL file;
+    FRESULT fr = f_open(&file, session->filename, FA_READ);
+    if (fr == FR_OK) {
+        f_close(&file);
+        f_unlink(session->filename);
+    }
+
+    /* Rename temp file to final filename */
+    fr = f_rename(tmp_filename, session->filename);
+    if (fr != FR_OK) {
+        printf("ERROR: Failed to rename %s to %s (error %d)\n", tmp_filename, session->filename,
+               fr);
         return false;
     }
+
+    /* Truncate file to actual size (remove any padding from pre-allocation) */
+    fr = f_open(&file, session->filename, FA_WRITE);
+    if (fr == FR_OK) {
+        f_lseek(&file, session->metadata.total_size);
+        f_truncate(&file);
+        f_close(&file);
+    }
+
+    /* Delete metadata file */
+    char meta_filename[METADATA_FILENAME_SIZE + 6];
+    snprintf(meta_filename, sizeof(meta_filename), "%s.meta", session->filename);
+    f_unlink(meta_filename);
 
     printf("✓ Transfer session finalized:\n");
     printf("  Session ID: %s\n", session->session_id);
     printf("  File: %s\n", session->filename);
     printf("  Total size: %lu bytes\n", (unsigned long)session->metadata.total_size);
+
+    /* Free the dynamically allocated bitmap */
+    if (session->chunk_meta.chunk_bitmap) {
+        free(session->chunk_meta.chunk_bitmap);
+        session->chunk_meta.chunk_bitmap = NULL;
+    }
 
     session->active = false;
     return true;

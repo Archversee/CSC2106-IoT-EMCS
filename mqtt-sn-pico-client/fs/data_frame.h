@@ -70,7 +70,7 @@ int verify_chunk(struct Payload *chunk);
  * @param length Length of data in bytes
  * @return uint16_t CRC16 checksum value
  */
-uint16_t crc16(unsigned char *data, size_t length);
+unsigned short crc16(const char *data, int length);
 
 /**
  * @brief Serialize Payload struct into a 247-byte buffer for MQTT transmission
@@ -129,6 +129,12 @@ int init_streaming_read(char *filename, struct Metadata *meta);
  * @return int 0 on success, -1 on failure
  */
 int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk);
+
+/**
+ * @brief Get the finalized file CRC after all chunks have been read
+ * @return uint16_t File CRC16 checksum, or 0 if not finalized
+ */
+uint16_t get_streaming_file_crc(void);
 
 /**
  * @brief Clean up streaming context
