@@ -66,10 +66,10 @@ static test_results_t g_results = {0};
 /*!
  * @brief Print test header
  */
-static void print_test_header(const char* test_name, uint32_t iteration, uint32_t total) {
+static void print_test_header(const char *test_name, uint32_t iteration, uint32_t total) {
     if (iteration == 1 || iteration == total || iteration % 5 == 0) {
-        printf("\r" COLOR_BLUE "[%s] Iteration %lu/%lu" COLOR_RESET,
-               test_name, (unsigned long)iteration, (unsigned long)total);
+        printf("\r" COLOR_BLUE "[%s] Iteration %lu/%lu" COLOR_RESET, test_name,
+               (unsigned long)iteration, (unsigned long)total);
         fflush(stdout);
     }
 }
@@ -77,7 +77,7 @@ static void print_test_header(const char* test_name, uint32_t iteration, uint32_
 /*!
  * @brief Print test result
  */
-static void print_result(bool passed, const char* message, bool verbose) {
+static void print_result(bool passed, const char *message, bool verbose) {
     if (!passed || verbose) {
         if (passed) {
             printf("\n" COLOR_GREEN "✓ PASS" COLOR_RESET ": %s\n", message);
@@ -97,7 +97,7 @@ static void print_result(bool passed, const char* message, bool verbose) {
 /*!
  * @brief Print error message
  */
-static void print_error(const char* message) {
+static void print_error(const char *message) {
     printf("\n" COLOR_RED "ERROR" COLOR_RESET ": %s\n", message);
     g_results.errors++;
 }
@@ -204,14 +204,15 @@ static void test_init_streaming(void) {
         print_test_header("ST-1 Init", i, TEST_INIT_STREAMING_EXECUTIONS);
 
         // Alternate between test files
-        const char* test_file = (i % 3 == 0) ? TEST_FILE_LARGE : (i % 2 == 0) ? TEST_FILE_MEDIUM
-                                                                              : TEST_FILE_SMALL;
+        const char *test_file = (i % 3 == 0)   ? TEST_FILE_LARGE
+                                : (i % 2 == 0) ? TEST_FILE_MEDIUM
+                                               : TEST_FILE_SMALL;
 
         struct Metadata metadata;
         memset(&metadata, 0, sizeof(metadata));
 
         // Initialize streaming read
-        int result = init_streaming_read((char*)test_file, &metadata);
+        int result = init_streaming_read((char *)test_file, &metadata);
 
         if (result != 0) {
             char msg[128];
@@ -241,13 +242,12 @@ static void test_init_streaming(void) {
         }
 
         // Verify chunk count calculation
-        uint32_t expected_chunks = (metadata.total_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
+        uint32_t expected_chunks =
+            (metadata.total_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
         if (metadata.chunk_count != expected_chunks) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Chunk count mismatch: expected %lu, got %lu",
-                     (unsigned long)expected_chunks,
-                     (unsigned long)metadata.chunk_count);
+            snprintf(msg, sizeof(msg), "Chunk count mismatch: expected %lu, got %lu",
+                     (unsigned long)expected_chunks, (unsigned long)metadata.chunk_count);
             print_result(false, msg, true);
             cleanup_streaming_read();
             continue;
@@ -257,8 +257,7 @@ static void test_init_streaming(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Initialized streaming for %s (%lu bytes, %lu chunks)",
-                 metadata.filename,
-                 (unsigned long)metadata.total_size,
+                 metadata.filename, (unsigned long)metadata.total_size,
                  (unsigned long)metadata.chunk_count);
         print_result(true, msg, i == TEST_INIT_STREAMING_EXECUTIONS);
     }
@@ -298,13 +297,11 @@ static void test_stream_single_chunk(void) {
             continue;
         }
 
-        // Verify chunk metadata
-        if (chunk.sequence != chunk_index) {
+        // Verify chunk metadata (sequence uses 1-based indexing)
+        if (chunk.sequence != chunk_index + 1) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Sequence mismatch: expected %lu, got %lu",
-                     (unsigned long)chunk_index,
-                     (unsigned long)chunk.sequence);
+            snprintf(msg, sizeof(msg), "Sequence mismatch: expected %lu, got %lu",
+                     (unsigned long)(chunk_index + 1), (unsigned long)chunk.sequence);
             print_result(false, msg, true);
             cleanup_streaming_read();
             continue;
@@ -322,9 +319,8 @@ static void test_stream_single_chunk(void) {
         uint16_t calculated_crc = crc16(chunk.data, chunk.size);
         if (calculated_crc != chunk.crc) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "CRC mismatch: expected 0x%04X, got 0x%04X",
-                     calculated_crc, chunk.crc);
+            snprintf(msg, sizeof(msg), "CRC mismatch: expected 0x%04X, got 0x%04X", calculated_crc,
+                     chunk.crc);
             print_result(false, msg, true);
             cleanup_streaming_read();
             continue;
@@ -334,9 +330,7 @@ static void test_stream_single_chunk(void) {
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Read chunk %lu (%lu bytes, CRC 0x%04X)",
-                 (unsigned long)chunk_index,
-                 (unsigned long)chunk.size,
-                 chunk.crc);
+                 (unsigned long)chunk_index, (unsigned long)chunk.size, chunk.crc);
         print_result(true, msg, false);
     }
     printf("\n");
@@ -376,8 +370,13 @@ static void test_stream_full_file(void) {
                 break;
             }
 
-            // Verify sequence
-            if (chunk.sequence != chunk_idx) {
+            // Verify sequence (data chunks use 1-based indexing, 0 is reserved for metadata)
+            if (chunk.sequence != chunk_idx + 1) {
+                char msg[128];
+                snprintf(msg, sizeof(msg), "Sequence mismatch at chunk %lu: expected %lu, got %lu",
+                         (unsigned long)chunk_idx, (unsigned long)(chunk_idx + 1),
+                         (unsigned long)chunk.sequence);
+                print_result(false, msg, true);
                 all_chunks_ok = false;
                 break;
             }
@@ -401,18 +400,15 @@ static void test_stream_full_file(void) {
         // Verify total size
         if (total_bytes != metadata.total_size) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Size mismatch: expected %lu, got %lu",
-                     (unsigned long)metadata.total_size,
-                     (unsigned long)total_bytes);
+            snprintf(msg, sizeof(msg), "Size mismatch: expected %lu, got %lu",
+                     (unsigned long)metadata.total_size, (unsigned long)total_bytes);
             print_result(false, msg, true);
             continue;
         }
 
         char msg[128];
         snprintf(msg, sizeof(msg), "Streamed full file (%lu chunks, %lu bytes)",
-                 (unsigned long)metadata.chunk_count,
-                 (unsigned long)total_bytes);
+                 (unsigned long)metadata.chunk_count, (unsigned long)total_bytes);
         print_result(true, msg, i == TEST_FULL_FILE_EXECUTIONS);
     }
     printf("\n");
@@ -461,9 +457,7 @@ static void test_stream_large_file(void) {
 
         if (!all_chunks_ok) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Failed at chunk %lu/%lu",
-                     (unsigned long)chunks_verified,
+            snprintf(msg, sizeof(msg), "Failed at chunk %lu/%lu", (unsigned long)chunks_verified,
                      (unsigned long)metadata.chunk_count);
             print_result(false, msg, true);
             continue;
@@ -533,11 +527,9 @@ static void print_summary(void) {
     printf("\n");
 
     printf("Total test executions: %lu\n", (unsigned long)g_results.total_tests);
-    printf(COLOR_GREEN "Passed:  %lu" COLOR_RESET " (%.1f%%)\n",
-           (unsigned long)g_results.passed,
+    printf(COLOR_GREEN "Passed:  %lu" COLOR_RESET " (%.1f%%)\n", (unsigned long)g_results.passed,
            g_results.total_tests > 0 ? (g_results.passed * 100.0 / g_results.total_tests) : 0.0);
-    printf(COLOR_RED "Failed:  %lu" COLOR_RESET " (%.1f%%)\n",
-           (unsigned long)g_results.failed,
+    printf(COLOR_RED "Failed:  %lu" COLOR_RESET " (%.1f%%)\n", (unsigned long)g_results.failed,
            g_results.total_tests > 0 ? (g_results.failed * 100.0 / g_results.total_tests) : 0.0);
     printf(COLOR_YELLOW "Errors:  %lu" COLOR_RESET "\n", (unsigned long)g_results.errors);
 
@@ -551,8 +543,7 @@ static void print_summary(void) {
     printf("  ─────────────────────────────────────\n");
     printf("  Total:                       %d executions\n",
            TEST_INIT_STREAMING_EXECUTIONS + TEST_SINGLE_CHUNK_EXECUTIONS +
-               TEST_FULL_FILE_EXECUTIONS + TEST_LARGE_FILE_EXECUTIONS +
-               TEST_CLEANUP_EXECUTIONS);
+               TEST_FULL_FILE_EXECUTIONS + TEST_LARGE_FILE_EXECUTIONS + TEST_CLEANUP_EXECUTIONS);
 
     printf("\n");
     if (g_results.failed == 0 && g_results.errors == 0) {
