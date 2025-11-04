@@ -1,42 +1,4 @@
 ```
-                                                                                                     drwxr-xr-x@    - cantabile  3 Nov 12:40  fs
-                  drwxr-xr-x@    - cantabile  2 Nov 11:27  generated
-                                                                     drwxr-xr-x@    - cantabile  3 Nov 12:40  pico-sdk
-                                                                                                                       .rw-r--r--@ 2.6k cantabile  3 Nov 12:40  cmake_install.cmake
-                                                     .rw-r--r--@  29k cantabile  2 Nov 11:27  CMakeCache.txt
-                                                                                                             .rw-r--r--@ 8.5M cantabile  3 Nov 12:40  compile_commands.json
-                                             .rw-r--r--@ 388k cantabile  3 Nov 12:40  Makefile
-                                                                                               .rwxr-xr-x@ 381k cantabile  3 Nov 12:00  mqtt-sn-pico-client.bin
-                                 .rw-r--r--@ 2.5M cantabile  3 Nov 12:00  mqtt-sn-pico-client.dis
-                                                                                                  .rwxr-xr-x@ 2.0M cantabile  3 Nov 12:00  mqtt-sn-pico-client.elf
-                                    .rw-r--r--@ 841k cantabile  3 Nov 12:00  mqtt-sn-pico-client.elf.map
-                                                                                                         .rw-r--r--@ 1.1M cantabile  3 Nov 12:00 󱊧 mqtt-sn-pico-client.hex
-                                           .rw-r--r--@ 763k cantabile  3 Nov 12:00  mqtt-sn-pico-client.uf2
-                                                                                                            .rw-r--r--@   60 cantabile  2 Nov 11:27  pico_flash_region.ld
-
- • mqtt-sn-pico-client/build make -j12                                                                      cantabile ht
-[  0%] Built target bs2_default
-                               [  0%] Built target cyw43_driver_picow_cyw43_bus_pio_spi_pio_h
-                                                                                             [  0%] Built target bs2_default_library
-     [  6%] Built target microsd_driver
-                                       [ 11%] Built target fs_lib
-                                                                 [ 19%] Built target automated_microsd_test
-                                                                                                           [ 25%] Built target large_file_test
-               [ 32%] Built target microsd_demo
-                                               [ 41%] Built target chunk_write_example
-                                                                                      [ 60%] Built target file_transfer_demo
-                                                                                                                            [ 62%] Built target automated_chunk_test
-                                     [ 62%] Built target streaming_test
-                                                                       [ 69%] Built target data_frame_demo
-                                                                                                          [ 76%] Built target serialize_test
-             [ 76%] Building C object fs/CMakeFiles/automated_streaming_test.dir/tests/automated_streaming_test.c.o
-                                                                                                                   [ 92%] Built target mqtt-sn-pico-client
-                           [ 92%] Linking CXX executable automated_streaming_test.elf
-                                                                                     [100%] Built target automated_streaming_test
-
- • mqtt-sn-pico-client/build clear                                                                          cantabile ht
-
-
 STARTING TESTS IN 3 SECONDS
 
 

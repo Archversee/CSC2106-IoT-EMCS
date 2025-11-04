@@ -11,13 +11,14 @@
 #define GATEWAY_IP2 123
 #define GATEWAY_IP3 100
 #define UDP_PORT 10000
-#define MQTT_SN_CLIENT_ID "pico_w"
+#define MQTT_SN_CLIENT_ID "pico_w_sw"
+#define IS_RECEIVER true
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
 #define PING_INTERVAL_MS 30000
 #define PINGRESP_TIMEOUT_MS (PING_INTERVAL_MS * 3)
-#define MAX_PENDING_QOS_MSGS 5
+#define MAX_PENDING_QOS_MSGS 32
 #define QOS_RETRY_INTERVAL_US 2000000
 #define QOS_MAX_RETRIES 3
 
@@ -42,8 +43,8 @@
 // GPIO Pins
 #define MESSAGEBUTTON_PIN 20
 #define QOSBUTTON_PIN 21
-#define DROP_ACK_BUTTON_PIN 22
-#define FILE_TRANSFER_BUTTON_PIN 19
+#define DROP_ACK_BUTTON_PIN 19
+#define FILE_TRANSFER_BUTTON_PIN 22
 
 // MQTT-SN Topic IDs
 #define TOPIC_ID_PICO_CMD 1     // pico/cmd - command topic

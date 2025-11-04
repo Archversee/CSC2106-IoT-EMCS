@@ -25,22 +25,22 @@ static streaming_context_t g_stream_ctx = {0};
  * @param length Length of data in bytes
  * @return uint16_t CRC16 checksum value
  */
-uint16_t crc16(unsigned char* data, size_t length) {
-    uint16_t crc = 0xFFFF;  // Initial value for CCITT-FALSE
+uint16_t crc16(unsigned char *data, size_t length) {
+    uint16_t crc = 0xFFFF; // Initial value for CCITT-FALSE
 
     for (size_t i = 0; i < length; i++) {
         crc ^= (uint16_t)data[i] << 8;
 
         for (int j = 0; j < 8; j++) {
             if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;  // CCITT polynomial
+                crc = (crc << 1) ^ 0x1021; // CCITT polynomial
             } else {
                 crc = crc << 1;
             }
         }
     }
 
-    return crc;  // Return calculated CRC value
+    return crc; // Return calculated CRC value
 }
 
 /**
@@ -53,7 +53,7 @@ uint16_t crc16(unsigned char* data, size_t length) {
  * @param meta Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on failure
  */
-int init_streaming_read(char* filename, struct Metadata* meta) {
+int init_streaming_read(char *filename, struct Metadata *meta) {
     if (filename == NULL || meta == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -75,44 +75,47 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
 
 // HARD LIMIT: Raspberry Pi Pico W has 264KB total SRAM
 // Reserve space for stack, heap, and other operations
-#define STREAMING_FILE_SIZE_HARD_LIMIT (131072U)  // 128KB maximum file size
+#define STREAMING_FILE_SIZE_HARD_LIMIT (131072U) // 128KB maximum file size
 
     uint32_t file_size = 0;
-    uint8_t* full_buffer = NULL;
+    uint8_t *full_buffer = NULL;
 
     // Progressively calculate buffer sizes at runtime, doubling each time
     // Start at 4KB, double until we reach the hard limit
-    uint32_t test_buffer_size = 4096;  // Start with 4KB
+    uint32_t test_buffer_size = 4096; // Start with 4KB
 
     while (test_buffer_size <= STREAMING_FILE_SIZE_HARD_LIMIT) {
-        uint8_t* test_buffer = (uint8_t*)malloc(test_buffer_size);
+        uint8_t *test_buffer = (uint8_t *)malloc(test_buffer_size);
         if (test_buffer == NULL) {
             printf("ERROR: Memory allocation failed for %u bytes\n", test_buffer_size);
             printf("       Available RAM insufficient for file operation\n");
-            if (full_buffer) free(full_buffer);
+            if (full_buffer)
+                free(full_buffer);
             return -1;
         }
 
         uint32_t bytes_read = 0;
-        if (!microsd_read_file(&g_stream_ctx.fs_info, filename, test_buffer,
-                               test_buffer_size, &bytes_read)) {
+        if (!microsd_read_file(&g_stream_ctx.fs_info, filename, test_buffer, test_buffer_size,
+                               &bytes_read)) {
             printf("ERROR: Failed to read file '%s'\n", filename);
             free(test_buffer);
-            if (full_buffer) free(full_buffer);
+            if (full_buffer)
+                free(full_buffer);
             return -1;
         }
 
         if (bytes_read == 0) {
             printf("ERROR: File '%s' is empty\n", filename);
             free(test_buffer);
-            if (full_buffer) free(full_buffer);
+            if (full_buffer)
+                free(full_buffer);
             return -1;
         }
 
         // If we read less than buffer size, we have the entire file
         if (bytes_read < test_buffer_size) {
             file_size = bytes_read;
-            full_buffer = test_buffer;  // Keep this buffer
+            full_buffer = test_buffer; // Keep this buffer
             break;
         }
 
@@ -122,11 +125,13 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
         // Check if we've hit the hard limit
         if (test_buffer_size == STREAMING_FILE_SIZE_HARD_LIMIT) {
             printf("ERROR: HARD_LIMIT_REACHED\n");
-            printf("       File '%s' exceeds maximum supported size (%u bytes / %u KB)\n",
-                   filename, STREAMING_FILE_SIZE_HARD_LIMIT, STREAMING_FILE_SIZE_HARD_LIMIT / 1024);
+            printf("       File '%s' exceeds maximum supported size (%u bytes / %u KB)\n", filename,
+                   STREAMING_FILE_SIZE_HARD_LIMIT, STREAMING_FILE_SIZE_HARD_LIMIT / 1024);
             printf("       This limit is imposed by Raspberry Pi Pico W's 264KB SRAM\n");
-            printf("       For larger files, use chunk-based streaming without full CRC validation\n");
-            if (full_buffer) free(full_buffer);
+            printf(
+                "       For larger files, use chunk-based streaming without full CRC validation\n");
+            if (full_buffer)
+                free(full_buffer);
             return -1;
         }
 
@@ -184,7 +189,7 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
  * @param chunk Pointer to Payload structure to populate
  * @return int 0 on success, -1 on failure
  */
-int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
+int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
     if (chunk == NULL) {
         printf("Error: NULL chunk pointer\n");
         return -1;
@@ -198,8 +203,8 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
     uint32_t chunk_count = (g_stream_ctx.file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
 
     if (chunk_index >= chunk_count) {
-        printf("Error: Chunk index %lu out of range (max %lu)\n",
-               (unsigned long)chunk_index, (unsigned long)chunk_count);
+        printf("Error: Chunk index %lu out of range (max %lu)\n", (unsigned long)chunk_index,
+               (unsigned long)chunk_count);
         return -1;
     }
 
@@ -210,16 +215,16 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
 
     // Read chunk directly from file using microsd_read_chunk
     uint32_t bytes_read = 0;
-    if (!microsd_read_chunk(&g_stream_ctx.fs_info, g_stream_ctx.filename,
-                            chunk->data, PAYLOAD_DATA_SIZE,
-                            chunk_index + 1,  // microsd_read_chunk uses 1-based indexing
+    if (!microsd_read_chunk(&g_stream_ctx.fs_info, g_stream_ctx.filename, chunk->data,
+                            PAYLOAD_DATA_SIZE,
+                            chunk_index + 1, // microsd_read_chunk uses 1-based indexing
                             &bytes_read)) {
         printf("Error: Failed to read chunk %lu from file\n", (unsigned long)chunk_index);
         return -1;
     }
 
     // Set chunk metadata
-    chunk->sequence = chunk_index;
+    chunk->sequence = chunk_index + 1; // Data chunks start from sequence 1 (0 is metadata)
     chunk->size = bytes_read;
     chunk->crc = crc16(chunk->data, bytes_read);
 
@@ -229,16 +234,14 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
 /**
  * @brief Clean up streaming context
  */
-void cleanup_streaming_read(void) {
-    g_stream_ctx.initialized = false;
-}
+void cleanup_streaming_read(void) { g_stream_ctx.initialized = false; }
 
 /**
  * @brief Verify integrity of a chunk using CRC16
  * @param chunk Pointer to Payload structure
  * @return int 1 if valid, 0 if invalid
  */
-int verify_chunk(struct Payload* chunk) {
+int verify_chunk(struct Payload *chunk) {
     if (chunk == NULL) {
         return 0;
     }
@@ -257,7 +260,7 @@ int verify_chunk(struct Payload* chunk) {
  * @param chunks Pointer to array of Payload pointers (output)
  * @return int 0 on success, -1 on failure
  */
-int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) {
+int deconstruct(char *filename, struct Metadata *meta, struct Payload **chunks) {
     if (filename == NULL || meta == NULL || chunks == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -272,7 +275,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
 
 // Use a reasonably sized buffer (32KB should be enough for most files on Pico)
 #define MAX_FILE_BUFFER_SIZE (32 * 1024)
-    uint8_t* file_buffer = (uint8_t*)malloc(MAX_FILE_BUFFER_SIZE);
+    uint8_t *file_buffer = (uint8_t *)malloc(MAX_FILE_BUFFER_SIZE);
     if (file_buffer == NULL) {
         printf("Error: Memory allocation failed for file buffer\n");
         return -1;
@@ -307,10 +310,10 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
     uint32_t chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
 
     // Allocate memory for chunks array
-    *chunks = (struct Payload*)malloc(sizeof(struct Payload) * chunk_count);
+    *chunks = (struct Payload *)malloc(sizeof(struct Payload) * chunk_count);
     if (*chunks == NULL) {
-        printf("Error: Failed to allocate memory for %u chunks (%u bytes)\n",
-               chunk_count, sizeof(struct Payload) * chunk_count);
+        printf("Error: Failed to allocate memory for %u chunks (%u bytes)\n", chunk_count,
+               sizeof(struct Payload) * chunk_count);
         free(file_buffer);
         return -1;
     }
@@ -325,7 +328,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
     meta->filename[METADATA_FILENAME_SIZE - 1] = '\0';
     meta->total_size = file_size;
     meta->chunk_count = chunk_count;
-    meta->last_modified = 0;  // Would need RTC for actual timestamp
+    meta->last_modified = 0; // Would need RTC for actual timestamp
     meta->file_crc = file_crc;
 
     printf("Deconstructing file: %s\n", filename);
@@ -366,7 +369,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
  * @param output_filename Name of file to write to SD card
  * @return int 0 on success, -1 on failure
  */
-int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_filename) {
+int reconstruct(struct Metadata *meta, struct Payload **chunks, char *output_filename) {
     if (meta == NULL || chunks == NULL || *chunks == NULL || output_filename == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -397,7 +400,7 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
     }
 
     // Allocate buffer for complete file
-    uint8_t* file_buffer = (uint8_t*)malloc(meta->total_size);
+    uint8_t *file_buffer = (uint8_t *)malloc(meta->total_size);
     if (file_buffer == NULL) {
         printf("Error: Memory allocation failed\n");
         return -1;
@@ -424,8 +427,8 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
 
     // Verify total file size
     if (offset != meta->total_size) {
-        printf("Error: Reconstructed size (%u) doesn't match expected size (%u)\n",
-               offset, meta->total_size);
+        printf("Error: Reconstructed size (%u) doesn't match expected size (%u)\n", offset,
+               meta->total_size);
         free(file_buffer);
         return -1;
     }
@@ -433,8 +436,8 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
     // Verify file CRC16
     uint16_t calculated_file_crc = crc16(file_buffer, meta->total_size);
     if (calculated_file_crc != meta->file_crc) {
-        printf("Error: File CRC16 mismatch - Expected: 0x%04X, Got: 0x%04X\n",
-               meta->file_crc, calculated_file_crc);
+        printf("Error: File CRC16 mismatch - Expected: 0x%04X, Got: 0x%04X\n", meta->file_crc,
+               calculated_file_crc);
         free(file_buffer);
         return -1;
     }
@@ -467,12 +470,12 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_payload(struct Payload* payload, uint8_t* buffer) {
+int serialize_payload(struct Payload *payload, uint8_t *buffer) {
     if (!payload || !buffer) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Write sequence (4 bytes, little-endian)
     *ptr++ = (uint8_t)(payload->sequence & 0xFF);
@@ -494,7 +497,7 @@ int serialize_payload(struct Payload* payload, uint8_t* buffer) {
     *ptr++ = (uint8_t)(payload->crc & 0xFF);
     *ptr++ = (uint8_t)((payload->crc >> 8) & 0xFF);
 
-    return (int)(ptr - buffer);  // Should be 247 bytes
+    return (int)(ptr - buffer); // Should be 247 bytes
 }
 
 /**
@@ -503,17 +506,15 @@ int serialize_payload(struct Payload* payload, uint8_t* buffer) {
  * @param payload Pointer to Payload structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
+int deserialize_payload(uint8_t *buffer, struct Payload *payload) {
     if (!buffer || !payload) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Read sequence (4 bytes, little-endian)
-    payload->sequence = (uint32_t)ptr[0] |
-                        ((uint32_t)ptr[1] << 8) |
-                        ((uint32_t)ptr[2] << 16) |
+    payload->sequence = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
                         ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
@@ -522,9 +523,7 @@ int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
     ptr += PAYLOAD_DATA_SIZE;
 
     // Read size (4 bytes, little-endian)
-    payload->size = (uint32_t)ptr[0] |
-                    ((uint32_t)ptr[1] << 8) |
-                    ((uint32_t)ptr[2] << 16) |
+    payload->size = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
                     ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
@@ -541,12 +540,12 @@ int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
+int serialize_metadata(struct Metadata *metadata, uint8_t *buffer) {
     if (!metadata || !buffer) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Write session_id (32 bytes)
     memcpy(ptr, metadata->session_id, SESSION_ID_SIZE);
@@ -579,12 +578,12 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
     *ptr++ = (uint8_t)((metadata->file_crc >> 8) & 0xFF);
 
     // Fill remaining bytes with zeros to make it 247 bytes total
-    size_t bytes_written = ptr - buffer;  // Should be 110 bytes
+    size_t bytes_written = ptr - buffer; // Should be 110 bytes
     if (bytes_written < PAYLOAD_SIZE) {
         memset(ptr, 0, PAYLOAD_SIZE - bytes_written);
     }
 
-    return PAYLOAD_SIZE;  // Always return 247 bytes for consistency
+    return PAYLOAD_SIZE; // Always return 247 bytes for consistency
 }
 
 /**
@@ -593,42 +592,36 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
  * @param metadata Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata) {
+int deserialize_metadata(uint8_t *buffer, struct Metadata *metadata) {
     if (!buffer || !metadata) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Read session_id (32 bytes)
     memcpy(metadata->session_id, ptr, SESSION_ID_SIZE);
-    metadata->session_id[SESSION_ID_SIZE - 1] = '\0';  // Ensure null termination
+    metadata->session_id[SESSION_ID_SIZE - 1] = '\0'; // Ensure null termination
     ptr += SESSION_ID_SIZE;
 
     // Read filename (64 bytes)
     memcpy(metadata->filename, ptr, METADATA_FILENAME_SIZE);
-    metadata->filename[METADATA_FILENAME_SIZE - 1] = '\0';  // Ensure null termination
+    metadata->filename[METADATA_FILENAME_SIZE - 1] = '\0'; // Ensure null termination
     ptr += METADATA_FILENAME_SIZE;
 
     // Read total_size (4 bytes, little-endian)
-    metadata->total_size = (uint32_t)ptr[0] |
-                           ((uint32_t)ptr[1] << 8) |
-                           ((uint32_t)ptr[2] << 16) |
+    metadata->total_size = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
                            ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
     // Read chunk_count (4 bytes, little-endian)
-    metadata->chunk_count = (uint32_t)ptr[0] |
-                            ((uint32_t)ptr[1] << 8) |
-                            ((uint32_t)ptr[2] << 16) |
+    metadata->chunk_count = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
                             ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
     // Read last_modified (4 bytes, little-endian)
-    metadata->last_modified = (uint32_t)ptr[0] |
-                              ((uint32_t)ptr[1] << 8) |
-                              ((uint32_t)ptr[2] << 16) |
-                              ((uint32_t)ptr[3] << 24);
+    metadata->last_modified = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) |
+                              ((uint32_t)ptr[2] << 16) | ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
     // Read file_crc (2 bytes, little-endian)
