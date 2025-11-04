@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../drivers/microsd_driver.h"
 #include "ff.h"        // FatFS library
 #include "hw_config.h" // For sd_get_by_num()
 
@@ -74,12 +75,10 @@ int init_streaming_read(char *filename, struct Metadata *meta) {
         return -1;
     }
 
-    // Use FatFS to get file information WITHOUT reading file contents
+    // Use microsd_driver to get file information WITHOUT reading file contents
     FILINFO fno;
-    FRESULT fr = f_stat(filename, &fno);
-
-    if (fr != FR_OK) {
-        printf("ERROR: Failed to stat file '%s' (FatFS error %d)\n", filename, fr);
+    if (!microsd_driver_stat(filename, &fno)) {
+        printf("ERROR: Failed to stat file '%s'\n", filename);
         return -1;
     }
 
@@ -100,9 +99,8 @@ int init_streaming_read(char *filename, struct Metadata *meta) {
     g_stream_ctx.filename[METADATA_FILENAME_SIZE - 1] = '\0';
 
     // Open file once and keep it open for all chunk reads
-    fr = f_open(&g_stream_ctx.file_handle, filename, FA_READ);
-    if (fr != FR_OK) {
-        printf("ERROR: Failed to open file '%s' for streaming (FatFS error %d)\n", filename, fr);
+    if (!microsd_driver_open(&g_stream_ctx.file_handle, filename, FA_READ)) {
+        printf("ERROR: Failed to open file '%s' for streaming\n", filename);
         return -1;
     }
 
@@ -113,7 +111,7 @@ int init_streaming_read(char *filename, struct Metadata *meta) {
     g_stream_ctx.read_buffer = (uint8_t *)malloc(READ_BUFFER_SIZE);
     if (!g_stream_ctx.read_buffer) {
         printf("ERROR: Failed to allocate %d byte read buffer\n", READ_BUFFER_SIZE);
-        f_close(&g_stream_ctx.file_handle);
+        microsd_driver_close(&g_stream_ctx.file_handle);
         g_stream_ctx.file_is_open = false;
         return -1;
     }
@@ -208,10 +206,8 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
     // Refill buffer if needed
     if (need_refill) {
         // Seek to chunk offset
-        FRESULT fr = f_lseek(&g_stream_ctx.file_handle, file_offset);
-        if (fr != FR_OK) {
-            printf("Error: Failed to seek to offset %lu (FatFS error %d)\n",
-                   (unsigned long)file_offset, fr);
+        if (!microsd_driver_seek(&g_stream_ctx.file_handle, file_offset)) {
+            printf("Error: Failed to seek to offset %lu\n", (unsigned long)file_offset);
             return -1;
         }
 
@@ -222,10 +218,9 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
             bytes_to_read = g_stream_ctx.file_size - file_offset;
         }
 
-        fr =
-            f_read(&g_stream_ctx.file_handle, g_stream_ctx.read_buffer, bytes_to_read, &bytes_read);
-        if (fr != FR_OK) {
-            printf("Error: Failed to read buffer from file (error %d)\n", fr);
+        if (!microsd_driver_read(&g_stream_ctx.file_handle, g_stream_ctx.read_buffer, bytes_to_read,
+                                 &bytes_read)) {
+            printf("Error: Failed to read buffer from file\n");
             return -1;
         }
 
@@ -290,7 +285,7 @@ uint16_t get_streaming_file_crc(void) {
 void cleanup_streaming_read(void) {
     // Close the file if it's still open
     if (g_stream_ctx.file_is_open) {
-        f_close(&g_stream_ctx.file_handle);
+        microsd_driver_close(&g_stream_ctx.file_handle);
         g_stream_ctx.file_is_open = false;
     }
 
@@ -336,11 +331,10 @@ int deconstruct(char *filename, struct Metadata *meta, struct Payload **chunks) 
         return -1;
     }
 
-    // Get file size using FatFS
+    // Get file size using microsd_driver
     FILINFO fno;
-    FRESULT fr = f_stat(filename, &fno);
-    if (fr != FR_OK) {
-        printf("Error: Failed to stat file (FatFS error %d)\n", fr);
+    if (!microsd_driver_stat(filename, &fno)) {
+        printf("Error: Failed to stat file\n");
         return -1;
     }
 
@@ -367,22 +361,16 @@ int deconstruct(char *filename, struct Metadata *meta, struct Payload **chunks) 
         return -1;
     }
 
-    // Read the file using FatFS
-    FIL fil;
-    fr = f_open(&fil, filename, FA_READ);
-    if (fr != FR_OK) {
-        printf("Error: Failed to open file (FatFS error %d)\n", fr);
+    // Read the file using microsd_driver
+    size_t bytes_read = 0;
+    if (!microsd_driver_read_file(filename, file_buffer, file_size, &bytes_read)) {
+        printf("Error: Failed to read file\n");
         free(file_buffer);
         return -1;
     }
 
-    UINT bytes_read = 0;
-    fr = f_read(&fil, file_buffer, file_size, &bytes_read);
-    f_close(&fil);
-
-    if (fr != FR_OK || bytes_read != file_size) {
-        printf("Error: Failed to read file (read %u/%u bytes, error %d)\n", bytes_read, file_size,
-               fr);
+    if (bytes_read != file_size) {
+        printf("Error: Failed to read file (read %zu/%u bytes)\n", bytes_read, file_size);
         free(file_buffer);
         return -1;
     }
@@ -527,22 +515,9 @@ int reconstruct(struct Metadata *meta, struct Payload **chunks, char *output_fil
 
     printf("File CRC16 verification passed: 0x%04X\n", calculated_file_crc);
 
-    // Write reconstructed file to SD card using FatFS
-    FIL fil;
-    FRESULT fr = f_open(&fil, output_filename, FA_WRITE | FA_CREATE_ALWAYS);
-    if (fr != FR_OK) {
-        printf("Error: Failed to open file for writing (FatFS error %d)\n", fr);
-        free(file_buffer);
-        return -1;
-    }
-
-    UINT bytes_written = 0;
-    fr = f_write(&fil, file_buffer, meta->total_size, &bytes_written);
-    f_close(&fil);
-
-    if (fr != FR_OK || bytes_written != meta->total_size) {
-        printf("Error: Failed to write file (wrote %u/%u bytes, error %d)\n", bytes_written,
-               meta->total_size, fr);
+    // Write reconstructed file to SD card using microsd_driver
+    if (!microsd_driver_write_file(output_filename, file_buffer, meta->total_size)) {
+        printf("Error: Failed to write file\n");
         free(file_buffer);
         return -1;
     }

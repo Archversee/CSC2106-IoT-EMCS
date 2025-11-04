@@ -51,8 +51,8 @@ pico_sdk_init()
 # Add FatFS library subdirectory
 add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src)
 
-# Add subdirectories for fs
-# add_subdirectory(drivers)  # Removed - no longer using custom microsd_driver
+# Add subdirectories for drivers and fs
+add_subdirectory(drivers)
 add_subdirectory(fs)
 
 # MQTT-SN Pico Client executable (commented out - using split TX/RX versions)
@@ -128,6 +128,7 @@ target_link_libraries(mqtt-sn-pico-client-rx
     hardware_spi
     hardware_gpio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+    microsd_driver
     fs_lib
     pico_cyw43_arch_lwip_poll
     hardware_timer
@@ -138,6 +139,7 @@ target_link_libraries(mqtt-sn-pico-client-tx
     hardware_spi
     hardware_gpio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+    microsd_driver
     fs_lib
     pico_cyw43_arch_lwip_poll
     hardware_timer

@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../drivers/microsd_driver.h"
 #include "../chunk_transfer.h"
 #include "data_frame.h"
 #include "ff.h" // FatFS
@@ -24,23 +25,20 @@
 #define SOURCE_FILENAME "test.jpg"
 
 /*!
- * @brief Get file size from filesystem using FatFS
+ * @brief Get file size from filesystem using microsd_driver
  * @param filename Filename to check
  * @return uint32_t File size in bytes, 0 if not found
  */
 static uint32_t get_file_size(const char *filename) {
     printf("  get_file_size() called for: %s\n", filename);
 
-    FIL fil;
-    FRESULT fr = f_open(&fil, filename, FA_READ);
-    if (fr != FR_OK) {
-        printf("  ERROR: Could not open file: %s (error %d)\n", filename, fr);
+    FILINFO fno;
+    if (!microsd_driver_stat(filename, &fno)) {
+        printf("  ERROR: Could not stat file: %s\n", filename);
         return 0;
     }
 
-    uint32_t size = f_size(&fil);
-    f_close(&fil);
-
+    uint32_t size = fno.fsize;
     printf("  File size: %u bytes\n", size);
     return size;
 }
@@ -385,20 +383,18 @@ int main(void) {
         printf("║                  Test Run #%-3d                        ║\n", test_count);
         printf("╚═══════════════════════════════════════════════════════╝\n");
 
-        // Initialize FatFS filesystem
-        printf("\nInitializing FatFS filesystem...\n");
+        // Initialize FatFS filesystem using microsd_driver
+        printf("\nInitializing microSD card driver and FatFS filesystem...\n");
 
-        FATFS fs;
-        FRESULT fr = f_mount(&fs, "", 1); // Mount immediately
-        if (fr != FR_OK) {
-            printf("✗ ERROR: Failed to mount filesystem (error %d)\n", fr);
+        if (!microsd_driver_init()) {
+            printf("✗ ERROR: Failed to initialize microSD driver\n");
             printf("Please check the microSD card connection and try again.\n");
             printf("\n--- Waiting 30 seconds before retry ---\n");
             sleep_ms(30000);
             test_count++;
             continue;
         }
-        printf("✓ FatFS filesystem mounted successfully\n");
+        printf("✓ MicroSD driver and FatFS filesystem initialized successfully\n");
 
         uint32_t start_time = to_ms_since_boot(get_absolute_time());
 

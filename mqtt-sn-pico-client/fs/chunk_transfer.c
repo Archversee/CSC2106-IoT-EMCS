@@ -29,10 +29,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "chunk_transfer.h"
+#include "../drivers/microsd_driver.h"
 #include "ff.h"
 #include "hw_config.h"
-#include <stdio.h>
 
 bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_session_t *session,
                                  bool use_new_filename) {

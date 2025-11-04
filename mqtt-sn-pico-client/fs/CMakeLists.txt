@@ -18,6 +18,7 @@ target_link_libraries(fs_lib
     hardware_dma
     hardware_pio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+    microsd_driver
 )
 
 # Test executables
@@ -103,6 +104,7 @@ target_link_libraries(streaming_test
     pico_stdlib
     hardware_spi
     fs_lib
+    microsd_driver
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 )
 
