@@ -52,16 +52,15 @@ typedef struct {
  * @param fs_info Pointer to filesystem information
  * @param metadata Pointer to the received metadata structure
  * @param session Pointer to session structure to initialize
- * @param use_new_filename If true, adds "_received" suffix to filename; if false, uses original filename
+ * @param use_new_filename If true, adds "_received" suffix to filename; if false, uses original
+ * filename
  * @return true on success, false on failure
  *
  * @note Sets session->active to true on success
  * @note QoS 2 ensures this is called exactly once per transfer
  */
-bool chunk_transfer_init_session(filesystem_info_t* fs_info,
-                                 const struct Metadata* metadata,
-                                 transfer_session_t* session,
-                                 bool use_new_filename);
+bool chunk_transfer_init_session(filesystem_info_t *fs_info, const struct Metadata *metadata,
+                                 transfer_session_t *session, bool use_new_filename);
 
 /*!
  * @brief Write a data payload chunk to an active session
@@ -79,9 +78,8 @@ bool chunk_transfer_init_session(filesystem_info_t* fs_info,
  * @note Handles duplicate chunks gracefully using bitmap
  * @note Received via QoS 1, so duplicates may occur
  */
-bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
-                                  transfer_session_t* session,
-                                  const struct Payload* payload);
+bool chunk_transfer_write_payload(filesystem_info_t *fs_info, transfer_session_t *session,
+                                  const struct Payload *payload);
 
 /*!
  * @brief Check if all chunks have been received for a session
@@ -89,7 +87,7 @@ bool chunk_transfer_write_payload(filesystem_info_t* fs_info,
  * @param session Pointer to the transfer session
  * @return true if all chunks received, false otherwise
  */
-bool chunk_transfer_is_complete(const transfer_session_t* session);
+bool chunk_transfer_is_complete(const transfer_session_t *session);
 
 /*!
  * @brief Finalize a chunk transfer session
@@ -101,8 +99,7 @@ bool chunk_transfer_is_complete(const transfer_session_t* session);
  * @param session Pointer to the transfer session to finalize
  * @return true on success, false on failure
  */
-bool chunk_transfer_finalize(filesystem_info_t* fs_info,
-                             transfer_session_t* session);
+bool chunk_transfer_finalize(filesystem_info_t *fs_info, transfer_session_t *session);
 
 /*!
  * @brief Get the progress of a transfer session
@@ -111,16 +108,15 @@ bool chunk_transfer_finalize(filesystem_info_t* fs_info,
  * @param chunks_received Output parameter for number of chunks received
  * @param total_chunks Output parameter for total number of chunks
  */
-void chunk_transfer_get_progress(const transfer_session_t* session,
-                                 uint32_t* chunks_received,
-                                 uint32_t* total_chunks);
+void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *chunks_received,
+                                 uint32_t *total_chunks);
 
 /*!
  * @brief Print session information for debugging
  *
  * @param session Pointer to the transfer session
  */
-void chunk_transfer_print_session_info(const transfer_session_t* session);
+void chunk_transfer_print_session_info(const transfer_session_t *session);
 
 #ifdef __cplusplus
 }

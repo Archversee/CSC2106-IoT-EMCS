@@ -18,11 +18,11 @@
 
 // datagram packet struct for MQTT QoS1 data transfer (fits in 247 bytes when serialized)
 struct Payload {
-    uint32_t sequence;                // Chunk sequence number (4 bytes)
-    uint8_t data[PAYLOAD_DATA_SIZE];  // Actual data payload (237 bytes)
-    uint32_t size;                    // Actual data size in this chunk (4 bytes)
-    uint16_t crc;                     // CRC16 checksum of data (2 bytes)
-} __attribute__((packed));            // Total: 247 bytes
+    uint32_t sequence;               // Chunk sequence number (4 bytes)
+    uint8_t data[PAYLOAD_DATA_SIZE]; // Actual data payload (237 bytes)
+    uint32_t size;                   // Actual data size in this chunk (4 bytes)
+    uint16_t crc;                    // CRC16 checksum of data (2 bytes)
+} __attribute__((packed));           // Total: 247 bytes
 
 // Metadata for file transfer session (fits in 247 bytes when serialized)
 // struct Metadata serialized size: 32 (session_id) + 64 (filename) + 4 (total_size) +
@@ -31,13 +31,13 @@ struct Payload {
 #define METADATA_FILENAME_SIZE 64
 
 struct Metadata {
-    char session_id[SESSION_ID_SIZE];       // Session ID to track transfer type (32 bytes)
-    char filename[METADATA_FILENAME_SIZE];  // Filename (64 bytes)
-    uint32_t total_size;                    // Total file size in bytes (4 bytes)
-    uint32_t chunk_count;                   // Number of data chunks (4 bytes)
-    uint32_t last_modified;                 // Unix timestamp (exFAT) (4 bytes)
-    uint16_t file_crc;                      // CRC16 of entire file (2 bytes)
-} __attribute__((packed));                  // Total: 110 bytes (fits in 247 bytes)
+    char session_id[SESSION_ID_SIZE];      // Session ID to track transfer type (32 bytes)
+    char filename[METADATA_FILENAME_SIZE]; // Filename (64 bytes)
+    uint32_t total_size;                   // Total file size in bytes (4 bytes)
+    uint32_t chunk_count;                  // Number of data chunks (4 bytes)
+    uint32_t last_modified;                // Unix timestamp (exFAT) (4 bytes)
+    uint16_t file_crc;                     // CRC16 of entire file (2 bytes)
+} __attribute__((packed));                 // Total: 110 bytes (fits in 247 bytes)
 
 /**
  * @brief Read a file and break it into chunks for MQTT QoS1 transmission
@@ -46,7 +46,7 @@ struct Metadata {
  * @param chunks Pointer to array of Payload pointers (output - will be allocated)
  * @return int 0 on success, -1 on failure
  */
-int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks);
+int deconstruct(char *filename, struct Metadata *meta, struct Payload **chunks);
 
 /**
  * @brief Reconstruct a file from chunks with integrity verification
@@ -55,14 +55,14 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks);
  * @param output_filename Name of file to write to SD card
  * @return int 0 on success, -1 on failure
  */
-int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_filename);
+int reconstruct(struct Metadata *meta, struct Payload **chunks, char *output_filename);
 
 /**
  * @brief Verify integrity of a single chunk using CRC16
  * @param chunk Pointer to Payload structure
  * @return int 1 if valid, 0 if invalid
  */
-int verify_chunk(struct Payload* chunk);
+int verify_chunk(struct Payload *chunk);
 
 /**
  * @brief Calculate CRC16 checksum for data buffer (CCITT-FALSE)
@@ -70,7 +70,7 @@ int verify_chunk(struct Payload* chunk);
  * @param length Length of data in bytes
  * @return uint16_t CRC16 checksum value
  */
-uint16_t crc16(unsigned char* data, size_t length);
+uint16_t crc16(unsigned char *data, size_t length);
 
 /**
  * @brief Serialize Payload struct into a 247-byte buffer for MQTT transmission
@@ -78,7 +78,7 @@ uint16_t crc16(unsigned char* data, size_t length);
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_payload(struct Payload* payload, uint8_t* buffer);
+int serialize_payload(struct Payload *payload, uint8_t *buffer);
 
 /**
  * @brief Deserialize 247-byte buffer into Payload struct after MQTT reception
@@ -86,7 +86,7 @@ int serialize_payload(struct Payload* payload, uint8_t* buffer);
  * @param payload Pointer to Payload structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_payload(uint8_t* buffer, struct Payload* payload);
+int deserialize_payload(uint8_t *buffer, struct Payload *payload);
 
 /**
  * @brief Serialize Metadata struct into a 247-byte buffer for MQTT transmission
@@ -94,7 +94,7 @@ int deserialize_payload(uint8_t* buffer, struct Payload* payload);
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_metadata(struct Metadata* metadata, uint8_t* buffer);
+int serialize_metadata(struct Metadata *metadata, uint8_t *buffer);
 
 /**
  * @brief Deserialize 247-byte buffer into Metadata struct after MQTT reception
@@ -102,7 +102,7 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer);
  * @param metadata Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata);
+int deserialize_metadata(uint8_t *buffer, struct Metadata *metadata);
 
 /**
  * @brief Initialize streaming file read for chunked transmission (memory efficient)
@@ -115,7 +115,7 @@ int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata);
  * @param meta Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on failure
  */
-int init_streaming_read(char* filename, struct Metadata* meta);
+int init_streaming_read(char *filename, struct Metadata *meta);
 
 /**
  * @brief Read a single chunk for streaming transmission (memory efficient)
@@ -128,11 +128,11 @@ int init_streaming_read(char* filename, struct Metadata* meta);
  * @param chunk Pointer to Payload structure to populate
  * @return int 0 on success, -1 on failure
  */
-int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk);
+int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk);
 
 /**
  * @brief Clean up streaming context
  */
 void cleanup_streaming_read(void);
 
-#endif  // DATA_FRAME_H
+#endif // DATA_FRAME_H

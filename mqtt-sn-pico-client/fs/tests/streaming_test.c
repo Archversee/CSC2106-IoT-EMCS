@@ -21,7 +21,7 @@
 #include "pico/stdlib.h"
 
 /*! Test configuration constants */
-#define SOURCE_FILENAME "praise_lord_fauzi.txt"
+#define SOURCE_FILENAME "test.txt"
 
 /*!
  * @brief Get file size from filesystem

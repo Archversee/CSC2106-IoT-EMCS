@@ -70,7 +70,7 @@ bool g_ping_ack_received = true;
  * @param verbose Print detailed status messages
  * @return true if initialization succeeded, false otherwise
  */
-static bool initialize_microsd(filesystem_info_t* fs_info, uint8_t max_attempts, bool verbose) {
+static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts, bool verbose) {
     uint8_t sd_init_attempts = 0U;
 
     if (verbose) {
@@ -134,8 +134,9 @@ static bool initialize_microsd(filesystem_info_t* fs_info, uint8_t max_attempts,
  * @param fs_info Pointer to filesystem_info_t structure
  * @return true if card is accessible, false if removed or error
  */
-static bool check_microsd_present(filesystem_info_t* fs_info) {
-    if (!fs_info) return false;
+static bool check_microsd_present(filesystem_info_t *fs_info) {
+    if (!fs_info)
+        return false;
 
     // Simple check: verify filesystem is still marked as valid
     // A valid exFAT filesystem will have is_exfat=true and non-zero root_cluster
@@ -171,11 +172,10 @@ int main() {
     // Initial microSD card initialization
     fs_initialized = initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true);
 
-    mqtt_sn_context_t mqtt_ctx = {
-        .drop_acks = false,
-        .file_session = &file_session,
-        .fs_info = fs_initialized ? &fs_info : NULL,
-        .transfer_in_progress = false};
+    mqtt_sn_context_t mqtt_ctx = {.drop_acks = false,
+                                  .file_session = &file_session,
+                                  .fs_info = fs_initialized ? &fs_info : NULL,
+                                  .transfer_in_progress = false};
 
     uint8_t qos_level = 0U;
 
@@ -187,7 +187,8 @@ int main() {
 
     cyw43_arch_enable_sta_mode();
 
-    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, WIFI_CONNECT_TIMEOUT_MS)) {
+    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK,
+                                              WIFI_CONNECT_TIMEOUT_MS)) {
         printf("Wi-Fi connect failed. Retrying in %u seconds...\n", WIFI_RETRY_DELAY_MS / 1000U);
         sleep_ms(WIFI_RETRY_DELAY_MS);
     }
@@ -195,7 +196,7 @@ int main() {
     printf("Wi-Fi connected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
 
     // Setup UDP
-    struct udp_pcb* pcb = udp_new();
+    struct udp_pcb *pcb = udp_new();
     if (!pcb) {
         printf("UDP setup failed\n");
         return -1;
@@ -210,7 +211,8 @@ int main() {
 
     // setup MQTT-SN Gateway address
     ip_addr_t gateway_addr;
-    IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3);  // RMB to change to your gateway IP
+    IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2,
+             GATEWAY_IP3); // RMB to change to your gateway IP
 
     sleep_ms(MQTT_CONNECT_DELAY_MS);
 
@@ -227,7 +229,8 @@ int main() {
     }
     sleep_ms(MQTT_CONNECT_DELAY_MS);
 
-    // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription - can still receive < QoS <2 messages
+    // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription - can still
+    // receive < QoS <2 messages
     printf("Subscribing to 'pico/cmd'...\n");
     mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
     for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
@@ -238,9 +241,9 @@ int main() {
     // Subscribe to file transfer topics
     if (fs_initialized) {
         printf("Subscribing to file transfer topics...\n");
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3U);  // file/meta
+        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3U); // file/meta
         sleep_ms(MQTT_CONNACK_WAIT_MS);
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4U);  // file/data
+        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4U); // file/data
         sleep_ms(MQTT_CONNACK_WAIT_MS);
         printf("✓ File transfer topics subscribed\n");
     }
@@ -273,8 +276,9 @@ int main() {
             printf("Button pressed! Publishing message...\n");
             uint16_t id = get_next_msg_id();
             // Publish to topic ID 2 (predefined topic "pico/status") with selected QoS
-            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, payload, PAYLOAD_SIZE, qos_level, id, false);
-            sleep_ms(200);  // Debounce
+            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, payload, PAYLOAD_SIZE,
+                                     qos_level, id, false);
+            sleep_ms(200); // Debounce
         }
         last_button_state = current_button;
 
@@ -284,10 +288,10 @@ int main() {
             // GP 21 Button pressed (falling edge)
             qos_level++;
             if (qos_level > 2U) {
-                qos_level = 0U;  // Wrap around 0->1->2->0
+                qos_level = 0U; // Wrap around 0->1->2->0
             }
             printf("QoS level changed to: %u\n", qos_level);
-            sleep_ms(200U);  // Debounce
+            sleep_ms(200U); // Debounce
         }
         last_qos_button = current_qos_button;
 
@@ -297,7 +301,7 @@ int main() {
             // GP 22 falling edge
             mqtt_ctx.drop_acks = !mqtt_ctx.drop_acks;
             printf("drop_acks = %u\n", mqtt_ctx.drop_acks ? 1U : 0U);
-            sleep_ms(200U);  // Debounce
+            sleep_ms(200U); // Debounce
         }
         last_drop_button = cur_drop_btn;
 
@@ -307,11 +311,11 @@ int main() {
             // GP 19 falling edge
             if (fs_initialized) {
                 printf("\n>>> File Transfer Button Pressed <<<\n");
-                send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "praise_lord_fauzi.txt");
+                send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "test.txt");
             } else {
                 printf("ERROR: Cannot send file - filesystem not initialized\n");
             }
-            sleep_ms(200);  // Debounce
+            sleep_ms(200); // Debounce
         }
         last_file_button = cur_file_btn;
 
@@ -321,14 +325,14 @@ int main() {
             // Previous ping was acknowledged, can send new PINGREQ periodically
             if (now - s_last_pingreq >= PING_INTERVAL_MS) {
                 mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
-                g_ping_ack_received = false;  // now waiting for PINGRESP
+                g_ping_ack_received = false; // now waiting for PINGRESP
                 s_last_pingreq = now;
             }
         } else {
             // Waiting for PINGRESP, check timeout
             if (now - s_last_pingreq > PINGRESP_TIMEOUT_MS) {
                 printf("PINGRESP timeout, reconnecting MQTT-SN...\n");
-                g_ping_ack_received = true;  // reset flag before reconnect
+                g_ping_ack_received = true; // reset flag before reconnect
                 mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
 
                 // Poll and wait for CONNACK
@@ -345,7 +349,7 @@ int main() {
                     sleep_ms(MQTT_POLL_DELAY_MS);
                 }
 
-                s_last_pingreq = now;  // reset ping timer after reconnect
+                s_last_pingreq = now; // reset ping timer after reconnect
             }
         }
 
@@ -381,9 +385,9 @@ int main() {
 
                     // Subscribe to file transfer topics if we weren't before
                     printf("Subscribing to file transfer topics...\n");
-                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3);  // file/meta
+                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3); // file/meta
                     sleep_ms(100);
-                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4);  // file/data
+                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4); // file/data
                     sleep_ms(100);
                     printf("✓ File transfer topics subscribed\n");
                 }
@@ -393,7 +397,8 @@ int main() {
         // Check Wi-Fi connection
         if (!cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA)) {
             printf("Wi-Fi disconnected! Reconnecting...\n");
-            while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+            while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK,
+                                                      10000)) {
                 sleep_ms(2000);
             }
             printf("Reconnected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
