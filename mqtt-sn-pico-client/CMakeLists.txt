@@ -59,11 +59,37 @@ add_executable(mqtt-sn-pico-client
     mqtt/mqtt-sn-udp.c
 )
 
+add_executable(mqtt-sn-pico-client-rx
+    #main.c
+    mqtt-sn-pico-client-rx.c
+    mqtt/mqtt-sn-udp.c
+)
+
+add_executable(mqtt-sn-pico-client-tx
+    #main.c
+    mqtt-sn-pico-client-tx.c
+    mqtt/mqtt-sn-udp.c
+)
+
 pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
 pico_set_program_version(mqtt-sn-pico-client "0.1")
 
+pico_set_program_name(mqtt-sn-pico-client-rx "mqtt-sn-pico-client-rx")
+pico_set_program_version(mqtt-sn-pico-client-rx "0.1")
+
+pico_set_program_name(mqtt-sn-pico-client-tx "mqtt-sn-pico-client-tx")
+pico_set_program_version(mqtt-sn-pico-client-tx "0.1")
+
 # Add the standard include files to the build
 target_include_directories(mqtt-sn-pico-client PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_include_directories(mqtt-sn-pico-client-rx PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_include_directories(mqtt-sn-pico-client-tx PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
@@ -79,9 +105,37 @@ target_link_libraries(mqtt-sn-pico-client
     hardware_timer
 )
 
+target_link_libraries(mqtt-sn-pico-client-rx
+    pico_stdlib
+    hardware_spi
+    hardware_gpio
+    microsd_driver
+    fs_lib
+    pico_cyw43_arch_lwip_poll
+    hardware_timer
+)
+
+target_link_libraries(mqtt-sn-pico-client-tx
+    pico_stdlib
+    hardware_spi
+    hardware_gpio
+    microsd_driver
+    fs_lib
+    pico_cyw43_arch_lwip_poll
+    hardware_timer
+)
+
 # Enable USB output, disable UART output
 pico_enable_stdio_usb(mqtt-sn-pico-client 1)
 pico_enable_stdio_uart(mqtt-sn-pico-client 0)
 
+pico_enable_stdio_usb(mqtt-sn-pico-client-rx 1)
+pico_enable_stdio_uart(mqtt-sn-pico-client-rx 0)
+
+pico_enable_stdio_usb(mqtt-sn-pico-client-tx 1)
+pico_enable_stdio_uart(mqtt-sn-pico-client-tx 0)
+
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(mqtt-sn-pico-client)
+pico_add_extra_outputs(mqtt-sn-pico-client-rx)
+pico_add_extra_outputs(mqtt-sn-pico-client-tx)

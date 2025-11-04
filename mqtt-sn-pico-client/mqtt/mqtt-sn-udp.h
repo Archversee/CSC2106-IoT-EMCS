@@ -39,11 +39,11 @@
 
 /*! File Transfer Configuration */
 #define FILE_TRANSFER_METADATA_QOS 2U /*!< QoS level for metadata (2=exactly-once delivery) */
-#define FILE_TRANSFER_DATA_QOS \
-    1U                                     /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
-#define FILE_TRANSFER_TOPIC_METADATA 3U    /*!< Topic ID for file metadata (file/meta) */
-#define FILE_TRANSFER_TOPIC_DATA 4U        /*!< Topic ID for file data chunks (file/data) */
-#define METADATA_CONFIRM_TIMEOUT_MS 5000U  // 5 second timeout
+#define FILE_TRANSFER_DATA_QOS                                                                     \
+    1U /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
+#define FILE_TRANSFER_TOPIC_METADATA 3U   /*!< Topic ID for file metadata (file/meta) */
+#define FILE_TRANSFER_TOPIC_DATA 4U       /*!< Topic ID for file data chunks (file/data) */
+#define METADATA_CONFIRM_TIMEOUT_MS 5000U // 5 second timeout
 
 /*! MQTT-SN Packet Structure Constants */
 #define MQTTSN_HEADER_SIZE 2U          /*!< Minimum header size (length + type) */
@@ -90,14 +90,18 @@
 #define MAX_FILE_SIZE_BYTES (10U * 1024U * 1024U) /*!< Maximum file size: 10 MB */
 
 /*! Timing Constants */
-#define QOS2_HANDSHAKE_DELAY_MS 150U /*!< Delay for QoS 2 handshake completion */
-#define INTER_CHUNK_DELAY_US 50000U  /*!< Inter-chunk delay (microseconds) */
-#define POLL_YIELD_DELAY_US 100U     /*!< CPU yield delay during polling */
-#define PROGRESS_UPDATE_INTERVAL 10U /*!< Report progress every N chunks */
+#define QOS2_HANDSHAKE_DELAY_MS 150U  /*!< Delay for QoS 2 handshake completion */
+#define INTER_CHUNK_DELAY_US 50000U   /*!< Inter-chunk delay (microseconds) */
+#define POLL_YIELD_DELAY_US 100U      /*!< CPU yield during polling */
+#define PROGRESS_UPDATE_INTERVAL 10U  /*!< Report progress every N chunks */
+#define TOPIC_RETRY_INTERVAL_MS 5000U /*!< Retry topic registration/subscription every 5s */
+#define MAX_CUSTOM_TOPICS 10U         /*!< Maximum number of custom topics to track */
 
 /*! MQTT-SN Protocol Message Types (as per MQTT-SN v1.2 Specification) */
 #define MQTTSN_MSG_TYPE_CONNECT (0x04U)   /*!< CONNECT message type */
 #define MQTTSN_MSG_TYPE_CONNACK (0x05U)   /*!< CONNACK message type */
+#define MQTTSN_MSG_TYPE_REGISTER (0x0AU)  /*!< REGISTER message type */
+#define MQTTSN_MSG_TYPE_REGACK (0x0BU)    /*!< REGACK message type */
 #define MQTTSN_MSG_TYPE_PUBLISH (0x0CU)   /*!< PUBLISH message type */
 #define MQTTSN_MSG_TYPE_PUBACK (0x0DU)    /*!< PUBACK message type */
 #define MQTTSN_MSG_TYPE_PUBCOMP (0x0EU)   /*!< PUBCOMP message type */
@@ -123,20 +127,32 @@
 typedef struct {
     uint16_t msg_id;
     uint8_t qos;
-    uint8_t step;  // 0 = PUBLISH sent, 1 = PUBREL sent (for QoS 2)
+    uint8_t step; // 0 = PUBLISH sent, 1 = PUBREL sent (for QoS 2)
     absolute_time_t timestamp;
     uint8_t retry_count;
     uint16_t topic_id;
-    uint8_t payload[255];  // Binary-safe payload buffer
-    size_t payload_len;    // Actual payload length
+    uint8_t payload[255]; // Binary-safe payload buffer
+    size_t payload_len;   // Actual payload length
     bool in_use;
 } qos_msg_t;
 
+/*! Topic registration/subscription tracking */
+typedef struct {
+    char topic_name[64];          /*!< Topic name string */
+    uint16_t topic_id;            /*!< Assigned topic ID (0 = not assigned yet) */
+    uint8_t qos;                  /*!< QoS level for subscription */
+    bool is_registered;           /*!< True if topic has been registered/subscribed */
+    bool is_sender;               /*!< True = sender (REGISTER), False = receiver (SUBSCRIBE) */
+    absolute_time_t last_attempt; /*!< Last registration/subscription attempt time */
+    bool in_use;                  /*!< True if this slot is in use */
+} topic_entry_t;
+
 typedef struct {
     bool drop_acks;
-    transfer_session_t* file_session;
-    filesystem_info_t* fs_info;
+    transfer_session_t *file_session;
+    filesystem_info_t *fs_info;
     bool transfer_in_progress;
+    topic_entry_t custom_topics[MAX_CUSTOM_TOPICS]; /*!< Custom topic tracking */
 } mqtt_sn_context_t;
 
 extern qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
@@ -144,32 +160,44 @@ extern uint32_t g_last_pingresp;
 extern bool g_ping_ack_received;
 
 // Public function declarations
-void mqtt_sn_connect(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
-void mqtt_sn_pingreq(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
-void mqtt_sn_subscribe_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
+void mqtt_sn_pingreq(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
+void mqtt_sn_register_topic(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                            const char *topic_name, uint16_t msg_id);
+void mqtt_sn_subscribe_topic_name(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                                  const char *topic_name, uint16_t msg_id, uint8_t qos);
+void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                                 u16_t topic_id);
-void mqtt_sn_publish_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
-                              uint16_t topic_id, const uint8_t* payload, size_t payload_len,
+void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                              uint16_t topic_id, const uint8_t *payload, size_t payload_len,
                               int qos, uint16_t msg_id, bool is_retransmit);
-void mqtt_sn_send_pubrel(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                          uint16_t msg_id);
-void mqtt_sn_send_puback(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                          uint16_t topic_id, uint16_t msg_id, uint8_t return_code);
-void mqtt_sn_send_pubrec(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                          uint16_t msg_id);
-void mqtt_sn_send_pubcomp(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                           uint16_t msg_id);
-void udp_recv_callback(void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr,
+void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr,
                        u16_t port);
-void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port);
+void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
 void remove_pending_qos_msg(uint16_t msg_id);
 uint16_t get_next_msg_id(void);
 
 // File transfer functions
-void send_file_via_mqtt(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
-                        const char* filename);
-void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
-                          struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port);
-void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len);
+void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                        const char *filename);
+void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
+                          struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port);
+void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len);
 
-#endif  // MQTT_SN_UDP_H
+// Custom topic management functions
+bool mqtt_sn_add_topic_for_registration(mqtt_sn_context_t *ctx, const char *topic_name);
+bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t *ctx, const char *topic_name,
+                                        uint8_t qos);
+void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
+                                         const ip_addr_t *gw_addr, u16_t gw_port);
+uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name);
+
+#endif // MQTT_SN_UDP_H

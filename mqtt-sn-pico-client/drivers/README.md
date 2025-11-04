@@ -1,10 +1,66 @@
 # MicroSD Filesystem Driver
 
-A comprehensive exFAT filesystem driver for Raspberry Pi Pico W, designed for INF2004 CS31 MQTT-SN client project.
+A comprehensive modular exFAT filesystem driver for Raspberry Pi Pico W, designed for INF2004 CS31 MQTT-SN client project.
 
 ## Overview
 
-This driver provides full read/write access to exFAT formatted microSD cards, including automatic file versioning, comprehensive logging, and robust error handling. It's specifically designed for IoT applications requiring reliable data storage and debugging capabilities.
+This driver provides full read/write access to exFAT formatted microSD cards, including chunk-based file operations, automatic versioning, comprehensive logging, and robust error handling. The driver is now modularized into separate functional components for better maintainability and clarity.
+
+## Modular Architecture
+
+The driver is organized into the following modules:
+
+### Core Modules
+
+1. **microsd_driver.c/h** - Main wrapper interface
+   - Public API entry points
+   - Driver initialization and state management
+   - SPI low-level functions (hardware-specific)
+   - Block read/write operations
+
+2. **microsd_internal.h** - Internal shared definitions
+   - Shared structures and types
+   - Internal function prototypes
+   - Logging macros
+   - Global state declarations
+
+3. **microsd_exfat.c** - exFAT filesystem operations
+   - Filesystem initialization and parsing
+   - FAT table management
+   - Cluster allocation and chaining
+   - Directory expansion
+   - Allocation bitmap management
+
+4. **microsd_file.c** - File operations
+   - File creation with directory entries
+   - File reading
+   - Filename hash calculation
+   - Directory entry checksum
+   - Cluster chain data writing
+
+5. **microsd_chunk.c** - Chunk-based operations
+   - Out-of-order chunk writing
+   - Chunk metadata management
+   - Sector caching for optimization
+   - Chunk read operations
+   - File finalization after chunked writes
+
+6. **microsd_util.c** - Utility functions
+   - Directory listing
+   - Hex dump for debugging
+   - Logging buffer management
+   - Timestamp utilities
+
+### Module Dependencies
+
+```
+microsd_driver.c (public API)
+    ├── microsd_exfat.c (filesystem)
+    ├── microsd_file.c (file operations)
+    ├── microsd_chunk.c (chunk operations)
+    └── microsd_util.c (utilities)
+         └── microsd_internal.h (shared definitions)
+```
 
 ## Knowledege Prerequisites
 - Basic understanding of C programming
@@ -42,10 +98,12 @@ SD Card SPI Interface:
 ## Features
 
 ### Core Functionality
+- **Modular Design**: Clean separation of concerns with dedicated modules
 - **exFAT Filesystem Support**: Full compliance with exFAT specification
 - **File Operations**: Create, read, write files with proper directory entries
-- **Automatic Versioning**: Sequential file numbering (file.txt, file_1.txt, file_2.txt, etc.)
-- **Directory Management**: Proper exFAT multi-entry directory structures
+- **Chunk-Based Operations**: Out-of-order chunk writing for MQTT-SN file transfers
+- **Sector Caching**: Optimized read-modify-write operations
+- **Directory Management**: Proper exFAT multi-entry directory structures with automatic expansion
 - **Error Recovery**: Corrupted entry cleanup and robust error handling
 
 ### Logging System
@@ -68,26 +126,26 @@ SD Card SPI Interface:
 ```c
 #include "microsd_driver.h"
 
-// Initialize the microSD card
+// Initialize the microSD card (implemented in microsd_driver.c)
 bool microsd_init(void);
 
-// Initialize filesystem information
+// Initialize filesystem information (implemented in microsd_exfat.c)
 filesystem_info_t fs_info;
 bool microsd_init_filesystem(filesystem_info_t* const p_fs_info);
 ```
 
 ### File Operations
 
-#### Creating Files
+#### Creating Files (implemented in microsd_file.c)
 ```c
-// Create a file with automatic versioning
+// Create a file with proper directory entries
 const char* filename = "data.txt";
 const char* content = "Hello INF2004 CS31!";
 bool success = microsd_create_file(&fs_info, filename, 
                                    (uint8_t*)content, strlen(content));
 ```
 
-#### Reading Files
+#### Reading Files (implemented in microsd_file.c)
 ```c
 // Read file contents
 uint8_t buffer[256];
@@ -98,6 +156,50 @@ bool success = microsd_read_file(&fs_info, "data.txt",
 if (success) {
     printf("Read %lu bytes: %.*s\n", bytes_read, (int)bytes_read, buffer);
 }
+```
+
+### Chunk-Based Operations (implemented in microsd_chunk.c)
+
+#### Initialize Chunk Write
+```c
+chunk_metadata_t metadata;
+uint32_t total_chunks = 10;      // Including metadata chunk
+uint32_t chunk_size = 512;       // Bytes per chunk
+uint32_t actual_file_size = 4096; // Total file size
+
+bool success = microsd_init_chunk_write(&fs_info, "large_file.dat",
+                                        total_chunks, chunk_size,
+                                        actual_file_size, &metadata);
+```
+
+#### Write Chunks (can be out-of-order)
+```c
+// Write chunk 5 before chunk 3 - driver handles ordering
+uint8_t chunk_data[512];
+// ... fill chunk_data ...
+
+bool success = microsd_write_chunk(&fs_info, &metadata, 5,
+                                   chunk_data, sizeof(chunk_data));
+```
+
+#### Finalize Chunk Write
+```c
+// Check if all chunks received
+if (microsd_check_all_chunks_received(&metadata)) {
+    // Create directory entry for the file
+    bool success = microsd_finalize_chunk_write(&fs_info, &metadata);
+}
+```
+
+#### Read Chunks
+```c
+uint8_t chunk_buffer[512];
+uint32_t bytes_read;
+uint32_t chunk_index = 3;
+
+bool success = microsd_read_chunk(&fs_info, "large_file.dat",
+                                  chunk_buffer, sizeof(chunk_buffer),
+                                  chunk_index, &bytes_read);
 ```
 
 ### Logging Configuration
@@ -114,8 +216,23 @@ MICROSD_LOG(MICROSD_LOG_INFO, "MQTT client started");
 MICROSD_LOG(MICROSD_LOG_DEBUG, "Sensor reading: %d", sensor_value);
 ```
 
-### Driver Information
+### Utility Functions
 
+#### Directory Listing (implemented in microsd_util.c)
+```c
+// List all files in root directory
+bool success = microsd_list_directory(&fs_info);
+```
+
+#### Hex Dump for Debugging (implemented in microsd_util.c)
+```c
+// Dump sectors for debugging/analysis
+uint32_t start_sector = 0;
+uint32_t num_sectors = 5;
+bool success = microsd_hex_dump(start_sector, num_sectors);
+```
+
+#### Driver Information (implemented in microsd_driver.c)
 ```c
 // Get driver statistics
 microsd_driver_info_t info;
@@ -129,23 +246,22 @@ if (microsd_get_driver_info(&info)) {
 microsd_print_banner();
 ```
 
-## File Versioning System
+## Chunk-Based File Transfer System
 
-The driver automatically handles file versioning to prevent data loss:
+The driver supports out-of-order chunk writing for MQTT-SN file transfers:
 
-```
-First creation:  → HELLO_INF2004.txt
-Second creation: → HELLO_INF2004_1.txt  
-Third creation:  → HELLO_INF2004_2.txt
-...and so on
-```
+### Chunk Transfer Features
+- **Out-of-Order Writing**: Chunks can arrive in any order
+- **Bitmap Tracking**: Tracks which chunks have been received
+- **Sector Caching**: Optimizes read-modify-write operations
+- **File Finalization**: Creates directory entry only when complete
+- **Metadata Support**: First chunk (index 0) contains file metadata
 
-### Versioning Logic
-1. Check if base filename exists
-2. If exists, increment version number and try `filename_N.ext`
-3. Continue until unique filename is found
-4. Create file with unique name
-5. All previous versions are preserved
+### Chunk Transfer Flow
+1. **Initialize**: `microsd_init_chunk_write()` - Allocates clusters and initializes metadata
+2. **Write Chunks**: `microsd_write_chunk()` - Write chunks as they arrive (any order)
+3. **Check Progress**: `microsd_check_all_chunks_received()` - Verify all chunks received
+4. **Finalize**: `microsd_finalize_chunk_write()` - Create directory entry for complete file
 
 ## exFAT Directory Structure
 
@@ -346,10 +462,13 @@ int main(void) {
 }
 ```
 
-### MQTT Client Integration
+### MQTT-SN File Transfer Integration
 ```c
-// In your MQTT client code
-void mqtt_log_message(const char* topic, const char* payload) {
+// In your MQTT-SN client code for receiving chunked file transfers
+static chunk_metadata_t g_chunk_metadata;
+static bool g_transfer_active = false;
+
+void handle_file_chunk(uint32_t chunk_index, uint8_t* data, uint32_t size) {
     static filesystem_info_t fs_info;
     static bool fs_initialized = false;
     
@@ -357,19 +476,34 @@ void mqtt_log_message(const char* topic, const char* payload) {
     if (!fs_initialized) {
         microsd_init();
         microsd_init_filesystem(&fs_info);
-        microsd_enable_file_logging(true);
         fs_initialized = true;
     }
     
-    // Create log entry
-    char log_entry[256];
-    snprintf(log_entry, sizeof(log_entry), 
-             "[%lu] Topic: %s, Payload: %s\n", 
-             to_ms_since_boot(), topic, payload);
+    // First chunk (index 0) contains metadata
+    if (chunk_index == 0 && !g_transfer_active) {
+        // Parse metadata to get total_chunks, chunk_size, file_size, filename
+        uint32_t total_chunks = /* extract from data */;
+        uint32_t chunk_size = /* extract from data */;
+        uint32_t file_size = /* extract from data */;
+        char* filename = /* extract from data */;
+        
+        // Initialize chunk write
+        microsd_init_chunk_write(&fs_info, filename, total_chunks,
+                                chunk_size, file_size, &g_chunk_metadata);
+        g_transfer_active = true;
+    }
     
-    // Write to versioned log file
-    microsd_create_file(&fs_info, "mqtt_log.txt", 
-                       (uint8_t*)log_entry, strlen(log_entry));
+    // Write chunk (can arrive in any order)
+    if (g_transfer_active) {
+        microsd_write_chunk(&fs_info, &g_chunk_metadata, chunk_index, data, size);
+        
+        // Check if transfer complete
+        if (microsd_check_all_chunks_received(&g_chunk_metadata)) {
+            microsd_finalize_chunk_write(&fs_info, &g_chunk_metadata);
+            g_transfer_active = false;
+            printf("File transfer complete: %s\n", g_chunk_metadata.filename);
+        }
+    }
 }
 ```
 
@@ -396,13 +530,13 @@ if (!microsd_create_file(&fs_info, filename, data, length)) {
 
 ### Common Issues and Solutions
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Initialization fails | Card not inserted or bad connections | Check physical connections |
-| Not exFAT filesystem | Wrong format | Format SD card as exFAT |
-| Directory full | Too many files | Delete old files or use larger SD card |
-| File not found | Incorrect filename | Check exact filename including case |
-| Write fails | Card write-protected | Remove write protection |
+| Issue                | Cause                                | Solution                               |
+| -------------------- | ------------------------------------ | -------------------------------------- |
+| Initialization fails | Card not inserted or bad connections | Check physical connections             |
+| Not exFAT filesystem | Wrong format                         | Format SD card as exFAT                |
+| Directory full       | Too many files                       | Delete old files or use larger SD card |
+| File not found       | Incorrect filename                   | Check exact filename including case    |
+| Write fails          | Card write-protected                 | Remove write protection                |
 
 ## Performance Characteristics
 
@@ -414,23 +548,26 @@ if (!microsd_create_file(&fs_info, filename, data, length)) {
 
 ### Memory Usage
 - **RAM**: ~1KB static buffers + 512B per operation
+- **Sector Cache**: 512B for chunk operations
+- **Chunk Metadata**: ~128B per active transfer
 - **Log Buffer**: 8KB for logging system
 - **Stack**: ~2KB maximum during operations
 
 ## File Formats and Compatibility
 
 ### Supported Operations
-- File creation with UTF-8 filenames
-- File reading (full file or partial)
-- Automatic file versioning
-- Directory corruption recovery
+- File creation with UTF-8 filenames (ASCII recommended)
+- File reading (full file or by chunks)
+- Chunk-based file writing (out-of-order support)
+- Directory expansion (automatic when needed)
+- Directory listing and hex dump utilities
 - exFAT compatibility (Windows/Mac/Linux)
 
 ### Limitations
-- Single-cluster files only (32KB max on typical cards)
-- Root directory operations only (no subdirectories)
+- Root directory operations only (no subdirectories yet)
 - ASCII filenames recommended (UTF-16 conversion is basic)
 - No file deletion functionality (preservation by design)
+- Maximum file size limited by available clusters
 
 ## Testing and Validation
 
@@ -492,10 +629,11 @@ microsd_init_filesystem(&fs_info);
 ## Integration Notes
 
 ### MQTT-SN Client Usage
-- Use for persistent message logging
-- Store configuration data
-- Debug output archival
-- Sensor data buffering
+- **File Transfer**: Receive files via chunked transfers (out-of-order support)
+- **Persistent Logging**: Store MQTT messages and events
+- **Configuration Storage**: Save device configuration
+- **Debug Output**: Archive debug logs to SD card
+- **Data Buffering**: Buffer sensor data when offline
 
 ### Memory Management
 - Driver uses static allocation only
@@ -508,11 +646,36 @@ microsd_init_filesystem(&fs_info);
 - Use from single thread only
 - Consider mutex if multi-threading needed
 
+## Development and Contribution
+
+### Code Structure
+The modular design makes it easy to extend functionality:
+- Add new filesystem operations in `microsd_exfat.c`
+- Add new file operations in `microsd_file.c`
+- Extend chunk operations in `microsd_chunk.c`
+- Add utilities in `microsd_util.c`
+- Keep hardware-specific code in `microsd_driver.c`
+
+### Testing
+```bash
+# Compile the driver library and tests
+cd build
+cmake ..
+make -j8
+
+# Flash test program to Pico W
+# Copy .uf2 file to Pico in BOOTSEL mode
+```
+
 ## License and Credits
 
 Developed for INF2004 CS31 coursework - Singapore Institute of Technology
 Driver designed for educational and research purposes.
 
+### Contributors
+- Modular architecture implementation (2025)
+- Original driver development (2024)
+
 ---
 
-**Note**: This driver is optimized for the specific requirements of the INF2004 CS31 MQTT-SN client project. For production use, additional features like subdirectory support, file deletion, and multi-cluster files may be needed.
+**Note**: This modular driver is optimized for the INF2004 CS31 MQTT-SN client project, particularly for chunk-based file transfers over MQTT-SN. The design prioritizes maintainability, clarity, and support for out-of-order chunk operations essential for reliable file transfers over UDP.
