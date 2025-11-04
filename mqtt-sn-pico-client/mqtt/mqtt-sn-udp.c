@@ -448,7 +448,7 @@ void udp_recv_callback(void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_
                 if (topic_id == FILE_TRANSFER_TOPIC_METADATA) {
                     // file/meta topic (expects QoS 2)
                     printf("PUBLISH: File metadata received (QoS %d, Msg ID %d)\n", qos, msg_id);
-                    handle_file_metadata(ctx, payload, payload_len);
+                    handle_file_metadata(ctx, payload, payload_len, pcb, addr, port);
                     // Send appropriate QoS ACK
                     if (qos == QOS_LEVEL_1) {
                         mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id,
@@ -731,7 +731,8 @@ void send_file_via_mqtt(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_
  * @note Uses QoS 2 for guaranteed metadata delivery
  * @note Session must be initialized successfully before data chunks are accepted
  */
-void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len) {
+void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                          struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port) {
     if (!ctx || !payload) {
         printf("ERROR: NULL parameter in handle_file_metadata\n");
         return;
@@ -781,21 +782,80 @@ void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t
     printf("  Chunks:     %lu\n", (unsigned long)metadata.chunk_count);
     printf("  File CRC:   0x%04X\n", metadata.file_crc);
 
-    // Initialize filesystem if not already done
-    if (!ctx->fs_info) {
-        printf("ERROR: Filesystem not initialized\n");
-        return;
+    // Check if filesystem is valid (may have been unplugged)
+    bool fs_valid = (ctx->fs_info && ctx->fs_info->is_exfat && ctx->fs_info->root_cluster > 0);
+
+    if (!fs_valid) {
+        printf("⚠ WARNING: Filesystem not initialized - attempting to initialize SD card...\n");
+        printf("(SD card may have been removed and re-inserted)\n");
+
+        // Attempt to initialize/re-initialize SD card
+        sleep_ms(500);  // Brief delay for card stabilization
+
+        if (ctx->fs_info && microsd_init()) {
+            sleep_ms(500);
+            // Re-initialize the existing fs_info structure
+            if (microsd_init_filesystem(ctx->fs_info)) {
+                printf("✓ SD card successfully re-initialized!\n");
+            } else {
+                printf("✗ ERROR: Failed to initialize SD card filesystem\n");
+                printf("┌─────────────────────────────────────────────────────┐\n");
+                printf("│  Cannot receive file: MicroSD card not initialized  │\n");
+                printf("│  Please ensure SD card is properly inserted         │\n");
+                printf("└─────────────────────────────────────────────────────┘\n");
+
+                // Send error message back to sender
+                const char* error_msg = "ERROR: SD card not initialized. Cannot receive file. Please insert SD card.";
+                uint16_t msg_id = get_next_msg_id();
+                mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                         (const uint8_t*)error_msg, strlen(error_msg),
+                                         QOS_LEVEL_1, msg_id, false);
+                printf("✓ Error notification sent to sender\n");
+                return;
+            }
+        } else {
+            printf("✗ ERROR: SD card initialization failed\n");
+            printf("┌─────────────────────────────────────────────────────┐\n");
+            printf("│  Cannot receive file: MicroSD card not detected     │\n");
+            printf("│  Please insert SD card and try again                │\n");
+            printf("└─────────────────────────────────────────────────────┘\n");
+
+            // Send error message back to sender
+            const char* error_msg = "ERROR: SD card not detected. Cannot receive file. Please insert SD card.";
+            uint16_t msg_id = get_next_msg_id();
+            mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                     (const uint8_t*)error_msg, strlen(error_msg),
+                                     QOS_LEVEL_1, msg_id, false);
+            printf("✓ Error notification sent to sender\n");
+            return;
+        }
     }
 
     // Initialize transfer session
     if (!ctx->file_session) {
-        printf("ERROR: No session buffer allocated\n");
+        printf("✗ ERROR: No session buffer allocated\n");
+
+        // Send error message back to sender
+        const char* error_msg = "ERROR: Session buffer not allocated. Cannot receive file.";
+        uint16_t msg_id = get_next_msg_id();
+        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                 (const uint8_t*)error_msg, strlen(error_msg),
+                                 QOS_LEVEL_1, msg_id, false);
+        printf("✓ Error notification sent to sender\n");
         return;
     }
 
     // Use new filename (true) to avoid overwriting existing files
     if (!chunk_transfer_init_session(ctx->fs_info, &metadata, ctx->file_session, true)) {
-        printf("ERROR: Failed to init transfer session\n");
+        printf("✗ ERROR: Failed to init transfer session (SD card may be full or corrupted)\n");
+
+        // Send error message back to sender
+        const char* error_msg = "ERROR: Failed to initialize transfer session. SD card may be full or corrupted.";
+        uint16_t msg_id = get_next_msg_id();
+        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                 (const uint8_t*)error_msg, strlen(error_msg),
+                                 QOS_LEVEL_1, msg_id, false);
+        printf("✓ Error notification sent to sender\n");
         return;
     }
 
@@ -875,6 +935,32 @@ void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t 
         if (chunk_transfer_finalize(ctx->fs_info, ctx->file_session)) {
             printf("✓ File saved: %s\n", ctx->file_session->filename);
             printf("  Size: %lu bytes\n", (unsigned long)ctx->file_session->metadata.total_size);
+
+            // Dump critical sectors for debugging/verification
+            printf("\n");
+            printf("═══════════════════════════════════════════════════════════════════\n");
+            printf("Dumping SD card sectors for verification...\n");
+            printf("═══════════════════════════════════════════════════════════════════\n");
+            microsd_hex_dump(0, 1);  // MBR
+            printf("\n");
+
+            // Dump partition boot sector (starts at LBA 16384 per MBR)
+            printf("Dumping exFAT Boot Sector (partition start at sector %lu)...\n",
+                   (unsigned long)ctx->fs_info->partition_offset);
+            microsd_hex_dump(ctx->fs_info->partition_offset, 1);
+            printf("\n");
+
+            // Dump root directory sector
+            // Calculate: partition_offset + cluster_heap_offset + (root_cluster - 2) * sectors_per_cluster
+            uint32_t root_sector = ctx->fs_info->partition_offset + ctx->fs_info->cluster_heap_offset +
+                                   ((ctx->fs_info->root_cluster - 2) * ctx->fs_info->sectors_per_cluster);
+            printf("Dumping Root Directory (cluster %lu, sector %lu)...\n",
+                   (unsigned long)ctx->fs_info->root_cluster, (unsigned long)root_sector);
+            microsd_hex_dump(root_sector, 2);  // Dump 2 sectors of root directory
+
+            // List directory contents to verify file is visible
+            printf("\n");
+            microsd_list_directory(ctx->fs_info);
         } else {
             printf("ERROR: Failed to finalize transfer\n");
         }

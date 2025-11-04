@@ -224,7 +224,7 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
     }
 
     // Set chunk metadata
-    chunk->sequence = chunk_index;
+    chunk->sequence = chunk_index + 1; // Data chunks start from sequence 1 (0 is metadata)
     chunk->size = bytes_read;
     chunk->crc = crc16(chunk->data, bytes_read);
 

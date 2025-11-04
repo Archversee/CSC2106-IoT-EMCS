@@ -70,7 +70,7 @@ bool g_ping_ack_received = true;
  * @param verbose Print detailed status messages
  * @return true if initialization succeeded, false otherwise
  */
-static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts, bool verbose) {
+static bool initialize_microsd(filesystem_info_t* fs_info, uint8_t max_attempts, bool verbose) {
     uint8_t sd_init_attempts = 0U;
 
     if (verbose) {
@@ -134,7 +134,7 @@ static bool initialize_microsd(filesystem_info_t *fs_info, uint8_t max_attempts,
  * @param fs_info Pointer to filesystem_info_t structure
  * @return true if card is accessible, false if removed or error
  */
-static bool check_microsd_present(filesystem_info_t *fs_info) {
+static bool check_microsd_present(filesystem_info_t* fs_info) {
     if (!fs_info)
         return false;
 
@@ -172,9 +172,10 @@ int main() {
     // Initial microSD card initialization
     fs_initialized = initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true);
 
+    // Always pass fs_info pointer - let handlers check if it's valid
     mqtt_sn_context_t mqtt_ctx = {.drop_acks = false,
                                   .file_session = &file_session,
-                                  .fs_info = fs_initialized ? &fs_info : NULL,
+                                  .fs_info = &fs_info,
                                   .transfer_in_progress = false};
 
     uint8_t qos_level = 0U;
@@ -196,7 +197,7 @@ int main() {
     printf("Wi-Fi connected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
 
     // Setup UDP
-    struct udp_pcb *pcb = udp_new();
+    struct udp_pcb* pcb = udp_new();
     if (!pcb) {
         printf("UDP setup failed\n");
         return -1;
@@ -212,7 +213,7 @@ int main() {
     // setup MQTT-SN Gateway address
     ip_addr_t gateway_addr;
     IP4_ADDR(&gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2,
-             GATEWAY_IP3); // RMB to change to your gateway IP
+             GATEWAY_IP3);  // RMB to change to your gateway IP
 
     sleep_ms(MQTT_CONNECT_DELAY_MS);
 
@@ -229,23 +230,28 @@ int main() {
     }
     sleep_ms(MQTT_CONNECT_DELAY_MS);
 
-    // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription - can still
-    // receive < QoS <2 messages
-    printf("Subscribing to 'pico/cmd'...\n");
-    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
-    for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
-        cyw43_arch_poll();
-        sleep_ms(MQTT_POLL_DELAY_MS);
-    }
+    // Subscribe to topics only if IS_RECEIVER is enabled
+    if (IS_RECEIVER) {
+        // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription - can still
+        // receive < QoS <2 messages
+        printf("Subscribing to 'pico/cmd'...\n");
+        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
+        for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
+            cyw43_arch_poll();
+            sleep_ms(MQTT_POLL_DELAY_MS);
+        }
 
-    // Subscribe to file transfer topics
-    if (fs_initialized) {
-        printf("Subscribing to file transfer topics...\n");
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3U); // file/meta
-        sleep_ms(MQTT_CONNACK_WAIT_MS);
-        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4U); // file/data
-        sleep_ms(MQTT_CONNACK_WAIT_MS);
-        printf("✓ File transfer topics subscribed\n");
+        // Subscribe to file transfer topics
+        if (fs_initialized) {
+            printf("Subscribing to file transfer topics...\n");
+            mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3U);  // file/meta
+            sleep_ms(MQTT_CONNACK_WAIT_MS);
+            mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4U);  // file/data
+            sleep_ms(MQTT_CONNACK_WAIT_MS);
+            printf("✓ File transfer topics subscribed\n");
+        }
+    } else {
+        printf("IS_RECEIVER disabled - skipping topic subscriptions\n");
     }
 
     uint32_t last_ping = to_ms_since_boot(get_absolute_time());
@@ -275,10 +281,10 @@ int main() {
             // GP 20 Button pressed (falling edge)
             printf("Button pressed! Publishing message...\n");
             uint16_t id = get_next_msg_id();
-            // Publish to topic ID 2 (predefined topic "pico/status") with selected QoS
-            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 2, payload, PAYLOAD_SIZE,
-                                     qos_level, id, false);
-            sleep_ms(200); // Debounce
+            // Publish to topic ID 1 (predefined topic "pico/status") with selected QoS
+            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 1U, payload, PAYLOAD_SIZE,
+                                     (int)qos_level, id, false);
+            sleep_ms(200);  // Debounce
         }
         last_button_state = current_button;
 
@@ -288,10 +294,10 @@ int main() {
             // GP 21 Button pressed (falling edge)
             qos_level++;
             if (qos_level > 2U) {
-                qos_level = 0U; // Wrap around 0->1->2->0
+                qos_level = 0U;  // Wrap around 0->1->2->0
             }
             printf("QoS level changed to: %u\n", qos_level);
-            sleep_ms(200U); // Debounce
+            sleep_ms(200U);  // Debounce
         }
         last_qos_button = current_qos_button;
 
@@ -301,7 +307,7 @@ int main() {
             // GP 22 falling edge
             mqtt_ctx.drop_acks = !mqtt_ctx.drop_acks;
             printf("drop_acks = %u\n", mqtt_ctx.drop_acks ? 1U : 0U);
-            sleep_ms(200U); // Debounce
+            sleep_ms(200U);  // Debounce
         }
         last_drop_button = cur_drop_btn;
 
@@ -313,9 +319,37 @@ int main() {
                 printf("\n>>> File Transfer Button Pressed <<<\n");
                 send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "test.txt");
             } else {
-                printf("ERROR: Cannot send file - filesystem not initialized\n");
+                printf("\n>>> File Transfer Button Pressed <<<\n");
+                printf("⚠ MicroSD card not initialized. Attempting to initialize...\n");
+
+                // Attempt to initialize SD card
+                if (initialize_microsd(&fs_info, MICROSD_INIT_MAX_ATTEMPTS, true)) {
+                    printf("✓ MicroSD card successfully initialized!\n");
+                    fs_initialized = true;
+                    sd_was_initialized = true;
+                    // fs_info pointer already in context, no need to reassign
+
+                    // Subscribe to file transfer topics if IS_RECEIVER is enabled
+                    if (IS_RECEIVER) {
+                        printf("Subscribing to file transfer topics...\n");
+                        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3);  // file/meta
+                        sleep_ms(100);
+                        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4);  // file/data
+                        sleep_ms(100);
+                        printf("✓ File transfer topics subscribed\n");
+                    }
+
+                    printf("\nProceeding with file transfer...\n");
+                    send_file_via_mqtt(pcb, &gateway_addr, UDP_PORT, "test.txt");
+                } else {
+                    printf("✗ Failed to initialize MicroSD card\n");
+                    printf("┌─────────────────────────────────────────────────────┐\n");
+                    printf("│  Please insert or reconnect the MicroSD card and    │\n");
+                    printf("│  press the file transfer button again.              │\n");
+                    printf("└─────────────────────────────────────────────────────┘\n");
+                }
             }
-            sleep_ms(200); // Debounce
+            sleep_ms(200);  // Debounce
         }
         last_file_button = cur_file_btn;
 
@@ -325,14 +359,14 @@ int main() {
             // Previous ping was acknowledged, can send new PINGREQ periodically
             if (now - s_last_pingreq >= PING_INTERVAL_MS) {
                 mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
-                g_ping_ack_received = false; // now waiting for PINGRESP
+                g_ping_ack_received = false;  // now waiting for PINGRESP
                 s_last_pingreq = now;
             }
         } else {
             // Waiting for PINGRESP, check timeout
             if (now - s_last_pingreq > PINGRESP_TIMEOUT_MS) {
                 printf("PINGRESP timeout, reconnecting MQTT-SN...\n");
-                g_ping_ack_received = true; // reset flag before reconnect
+                g_ping_ack_received = true;  // reset flag before reconnect
                 mqtt_sn_connect(pcb, &gateway_addr, UDP_PORT);
 
                 // Poll and wait for CONNACK
@@ -342,14 +376,17 @@ int main() {
                 }
                 printf("Waiting for CONNACK after reconnect...\n");
 
-                mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
+                // Re-subscribe to topics only if IS_RECEIVER is enabled
+                if (IS_RECEIVER) {
+                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 1U);
 
-                for (uint8_t i = 0U; i < SUBSCRIBE_POLL_COUNT; i++) {
-                    cyw43_arch_poll();
-                    sleep_ms(MQTT_POLL_DELAY_MS);
+                    for (uint8_t i = 0U; i < SUBSCRIBE_POLL_COUNT; i++) {
+                        cyw43_arch_poll();
+                        sleep_ms(MQTT_POLL_DELAY_MS);
+                    }
                 }
 
-                s_last_pingreq = now; // reset ping timer after reconnect
+                s_last_pingreq = now;  // reset ping timer after reconnect
             }
         }
 
@@ -367,10 +404,10 @@ int main() {
                     printf("File transfer features disabled.\n");
                     fs_initialized = false;
                     sd_was_initialized = false;
-                    mqtt_ctx.fs_info = NULL;
+                    // Don't set to NULL, keep the pointer but clear the structure
                     mqtt_ctx.transfer_in_progress = false;
 
-                    // Clear filesystem info
+                    // Clear filesystem info (keep pointer valid but mark as uninitialized)
                     memset(&fs_info, 0, sizeof(filesystem_info_t));
                 }
             } else if (!sd_was_initialized) {
@@ -381,15 +418,17 @@ int main() {
                     printf("File transfer features now enabled.\n");
                     fs_initialized = true;
                     sd_was_initialized = true;
-                    mqtt_ctx.fs_info = &fs_info;
+                    // fs_info pointer already in context, no need to reassign
 
-                    // Subscribe to file transfer topics if we weren't before
-                    printf("Subscribing to file transfer topics...\n");
-                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3); // file/meta
-                    sleep_ms(100);
-                    mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4); // file/data
-                    sleep_ms(100);
-                    printf("✓ File transfer topics subscribed\n");
+                    // Subscribe to file transfer topics if we weren't before and IS_RECEIVER is enabled
+                    if (IS_RECEIVER) {
+                        printf("Subscribing to file transfer topics...\n");
+                        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 3);  // file/meta
+                        sleep_ms(100);
+                        mqtt_sn_subscribe_topic_id(pcb, &gateway_addr, UDP_PORT, 4);  // file/data
+                        sleep_ms(100);
+                        printf("✓ File transfer topics subscribed\n");
+                    }
                 }
             }
         }

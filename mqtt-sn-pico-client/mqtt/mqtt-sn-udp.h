@@ -38,12 +38,12 @@
 #include "lwip/udp.h"
 
 /*! File Transfer Configuration */
-#define FILE_TRANSFER_METADATA_QOS 2 /*!< QoS level for metadata (2=exactly-once delivery) */
+#define FILE_TRANSFER_METADATA_QOS 2U /*!< QoS level for metadata (2=exactly-once delivery) */
 #define FILE_TRANSFER_DATA_QOS \
-    1                                     /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
-#define FILE_TRANSFER_TOPIC_METADATA 3U   /*!< Topic ID for file metadata (file/meta) */
-#define FILE_TRANSFER_TOPIC_DATA 4U       /*!< Topic ID for file data chunks (file/data) */
-#define METADATA_CONFIRM_TIMEOUT_MS 5000  // 5 second timeout
+    1U                                     /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
+#define FILE_TRANSFER_TOPIC_METADATA 3U    /*!< Topic ID for file metadata (file/meta) */
+#define FILE_TRANSFER_TOPIC_DATA 4U        /*!< Topic ID for file data chunks (file/data) */
+#define METADATA_CONFIRM_TIMEOUT_MS 5000U  // 5 second timeout
 
 /*! MQTT-SN Packet Structure Constants */
 #define MQTTSN_HEADER_SIZE 2U          /*!< Minimum header size (length + type) */
@@ -168,7 +168,8 @@ uint16_t get_next_msg_id(void);
 // File transfer functions
 void send_file_via_mqtt(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                         const char* filename);
-void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len);
+void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                          struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port);
 void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len);
 
 #endif  // MQTT_SN_UDP_H
