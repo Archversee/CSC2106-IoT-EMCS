@@ -24,8 +24,8 @@ const io = new Server(server, {
 });
 
 // in-memory state
-const devices = {}; // devices[deviceId] = { status: { ts, payload }, telemetry: [...], lastSeen }
-const recentMessages = []; // array of { ts, deviceId, topic, payload }
+const devices = {};           // devices[deviceId] = { status: { ts, payload }, telemetry: [...], lastSeen }
+const recentMessages = [];    // array of { ts, deviceId, topic, payload }
 const fileTransfers = new Map(); // key: deviceId, value: transfer state
 
 function addRecent(msg) {
@@ -33,25 +33,37 @@ function addRecent(msg) {
   if (recentMessages.length > 50) recentMessages.pop();
 }
 
-// MQTT client
+// -------- MQTT SETUP --------
 const mqttClient = mqtt.connect(MQTT_BROKER);
 
 mqttClient.on('connect', () => {
   console.log('[MQTT] connected to', MQTT_BROKER);
-  // subscribe to device topics (telemetry + status)
+
+  // original dashboard topics
   mqttClient.subscribe('devices/+/telemetry/#', { qos: 0 }, (err) => {
     if (err) console.error('[MQTT] subscribe error', err);
     else console.log('[MQTT] subscribed', [{ topic: 'devices/+/telemetry/#', qos: 0 }]);
   });
+
   mqttClient.subscribe('devices/+/status', { qos: 0 }, (err) => {
     if (err) console.error('[MQTT] subscribe error', err);
     else console.log('[MQTT] subscribed', [{ topic: 'devices/+/status', qos: 0 }]);
   });
 
-  // subscribe to file transfer topics
   mqttClient.subscribe('devices/+/file-transfer/#', { qos: 0 }, (err) => {
     if (err) console.error('[MQTT] subscribe error', err);
     else console.log('[MQTT] subscribed to file-transfer topics');
+  });
+
+  // NEW: Pico / gateway topics
+  mqttClient.subscribe('pico/#', { qos: 0 }, (err) => {
+    if (err) console.error('[MQTT] subscribe pico/# error', err);
+    else console.log('[MQTT] subscribed to pico/#');
+  });
+
+  mqttClient.subscribe('file/#', { qos: 0 }, (err) => {
+    if (err) console.error('[MQTT] subscribe file/# error', err);
+    else console.log('[MQTT] subscribed to file/#');
   });
 });
 
@@ -59,35 +71,55 @@ mqttClient.on('error', (err) => {
   console.error('[MQTT] client error', err.message);
 });
 
+// unified message handler for devices/... and pico/... topics
 mqttClient.on('message', (topic, payloadBuf) => {
   let payload = null;
   const str = payloadBuf.toString('utf8');
   try { payload = JSON.parse(str); } catch (e) { payload = str; }
 
-  // topic e.g. devices/pico-001/telemetry/temp
-  const pieces = topic.split('/');
-  const deviceId = pieces[1] || 'unknown';
-  const category = pieces[2] || '';
+  const parts = topic.split('/');
 
-  // for file-transfer messages
+  let deviceId = 'unknown';
+  let category = '';
+
+  // 1) Dashboard-style topics: devices/<id>/status, devices/<id>/telemetry/...
+  if (topic.startsWith('devices/')) {
+    deviceId = parts[1] || 'unknown';
+    category = parts[2] || '';
+
+  // 2) Gateway/Pico topics: pico/status, pico/cmd, etc.
+  } else if (topic.startsWith('pico/')) {
+    const sub = parts[1] || '';
+    deviceId = 'pico-001';   // single device in this project
+    category = sub;          // 'status', 'cmd', etc.
+
+  // 3) Raw file topics: file/meta, file/data, etc. (just log under 'file')
+  } else if (topic.startsWith('file/')) {
+    deviceId = 'pico-001';
+    category = 'file';
+
+  } else {
+    deviceId = parts[1] || 'unknown';
+    category = parts[2] || '';
+  }
+
+  // ---- File transfer messages via devices/.../file-transfer/... ----
   if (category === 'file-transfer') {
-    const transferAction = pieces[3];
+    const transferAction = parts[3];
 
-    // to initialise transfer state
     if (!fileTransfers.has(deviceId)) {
       fileTransfers.set(deviceId, {});
     }
 
     const transfer = fileTransfers.get(deviceId);
 
-    //update transfer based on message type
     if (transferAction === 'progress') {
       transfer.currentChunk = payload.chunk;
       transfer.totalChunks = payload.total;
       transfer.sequenceNum = payload.seq;
       transfer.checksum = payload.checksum;
-      transfer.progress = Math.round((payload.chunk / payload.total) * 100); // percentage progress
-      transfer.lastUpdate = new Date().toISOString(); //  for timeout detection
+      transfer.progress = Math.round((payload.chunk / payload.total) * 100);
+      transfer.lastUpdate = new Date().toISOString();
     } else if (transferAction === 'status') {
       transfer.status = payload.status;
       transfer.fileName = payload.fileName;
@@ -113,9 +145,8 @@ mqttClient.on('message', (topic, payloadBuf) => {
       transfer: transfer
     });
 
-    //prevent processing as regular telemetry
-    console.log(`[File Transfer] ${deviceId} - ${transferAction}:`, payload); 
-    return; 
+    console.log(`[File Transfer] ${deviceId} - ${transferAction}:`, payload);
+    return; // don't treat as normal telemetry/status
   }
 
   const ts = (payload && payload.ts) ? payload.ts : new Date().toISOString();
@@ -123,10 +154,11 @@ mqttClient.on('message', (topic, payloadBuf) => {
   // update devices map
   devices[deviceId] = devices[deviceId] || { telemetry: [], status: null, lastSeen: null };
   devices[deviceId].lastSeen = ts;
+
   if (category === 'status') {
+    // works for both devices/<id>/status and pico/status
     devices[deviceId].status = { ts, payload };
   } else if (category === 'telemetry') {
-    // collect last telemetry (trim)
     devices[deviceId].telemetry.push({ topic, ts, payload });
     if (devices[deviceId].telemetry.length > 100) devices[deviceId].telemetry.shift();
   }
@@ -134,21 +166,19 @@ mqttClient.on('message', (topic, payloadBuf) => {
   const msg = { ts, deviceId, topic, payload };
   addRecent(msg);
 
-  // emit to connected sockets: mqtt-message and telemetry event (if numeric)
   io.emit('mqtt-message', msg);
 
-  // if telemetry value present and numeric, emit telemetry plot event
   if (category === 'telemetry' && payload && (typeof payload.value === 'number')) {
     io.emit('telemetry', { deviceId, topic, ts, value: payload.value });
   }
 });
 
+// -------- SOCKET.IO SETUP --------
 io.on('connection', (socket) => {
   console.log('[SOCKET] client connected', socket.id);
 
   // client wants list of devices
   socket.on('list-devices', () => {
-    // send a shallow copy to avoid accidental mutation on client
     const deviceSummary = {};
     Object.keys(devices).forEach(id => {
       deviceSummary[id] = {
@@ -157,19 +187,31 @@ io.on('connection', (socket) => {
       };
     });
     socket.emit('devices-list', deviceSummary);
-    // also send recent messages
     socket.emit('recent-messages', recentMessages.slice(0, 12));
   });
 
   // client requests to send a command / publish
   // payload: { topic, payload, qos }
+    // client requests to send a command / publish
+  // payload: { topic, payload, qos }
   socket.on('send-cmd', async (req) => {
     try {
-      const topic = req.topic;
+      let topic = req.topic;           // <-- make this "let" so we can rewrite it
       const payload = req.payload || {};
       const qos = Number(req.qos) || 0;
 
-      console.log('[SOCKET] send-cmd', { topic, qos });
+      // --- NEW: translate dashboard-style topic to Pico-style topic ---
+      // Dashboard builds:  devices/<deviceId>/<suffix>
+      // Pico expects:      <deviceId>/<suffix>   (e.g. pico/cmd)
+      if (topic && topic.startsWith('devices/')) {
+        const parts = topic.split('/');
+        if (parts.length >= 3) {
+          // drop the leading "devices"
+          topic = parts.slice(1).join('/');   // e.g. "devices/pico/cmd" -> "pico/cmd"
+        }
+      }
+
+      console.log('[SOCKET] send-cmd', { original: req.topic, mappedTopic: topic, qos });
 
       if (qos === 1) {
         // use helper that retries until PUBACK or fail
@@ -182,13 +224,18 @@ io.on('connection', (socket) => {
         }
       } else {
         // qos 0: normal fire-and-forget
-        mqttClient.publish(topic, (typeof payload === 'string' ? payload : JSON.stringify(payload)), { qos: 0 }, (err) => {
-          if (err) {
-            socket.emit('publish-status', { topic, success: false, error: err.message });
-          } else {
-            socket.emit('publish-status', { topic, success: true });
+        mqttClient.publish(
+          topic,
+          (typeof payload === 'string' ? payload : JSON.stringify(payload)),
+          { qos: 0 },
+          (err) => {
+            if (err) {
+              socket.emit('publish-status', { topic, success: false, error: err.message });
+            } else {
+              socket.emit('publish-status', { topic, success: true });
+            }
           }
-        });
+        );
       }
     } catch (err) {
       console.error('[SOCKET] send-cmd handler error', err);
@@ -200,7 +247,7 @@ io.on('connection', (socket) => {
     console.log('[SOCKET] client disconnected', socket.id, reason);
   });
 
-  // emit initial device list to the newly connected socket
+  // emit initial device list + recent messages
   const initialDeviceSummary = {};
   Object.keys(devices).forEach(id => {
     initialDeviceSummary[id] = {
@@ -212,8 +259,7 @@ io.on('connection', (socket) => {
   socket.emit('recent-messages', recentMessages.slice(0, 12));
 });
 
-// fallback for root: serve index.html (static middleware already does it)
-// keep server listening
+// -------- START SERVER --------
 server.listen(PORT, () => {
   console.log(`HTTP+Socket server listening on http://localhost:${PORT}`);
   console.log('Serving static from', FRONTEND_DIR);
