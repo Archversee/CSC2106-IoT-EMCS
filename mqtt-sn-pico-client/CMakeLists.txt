@@ -55,6 +55,22 @@ add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src)
 add_subdirectory(drivers)
 add_subdirectory(fs)
 
+# Create mqtt-client library for shared functionality
+add_library(mqtt_client STATIC
+    mqtt-client.c
+)
+
+target_link_libraries(mqtt_client
+    microsd_driver
+    pico_stdlib
+    pico_cyw43_arch_lwip_poll
+    fs_lib
+)
+
+target_include_directories(mqtt_client PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+
 # MQTT-SN Pico Client executable (commented out - using split TX/RX versions)
 # add_executable(mqtt-sn-pico-client
 #     #main.c
@@ -129,6 +145,7 @@ target_link_libraries(mqtt-sn-pico-client-rx
     hardware_gpio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     microsd_driver
+    mqtt_client
     fs_lib
     pico_cyw43_arch_lwip_poll
     hardware_timer
@@ -140,6 +157,7 @@ target_link_libraries(mqtt-sn-pico-client-tx
     hardware_gpio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     microsd_driver
+    mqtt_client
     fs_lib
     pico_cyw43_arch_lwip_poll
     hardware_timer
