@@ -2,16 +2,16 @@
 #define CONFIG_H
 
 // Wi-Fi Credentials
-#define WIFI_SSID "SS23"
-#define WIFI_PASS "pxrh9861"
+#define WIFI_SSID "Denny"
+#define WIFI_PASS "rieo8jebs"
 
 // MQTT-SN Gateway
-#define GATEWAY_IP0 192
-#define GATEWAY_IP1 168
-#define GATEWAY_IP2 123
-#define GATEWAY_IP3 100
+#define GATEWAY_IP0 172
+#define GATEWAY_IP1 20
+#define GATEWAY_IP2 10
+#define GATEWAY_IP3 3
 #define UDP_PORT 10000
-#define MQTT_SN_CLIENT_ID "pico_w_sw"
+#define MQTT_SN_CLIENT_ID "pico_me"
 #define IS_RECEIVER true
 
 // MQTT-SN Settings
