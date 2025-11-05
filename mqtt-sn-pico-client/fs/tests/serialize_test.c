@@ -23,7 +23,6 @@ static bool test_payload_serialization(void) {
     // Create test payload
     struct Payload original_payload;
     original_payload.sequence = 42;
-    original_payload.size = PAYLOAD_DATA_SIZE;
 
     // Fill data with test pattern
     for (int i = 0; i < PAYLOAD_DATA_SIZE; i++) {
@@ -31,11 +30,11 @@ static bool test_payload_serialization(void) {
     }
 
     // Calculate CRC
-    original_payload.crc = crc16(original_payload.data, original_payload.size);
+    original_payload.crc = crc16((const char*)original_payload.data, PAYLOAD_DATA_SIZE);
 
     printf("Original Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)original_payload.sequence);
-    printf("  Size: %lu bytes\n", (unsigned long)original_payload.size);
+    printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
     printf("  CRC: 0x%04X\n", original_payload.crc);
 
     // Serialize
@@ -75,7 +74,7 @@ static bool test_payload_serialization(void) {
 
     printf("Deserialized Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)deserialized_payload.sequence);
-    printf("  Size: %lu bytes\n", (unsigned long)deserialized_payload.size);
+    printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
     printf("  CRC: 0x%04X\n", deserialized_payload.crc);
 
     // Verify fields match
@@ -85,13 +84,6 @@ static bool test_payload_serialization(void) {
         printf("✗ FAILED: Sequence mismatch (%lu != %lu)\n",
                (unsigned long)original_payload.sequence,
                (unsigned long)deserialized_payload.sequence);
-        fields_match = false;
-    }
-
-    if (original_payload.size != deserialized_payload.size) {
-        printf("✗ FAILED: Size mismatch (%lu != %lu)\n",
-               (unsigned long)original_payload.size,
-               (unsigned long)deserialized_payload.size);
         fields_match = false;
     }
 
@@ -245,18 +237,22 @@ static bool test_mqtt_simulation(void) {
     printf("\n--- Sender Side ---\n");
     struct Payload tx_payload;
     tx_payload.sequence = 5;
-    tx_payload.size = 100;
 
-    // Fill with test data
-    for (uint32_t i = 0; i < tx_payload.size; i++) {
+    // Fill with test data (using 100 bytes for this test)
+    uint32_t test_data_size = 100;
+    for (uint32_t i = 0; i < test_data_size; i++) {
         tx_payload.data[i] = (uint8_t)((i * 7) & 0xFF);
     }
+    // Fill rest with zeros
+    for (uint32_t i = test_data_size; i < PAYLOAD_DATA_SIZE; i++) {
+        tx_payload.data[i] = 0;
+    }
 
-    tx_payload.crc = crc16(tx_payload.data, tx_payload.size);
+    tx_payload.crc = crc16((const char*)tx_payload.data, PAYLOAD_DATA_SIZE);
 
     printf("Transmitting Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)tx_payload.sequence);
-    printf("  Size: %lu bytes\n", (unsigned long)tx_payload.size);
+    printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
     printf("  CRC: 0x%04X\n", tx_payload.crc);
 
     // Serialize for MQTT transmission
@@ -276,7 +272,7 @@ static bool test_mqtt_simulation(void) {
 
     printf("Received Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)rx_payload.sequence);
-    printf("  Size: %lu bytes\n", (unsigned long)rx_payload.size);
+    printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
     printf("  CRC: 0x%04X\n", rx_payload.crc);
 
     // Verify integrity
@@ -289,7 +285,7 @@ static bool test_mqtt_simulation(void) {
 
     // Verify data matches
     bool data_match = true;
-    for (uint32_t i = 0; i < rx_payload.size; i++) {
+    for (uint32_t i = 0; i < PAYLOAD_DATA_SIZE; i++) {
         if (tx_payload.data[i] != rx_payload.data[i]) {
             printf("✗ FAILED: Data mismatch at byte %lu\n", (unsigned long)i);
             data_match = false;
@@ -341,15 +337,18 @@ static bool test_edge_cases(void) {
     // Test minimum data size
     printf("\nTesting minimum data size (1 byte)...\n");
     payload.sequence = 0;
-    payload.size = 1;
     payload.data[0] = 0x42;
-    payload.crc = crc16(payload.data, payload.size);
+    // Fill rest with zeros
+    for (int i = 1; i < PAYLOAD_DATA_SIZE; i++) {
+        payload.data[i] = 0;
+    }
+    payload.crc = crc16((const char*)payload.data, PAYLOAD_DATA_SIZE);
 
     serialize_payload(&payload, buffer);
     struct Payload rx_payload;
     deserialize_payload(buffer, &rx_payload);
 
-    if (rx_payload.size == 1 && rx_payload.data[0] == 0x42) {
+    if (rx_payload.data[0] == 0x42) {
         printf("✓ PASSED: Minimum data size\n");
     } else {
         printf("✗ FAILED: Minimum data size\n");
@@ -359,16 +358,15 @@ static bool test_edge_cases(void) {
     // Test maximum data size
     printf("\nTesting maximum data size (%d bytes)...\n", PAYLOAD_DATA_SIZE);
     payload.sequence = 999;
-    payload.size = PAYLOAD_DATA_SIZE;
     for (int i = 0; i < PAYLOAD_DATA_SIZE; i++) {
         payload.data[i] = 0xFF;
     }
-    payload.crc = crc16(payload.data, payload.size);
+    payload.crc = crc16((const char*)payload.data, PAYLOAD_DATA_SIZE);
 
     serialize_payload(&payload, buffer);
     deserialize_payload(buffer, &rx_payload);
 
-    if (rx_payload.size == PAYLOAD_DATA_SIZE && rx_payload.sequence == 999) {
+    if (rx_payload.sequence == 999) {
         printf("✓ PASSED: Maximum data size\n");
         return true;
     } else {

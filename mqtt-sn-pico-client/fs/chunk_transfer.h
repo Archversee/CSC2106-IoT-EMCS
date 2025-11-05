@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #include "data_frame.h"
-#include "ff.h" // For FIL type
+#include "ff.h"  // For FIL type
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +35,8 @@ typedef struct {
     uint32_t total_chunks;    /*!< Total number of chunks expected */
     uint32_t chunk_size;      /*!< Size of each chunk in bytes */
     uint32_t chunks_received; /*!< Number of chunks received so far */
-    uint8_t *chunk_bitmap; /*!< Dynamically allocated bitmap tracking which chunks are received */
-    uint32_t bitmap_size;  /*!< Size of bitmap in bytes */
+    uint8_t* chunk_bitmap;    /*!< Dynamically allocated bitmap tracking which chunks are received */
+    uint32_t bitmap_size;     /*!< Size of bitmap in bytes */
     uint32_t total_file_size; /*!< Total size of the file in bytes */
     char filename[64];        /*!< Filename for this chunked file */
 } fs_chunk_metadata_t;
@@ -73,7 +73,7 @@ typedef struct {
  * @note Sets session->active to true on success
  * @note QoS 2 ensures this is called exactly once per transfer
  */
-bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_session_t *session,
+bool chunk_transfer_init_session(const struct Metadata* metadata, transfer_session_t* session,
                                  bool use_new_filename);
 
 /*!
@@ -91,7 +91,22 @@ bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_sessi
  * @note Handles duplicate chunks gracefully using bitmap
  * @note Received via QoS 1, so duplicates may occur
  */
-bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payload *payload);
+bool chunk_transfer_write_payload(transfer_session_t* session, const struct Payload* payload);
+
+/*!
+ * @brief Sync/flush written chunks to SD card (called after each window)
+ *
+ * This function ensures all buffered writes are committed to the SD card.
+ * Should be called after receiving a complete window of chunks to optimize
+ * SD card write performance with the Go-Back-N sliding window protocol.
+ *
+ * @param session Pointer to the active transfer session
+ * @return true on success, false on failure
+ *
+ * @note For 32KB windows (~138 chunks), call this after each ACK sent
+ * @note Reduces SD card wear by batching writes per window instead of per chunk
+ */
+bool chunk_transfer_sync_window(transfer_session_t* session);
 
 /*!
  * @brief Check if all chunks have been received for a session
@@ -99,7 +114,7 @@ bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payl
  * @param session Pointer to the transfer session
  * @return true if all chunks received, false otherwise
  */
-bool chunk_transfer_is_complete(const transfer_session_t *session);
+bool chunk_transfer_is_complete(const transfer_session_t* session);
 
 /*!
  * @brief Finalize a chunk transfer session
@@ -110,7 +125,7 @@ bool chunk_transfer_is_complete(const transfer_session_t *session);
  * @param session Pointer to the transfer session to finalize
  * @return true on success, false on failure
  */
-bool chunk_transfer_finalize(transfer_session_t *session);
+bool chunk_transfer_finalize(transfer_session_t* session);
 
 /*!
  * @brief Get the progress of a transfer session
@@ -119,15 +134,15 @@ bool chunk_transfer_finalize(transfer_session_t *session);
  * @param chunks_received Output parameter for number of chunks received
  * @param total_chunks Output parameter for total number of chunks
  */
-void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *chunks_received,
-                                 uint32_t *total_chunks);
+void chunk_transfer_get_progress(const transfer_session_t* session, uint32_t* chunks_received,
+                                 uint32_t* total_chunks);
 
 /*!
  * @brief Print session information for debugging
  *
  * @param session Pointer to the transfer session
  */
-void chunk_transfer_print_session_info(const transfer_session_t *session);
+void chunk_transfer_print_session_info(const transfer_session_t* session);
 
 #ifdef __cplusplus
 }

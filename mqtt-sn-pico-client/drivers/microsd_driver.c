@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "ff.h"
+#include "pico/stdlib.h"  // For sleep_ms()
 #include "sd_card.h"
 
 /*! Driver state */
@@ -52,10 +53,50 @@ bool microsd_driver_init(void) {
     g_sd_state.driver_ready = true;
     printf("✓ SD card hardware initialized\n");
 
-    // Mount the filesystem
-    FRESULT fr = f_mount(&g_sd_state.fs, "", 1);
+    // Give SD card time to stabilize after hardware init
+    sleep_ms(100);
+
+    // Mount the filesystem with retry logic (SD cards can be slow to respond)
+    FRESULT fr;
+    int retry_count = 0;
+    const int max_retries = 3;
+
+    while (retry_count < max_retries) {
+        fr = f_mount(&g_sd_state.fs, "", 1);
+        if (fr == FR_OK) {
+            break;
+        }
+
+        printf("  Mount attempt %d/%d failed (error %d: ", retry_count + 1, max_retries, fr);
+        switch (fr) {
+            case FR_NOT_READY:
+                printf("SD card not ready");
+                break;
+            case FR_DISK_ERR:
+                printf("Disk I/O error");
+                break;
+            case FR_NO_FILESYSTEM:
+                printf("No valid FAT filesystem found");
+                break;
+            default:
+                printf("Unknown error");
+                break;
+        }
+        printf(")\n");
+
+        retry_count++;
+        if (retry_count < max_retries) {
+            printf("  Retrying in 200ms...\n");
+            sleep_ms(200);
+        }
+    }
+
     if (fr != FR_OK) {
-        printf("✗ ERROR: Failed to mount filesystem (error %d)\n", fr);
+        printf("✗ ERROR: Failed to mount filesystem after %d attempts (error %d)\n", max_retries, fr);
+        printf("  Please check:\n");
+        printf("  1. SD card is properly inserted\n");
+        printf("  2. SD card is formatted as FAT32\n");
+        printf("  3. Hardware connections (MISO=%d, MOSI=%d, SCK=%d, CS=%d)\n", 12, 11, 10, 15);
         g_sd_state.last_error = fr;
         return false;
     }
@@ -76,7 +117,7 @@ bool microsd_driver_is_present(void) {
     }
 
     // Try to get volume information as a presence check
-    FATFS *fs;
+    FATFS* fs;
     DWORD fre_clust;
     FRESULT fr = f_getfree("0:", &fre_clust, &fs);
 
@@ -89,7 +130,7 @@ bool microsd_driver_is_present(void) {
  */
 bool microsd_driver_unmount(void) {
     if (!g_sd_state.initialized) {
-        return true; // Already unmounted
+        return true;  // Already unmounted
     }
 
     FRESULT fr = f_unmount("");
@@ -110,12 +151,12 @@ bool microsd_driver_unmount(void) {
  * @param free_space Output: free space in bytes
  * @return true on success, false on failure
  */
-bool microsd_driver_get_space(uint64_t *total_space, uint64_t *free_space) {
+bool microsd_driver_get_space(uint64_t* total_space, uint64_t* free_space) {
     if (!g_sd_state.initialized) {
         return false;
     }
 
-    FATFS *fs;
+    FATFS* fs;
     DWORD fre_clust;
     FRESULT fr = f_getfree("0:", &fre_clust, &fs);
 
@@ -151,7 +192,7 @@ bool microsd_driver_get_space(uint64_t *total_space, uint64_t *free_space) {
  * @param mode Access mode (FA_READ, FA_WRITE, FA_CREATE_ALWAYS, etc.)
  * @return true on success, false on failure
  */
-bool microsd_driver_open(FIL *file, const char *filename, BYTE mode) {
+bool microsd_driver_open(FIL* file, const char* filename, BYTE mode) {
     if (!g_sd_state.initialized || !file || !filename) {
         return false;
     }
@@ -171,7 +212,7 @@ bool microsd_driver_open(FIL *file, const char *filename, BYTE mode) {
  * @param file Pointer to FIL structure
  * @return true on success, false on failure
  */
-bool microsd_driver_close(FIL *file) {
+bool microsd_driver_close(FIL* file) {
     if (!file) {
         return false;
     }
@@ -194,7 +235,7 @@ bool microsd_driver_close(FIL *file) {
  * @param bytes_read Output: actual bytes read
  * @return true on success, false on failure
  */
-bool microsd_driver_read(FIL *file, void *buffer, UINT bytes_to_read, UINT *bytes_read) {
+bool microsd_driver_read(FIL* file, void* buffer, UINT bytes_to_read, UINT* bytes_read) {
     if (!file || !buffer) {
         return false;
     }
@@ -218,7 +259,7 @@ bool microsd_driver_read(FIL *file, void *buffer, UINT bytes_to_read, UINT *byte
  * @param bytes_written Output: actual bytes written
  * @return true on success, false on failure
  */
-bool microsd_driver_write(FIL *file, const void *buffer, UINT bytes_to_write, UINT *bytes_written) {
+bool microsd_driver_write(FIL* file, const void* buffer, UINT bytes_to_write, UINT* bytes_written) {
     if (!file || !buffer) {
         return false;
     }
@@ -240,7 +281,7 @@ bool microsd_driver_write(FIL *file, const void *buffer, UINT bytes_to_write, UI
  * @param offset Byte offset from beginning of file
  * @return true on success, false on failure
  */
-bool microsd_driver_seek(FIL *file, FSIZE_t offset) {
+bool microsd_driver_seek(FIL* file, FSIZE_t offset) {
     if (!file) {
         return false;
     }
@@ -260,7 +301,7 @@ bool microsd_driver_seek(FIL *file, FSIZE_t offset) {
  * @param file Pointer to FIL structure
  * @return true on success, false on failure
  */
-bool microsd_driver_sync(FIL *file) {
+bool microsd_driver_sync(FIL* file) {
     if (!file) {
         return false;
     }
@@ -280,7 +321,7 @@ bool microsd_driver_sync(FIL *file) {
  * @param file Pointer to FIL structure
  * @return File size in bytes, or 0 on error
  */
-FSIZE_t microsd_driver_get_size(FIL *file) {
+FSIZE_t microsd_driver_get_size(FIL* file) {
     if (!file) {
         return 0;
     }
@@ -294,7 +335,7 @@ FSIZE_t microsd_driver_get_size(FIL *file) {
  * @param fileinfo Pointer to FILINFO structure to receive info
  * @return true on success, false on failure
  */
-bool microsd_driver_stat(const char *filename, FILINFO *fileinfo) {
+bool microsd_driver_stat(const char* filename, FILINFO* fileinfo) {
     if (!g_sd_state.initialized || !filename || !fileinfo) {
         return false;
     }
@@ -313,7 +354,7 @@ bool microsd_driver_stat(const char *filename, FILINFO *fileinfo) {
  * @param filename Filename to check
  * @return true if file exists, false otherwise
  */
-bool microsd_driver_file_exists(const char *filename) {
+bool microsd_driver_file_exists(const char* filename) {
     FILINFO fno;
     return microsd_driver_stat(filename, &fno);
 }
@@ -323,7 +364,7 @@ bool microsd_driver_file_exists(const char *filename) {
  * @param filename Filename to delete
  * @return true on success, false on failure
  */
-bool microsd_driver_unlink(const char *filename) {
+bool microsd_driver_unlink(const char* filename) {
     if (!g_sd_state.initialized || !filename) {
         return false;
     }
@@ -344,7 +385,7 @@ bool microsd_driver_unlink(const char *filename) {
  * @param new_name New filename
  * @return true on success, false on failure
  */
-bool microsd_driver_rename(const char *old_name, const char *new_name) {
+bool microsd_driver_rename(const char* old_name, const char* new_name) {
     if (!g_sd_state.initialized || !old_name || !new_name) {
         return false;
     }
@@ -364,7 +405,7 @@ bool microsd_driver_rename(const char *old_name, const char *new_name) {
  * @param dirname Directory name to create
  * @return true on success, false on failure
  */
-bool microsd_driver_mkdir(const char *dirname) {
+bool microsd_driver_mkdir(const char* dirname) {
     if (!g_sd_state.initialized || !dirname) {
         return false;
     }
@@ -385,7 +426,7 @@ bool microsd_driver_mkdir(const char *dirname) {
  * @param dirname Directory name to open
  * @return true on success, false on failure
  */
-bool microsd_driver_opendir(DIR *dir, const char *dirname) {
+bool microsd_driver_opendir(DIR* dir, const char* dirname) {
     if (!g_sd_state.initialized || !dir || !dirname) {
         return false;
     }
@@ -406,7 +447,7 @@ bool microsd_driver_opendir(DIR *dir, const char *dirname) {
  * @param fileinfo Pointer to FILINFO structure to receive entry info
  * @return true on success, false on error or end of directory
  */
-bool microsd_driver_readdir(DIR *dir, FILINFO *fileinfo) {
+bool microsd_driver_readdir(DIR* dir, FILINFO* fileinfo) {
     if (!dir || !fileinfo) {
         return false;
     }
@@ -426,7 +467,7 @@ bool microsd_driver_readdir(DIR *dir, FILINFO *fileinfo) {
  * @param dir Pointer to DIR structure
  * @return true on success, false on failure
  */
-bool microsd_driver_closedir(DIR *dir) {
+bool microsd_driver_closedir(DIR* dir) {
     if (!dir) {
         return false;
     }
@@ -446,7 +487,7 @@ bool microsd_driver_closedir(DIR *dir) {
  * @param dirname Directory name (use "" or "/" for root)
  * @return true on success, false on failure
  */
-bool microsd_driver_list_directory(const char *dirname) {
+bool microsd_driver_list_directory(const char* dirname) {
     if (!g_sd_state.initialized) {
         return false;
     }
@@ -482,8 +523,8 @@ bool microsd_driver_list_directory(const char *dirname) {
  * @param bytes_read Output: actual bytes read
  * @return true on success, false on failure
  */
-bool microsd_driver_read_file(const char *filename, void *buffer, size_t buffer_size,
-                              size_t *bytes_read) {
+bool microsd_driver_read_file(const char* filename, void* buffer, size_t buffer_size,
+                              size_t* bytes_read) {
     if (!filename || !buffer || !bytes_read) {
         return false;
     }
@@ -508,7 +549,7 @@ bool microsd_driver_read_file(const char *filename, void *buffer, size_t buffer_
  * @param size Number of bytes to write
  * @return true on success, false on failure
  */
-bool microsd_driver_write_file(const char *filename, const void *buffer, size_t size) {
+bool microsd_driver_write_file(const char* filename, const void* buffer, size_t size) {
     if (!filename || !buffer) {
         return false;
     }
@@ -533,8 +574,8 @@ bool microsd_driver_write_file(const char *filename, const void *buffer, size_t 
  * @param bytes_read Output: actual bytes read
  * @return true on success, false on failure
  */
-bool microsd_driver_read_file_buffered(const char *filename, void *buffer, size_t buffer_size,
-                                       size_t *bytes_read) {
+bool microsd_driver_read_file_buffered(const char* filename, void* buffer, size_t buffer_size,
+                                       size_t* bytes_read) {
     if (!filename || !buffer || !bytes_read) {
         return false;
     }
@@ -545,7 +586,7 @@ bool microsd_driver_read_file_buffered(const char *filename, void *buffer, size_
     }
 
     size_t total_read = 0;
-    uint8_t *dest = (uint8_t *)buffer;
+    uint8_t* dest = (uint8_t*)buffer;
 
     while (total_read < buffer_size) {
         size_t chunk_size = (buffer_size - total_read);
@@ -560,7 +601,7 @@ bool microsd_driver_read_file_buffered(const char *filename, void *buffer, size_
         }
 
         if (read == 0) {
-            break; // EOF
+            break;  // EOF
         }
 
         memcpy(dest + total_read, g_read_buffer, read);
@@ -578,7 +619,7 @@ bool microsd_driver_read_file_buffered(const char *filename, void *buffer, size_
  * @param total_writes Output: total write operations
  * @param last_error Output: last error code
  */
-void microsd_driver_get_stats(uint32_t *total_reads, uint32_t *total_writes, uint32_t *last_error) {
+void microsd_driver_get_stats(uint32_t* total_reads, uint32_t* total_writes, uint32_t* last_error) {
     if (total_reads) {
         *total_reads = g_sd_state.total_reads;
     }
@@ -619,49 +660,49 @@ void microsd_driver_print_info(void) {
  * @param error_code FatFS error code
  * @return String description of error
  */
-const char *microsd_driver_get_error_string(FRESULT error_code) {
+const char* microsd_driver_get_error_string(FRESULT error_code) {
     switch (error_code) {
-    case FR_OK:
-        return "Success";
-    case FR_DISK_ERR:
-        return "Disk error";
-    case FR_INT_ERR:
-        return "Internal error";
-    case FR_NOT_READY:
-        return "Drive not ready";
-    case FR_NO_FILE:
-        return "File not found";
-    case FR_NO_PATH:
-        return "Path not found";
-    case FR_INVALID_NAME:
-        return "Invalid name";
-    case FR_DENIED:
-        return "Access denied";
-    case FR_EXIST:
-        return "File exists";
-    case FR_INVALID_OBJECT:
-        return "Invalid object";
-    case FR_WRITE_PROTECTED:
-        return "Write protected";
-    case FR_INVALID_DRIVE:
-        return "Invalid drive";
-    case FR_NOT_ENABLED:
-        return "Not enabled";
-    case FR_NO_FILESYSTEM:
-        return "No filesystem";
-    case FR_MKFS_ABORTED:
-        return "Format aborted";
-    case FR_TIMEOUT:
-        return "Timeout";
-    case FR_LOCKED:
-        return "File locked";
-    case FR_NOT_ENOUGH_CORE:
-        return "Not enough memory";
-    case FR_TOO_MANY_OPEN_FILES:
-        return "Too many open files";
-    case FR_INVALID_PARAMETER:
-        return "Invalid parameter";
-    default:
-        return "Unknown error";
+        case FR_OK:
+            return "Success";
+        case FR_DISK_ERR:
+            return "Disk error";
+        case FR_INT_ERR:
+            return "Internal error";
+        case FR_NOT_READY:
+            return "Drive not ready";
+        case FR_NO_FILE:
+            return "File not found";
+        case FR_NO_PATH:
+            return "Path not found";
+        case FR_INVALID_NAME:
+            return "Invalid name";
+        case FR_DENIED:
+            return "Access denied";
+        case FR_EXIST:
+            return "File exists";
+        case FR_INVALID_OBJECT:
+            return "Invalid object";
+        case FR_WRITE_PROTECTED:
+            return "Write protected";
+        case FR_INVALID_DRIVE:
+            return "Invalid drive";
+        case FR_NOT_ENABLED:
+            return "Not enabled";
+        case FR_NO_FILESYSTEM:
+            return "No filesystem";
+        case FR_MKFS_ABORTED:
+            return "Format aborted";
+        case FR_TIMEOUT:
+            return "Timeout";
+        case FR_LOCKED:
+            return "File locked";
+        case FR_NOT_ENOUGH_CORE:
+            return "Not enough memory";
+        case FR_TOO_MANY_OPEN_FILES:
+            return "Too many open files";
+        case FR_INVALID_PARAMETER:
+            return "Invalid parameter";
+        default:
+            return "Unknown error";
     }
 }

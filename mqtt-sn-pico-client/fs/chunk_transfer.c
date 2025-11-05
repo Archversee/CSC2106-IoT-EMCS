@@ -33,7 +33,7 @@
 #include "ff.h"
 #include "hw_config.h"
 
-bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_session_t *session,
+bool chunk_transfer_init_session(const struct Metadata* metadata, transfer_session_t* session,
                                  bool use_new_filename) {
     if (!metadata || !session) {
         printf("ERROR: NULL parameter in chunk_transfer_init_session\n");
@@ -49,8 +49,8 @@ bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_sessi
     if (use_new_filename) {
         /* Modify filename to add "_received" suffix before extension */
         char new_filename[METADATA_FILENAME_SIZE];
-        const char *original_filename = metadata->filename;
-        const char *dot = strrchr(original_filename, '.');
+        const char* original_filename = metadata->filename;
+        const char* dot = strrchr(original_filename, '.');
 
         if (dot && dot != original_filename) {
             /* File has extension, insert "_received" before extension */
@@ -92,7 +92,7 @@ bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_sessi
     session->chunk_meta.bitmap_size = (session->total_chunks + 7) / 8;
 
     /* Dynamically allocate bitmap */
-    session->chunk_meta.chunk_bitmap = (uint8_t *)malloc(session->chunk_meta.bitmap_size);
+    session->chunk_meta.chunk_bitmap = (uint8_t*)malloc(session->chunk_meta.bitmap_size);
     if (!session->chunk_meta.chunk_bitmap) {
         printf("ERROR: Failed to allocate bitmap (%lu bytes for %lu chunks)\n",
                (unsigned long)session->chunk_meta.bitmap_size,
@@ -106,9 +106,21 @@ bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_sessi
     strncpy(session->chunk_meta.filename, session->filename, 63);
     session->chunk_meta.filename[63] = '\0';
 
-    /* Create temporary filename for chunk writes */
+    /* Create temporary filename for chunk writes
+       Use shorter format to avoid 8.3 filename limit issues on FAT32 without LFN */
     char tmp_filename[METADATA_FILENAME_SIZE + 5];
-    snprintf(tmp_filename, sizeof(tmp_filename), "%s.tmp", session->filename);
+
+    /* Extract base name without extension for shorter tmp name */
+    const char* dot = strrchr(session->filename, '.');
+    if (dot && dot != session->filename) {
+        /* Use format: "basename~.tmp" to stay within 8.3 limits */
+        size_t base_len = dot - session->filename;
+        if (base_len > 7) base_len = 7;  // Leave room for "~.tmp"
+        snprintf(tmp_filename, sizeof(tmp_filename), "%.*s~.tmp", (int)base_len, session->filename);
+    } else {
+        /* No extension, use simple format */
+        snprintf(tmp_filename, sizeof(tmp_filename), "%.8s.tmp", session->filename);
+    }
 
     /* Create and open temporary file (keep it open for entire session) */
     session->tmp_file_open = false;
@@ -184,7 +196,7 @@ bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_sessi
     return true;
 }
 
-bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payload *payload) {
+bool chunk_transfer_write_payload(transfer_session_t* session, const struct Payload* payload) {
     if (!session || !payload) {
         printf("ERROR: NULL parameter in chunk_transfer_write_payload\n");
         return false;
@@ -238,19 +250,24 @@ bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payl
         return false;
     }
 
-    /* Write the chunk data */
-    UINT bw;
-    fr = f_write(&session->tmp_file, payload->data, payload->size, &bw);
-
-    if (fr != FR_OK || bw != payload->size) {
-        printf("ERROR: Failed to write chunk %lu (error %d, wrote %u/%lu bytes)\n",
-               (unsigned long)payload->sequence, fr, bw, (unsigned long)payload->size);
-        return false;
+    /* Calculate actual chunk size (last chunk may be smaller) */
+    uint32_t chunk_size = PAYLOAD_DATA_SIZE;
+    if (payload->sequence == session->metadata.chunk_count - 1) {
+        /* Last chunk - calculate remaining bytes */
+        uint32_t remaining = session->metadata.total_size % PAYLOAD_DATA_SIZE;
+        if (remaining > 0) {
+            chunk_size = remaining;
+        }
     }
 
-    /* Sync every 100 chunks to ensure data is committed to SD card periodically */
-    if (session->chunk_meta.chunks_received % 100 == 0) {
-        f_sync(&session->tmp_file);
+    /* Write the chunk data */
+    UINT bw;
+    fr = f_write(&session->tmp_file, payload->data, chunk_size, &bw);
+
+    if (fr != FR_OK || bw != chunk_size) {
+        printf("ERROR: Failed to write chunk %lu (error %d, wrote %u/%lu bytes)\n",
+               (unsigned long)payload->sequence, fr, bw, (unsigned long)chunk_size);
+        return false;
     }
 
     /* Mark chunk as received in bitmap */
@@ -258,12 +275,42 @@ bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payl
     session->chunk_meta.chunks_received++;
 
     printf("✓ Chunk %lu/%lu written (%u bytes)\n", (unsigned long)payload->sequence,
-           (unsigned long)session->metadata.chunk_count, payload->size);
+           (unsigned long)session->metadata.chunk_count, chunk_size);
 
     return true;
 }
 
-bool chunk_transfer_is_complete(const transfer_session_t *session) {
+bool chunk_transfer_sync_window(transfer_session_t* session) {
+    if (!session) {
+        printf("ERROR: NULL parameter in chunk_transfer_sync_window\n");
+        return false;
+    }
+
+    if (!session->active) {
+        printf("ERROR: Session is not active\n");
+        return false;
+    }
+
+    if (!session->tmp_file_open) {
+        printf("ERROR: Temporary file is not open\n");
+        return false;
+    }
+
+    /* Flush buffered writes to SD card */
+    FRESULT fr = f_sync(&session->tmp_file);
+    if (fr != FR_OK) {
+        printf("ERROR: Failed to sync file (error %d)\n", fr);
+        return false;
+    }
+
+    printf("✓ Window synced to SD card (%lu/%lu chunks received)\n",
+           (unsigned long)session->chunk_meta.chunks_received,
+           (unsigned long)session->chunk_meta.total_chunks);
+
+    return true;
+}
+
+bool chunk_transfer_is_complete(const transfer_session_t* session) {
     if (!session || !session->active) {
         return false;
     }
@@ -285,7 +332,7 @@ bool chunk_transfer_is_complete(const transfer_session_t *session) {
     return true;
 }
 
-bool chunk_transfer_finalize(transfer_session_t *session) {
+bool chunk_transfer_finalize(transfer_session_t* session) {
     if (!session) {
         printf("ERROR: NULL parameter in chunk_transfer_finalize\n");
         return false;
@@ -311,9 +358,17 @@ bool chunk_transfer_finalize(transfer_session_t *session) {
         session->tmp_file_open = false;
     }
 
-    /* Rename temporary file to final filename */
+    /* Generate temporary filename (must match the format used in init) */
     char tmp_filename[METADATA_FILENAME_SIZE + 5];
-    snprintf(tmp_filename, sizeof(tmp_filename), "%s.tmp", session->filename);
+    const char* dot = strrchr(session->filename, '.');
+    if (dot && dot != session->filename) {
+        /* Use same short format as init: "basename~.tmp" */
+        size_t base_len = dot - session->filename;
+        if (base_len > 7) base_len = 7;
+        snprintf(tmp_filename, sizeof(tmp_filename), "%.*s~.tmp", (int)base_len, session->filename);
+    } else {
+        snprintf(tmp_filename, sizeof(tmp_filename), "%.8s.tmp", session->filename);
+    }
 
     /* Check if final file exists and delete it */
     FIL file;
@@ -359,8 +414,8 @@ bool chunk_transfer_finalize(transfer_session_t *session) {
     return true;
 }
 
-void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *chunks_received,
-                                 uint32_t *total_chunks) {
+void chunk_transfer_get_progress(const transfer_session_t* session, uint32_t* chunks_received,
+                                 uint32_t* total_chunks) {
     if (!session) {
         if (chunks_received)
             *chunks_received = 0;
@@ -377,7 +432,7 @@ void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *ch
     }
 }
 
-void chunk_transfer_print_session_info(const transfer_session_t *session) {
+void chunk_transfer_print_session_info(const transfer_session_t* session) {
     if (!session) {
         printf("Session: NULL\n");
         return;

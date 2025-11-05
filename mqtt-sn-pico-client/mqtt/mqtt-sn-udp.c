@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "../config.h"
+#include "../drivers/microsd_driver.h"
 #include "config.h"
 #include "hardware/sync.h"
 #include "lwip/pbuf.h"
@@ -23,17 +24,17 @@ qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
  */
 uint16_t get_next_msg_id(void) {
     if (s_next_msg_id == 0U || s_next_msg_id == 0xFFFFU) {
-        s_next_msg_id = 1U; // Start from 1, skip 0
+        s_next_msg_id = 1U;  // Start from 1, skip 0
     }
     return s_next_msg_id++;
 }
 
 // Send MQTT-SN CONNECT packet
-void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port) {
-    const char *client_id = MQTT_SN_CLIENT_ID;
+void mqtt_sn_connect(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port) {
+    const char* client_id = MQTT_SN_CLIENT_ID;
     size_t id_len = strlen(client_id);
     u16_t packet_len = MQTTSN_CONNECT_FIXED_LEN +
-                       id_len; // [len][type=0x04][flags][protocol_id][duration(2)][client_id]
+                       id_len;  // [len][type=0x04][flags][protocol_id][duration(2)][client_id]
 
     if (packet_len > MQTTSN_MAX_PACKET_LEN) {
         printf("Client ID too long\n");
@@ -41,18 +42,18 @@ void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_por
     }
 
     // Allocate pbuf for CONNECT packet
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
     if (!p)
         return;
 
-    uint8_t *data = (uint8_t *)p->payload;
+    uint8_t* data = (uint8_t*)p->payload;
     data[MQTTSN_OFFSET_LENGTH] = (uint8_t)packet_len;
-    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_CONNECT; // CONNECT
-    data[MQTTSN_OFFSET_FLAGS] = MQTTSN_FLAG_CLEAN_SESSION;  // Flags (clean session)
-    data[MQTTSN_OFFSET_PROTOCOL_ID] = MQTTSN_PROTOCOL_ID;   // Protocol ID (MQTT-SN v1.2)
+    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_CONNECT;  // CONNECT
+    data[MQTTSN_OFFSET_FLAGS] = MQTTSN_FLAG_CLEAN_SESSION;   // Flags (clean session)
+    data[MQTTSN_OFFSET_PROTOCOL_ID] = MQTTSN_PROTOCOL_ID;    // Protocol ID (MQTT-SN v1.2)
     data[MQTTSN_OFFSET_DURATION_HIGH] =
-        (KEEPALIVE_INTERVAL_SEC >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;             // Duration high
-    data[MQTTSN_OFFSET_DURATION_LOW] = KEEPALIVE_INTERVAL_SEC & MQTTSN_BYTE_MASK; // Duration low
+        (KEEPALIVE_INTERVAL_SEC >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;              // Duration high
+    data[MQTTSN_OFFSET_DURATION_LOW] = KEEPALIVE_INTERVAL_SEC & MQTTSN_BYTE_MASK;  // Duration low
     memcpy(&data[MQTTSN_OFFSET_CLIENT_ID], client_id, id_len);
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
@@ -65,14 +66,14 @@ void mqtt_sn_connect(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_por
 }
 
 // Send MQTT-SN PINGREQ to keep connection alive
-void mqtt_sn_pingreq(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port) {
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MQTTSN_PINGREQ_LEN, PBUF_RAM);
+void mqtt_sn_pingreq(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port) {
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, MQTTSN_PINGREQ_LEN, PBUF_RAM);
     if (!p)
         return;
 
-    uint8_t *data = (uint8_t *)p->payload;
-    data[MQTTSN_OFFSET_LENGTH] = MQTTSN_PINGREQ_LEN;        // Length
-    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PINGREQ; // PINGREQ
+    uint8_t* data = (uint8_t*)p->payload;
+    data[MQTTSN_OFFSET_LENGTH] = MQTTSN_PINGREQ_LEN;         // Length
+    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PINGREQ;  // PINGREQ
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
     if (err == ERR_OK) {
@@ -84,8 +85,8 @@ void mqtt_sn_pingreq(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_por
 }
 
 // REGISTER a topic name to get a topic ID
-void mqtt_sn_register_topic(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                            const char *topic_name, uint16_t msg_id) {
+void mqtt_sn_register_topic(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                            const char* topic_name, uint16_t msg_id) {
     if (!topic_name) {
         printf("Invalid topic name\n");
         return;
@@ -98,21 +99,21 @@ void mqtt_sn_register_topic(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
     }
 
     // REGISTER packet: [len][type=0x0A][topic_id(2)][msg_id(2)][topic_name]
-    u16_t packet_len = 6 + topic_len; // 6 = len(1) + type(1) + topic_id(2) + msg_id(2)
+    u16_t packet_len = 6 + topic_len;  // 6 = len(1) + type(1) + topic_id(2) + msg_id(2)
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
     if (!p) {
         printf("Failed to allocate pbuf for REGISTER\n");
         return;
     }
 
-    uint8_t *data = (uint8_t *)p->payload;
+    uint8_t* data = (uint8_t*)p->payload;
     data[0] = (uint8_t)packet_len;
     data[1] = MQTTSN_MSG_TYPE_REGISTER;
-    data[2] = 0x00U; // Topic ID high (0 = requesting new topic ID)
-    data[3] = 0x00U; // Topic ID low
-    data[4] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK; // Msg ID high
-    data[5] = msg_id & MQTTSN_BYTE_MASK;                    // Msg ID low
+    data[2] = 0x00U;                                         // Topic ID high (0 = requesting new topic ID)
+    data[3] = 0x00U;                                         // Topic ID low
+    data[4] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;  // Msg ID high
+    data[5] = msg_id & MQTTSN_BYTE_MASK;                     // Msg ID low
     memcpy(&data[6], topic_name, topic_len);
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
@@ -125,8 +126,8 @@ void mqtt_sn_register_topic(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
 }
 
 // SUBSCRIBE by Topic Name (normal topics)
-void mqtt_sn_subscribe_topic_name(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                                  const char *topic_name, uint16_t msg_id, uint8_t qos) {
+void mqtt_sn_subscribe_topic_name(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                                  const char* topic_name, uint16_t msg_id, uint8_t qos) {
     if (!topic_name) {
         printf("Invalid topic name\n");
         return;
@@ -139,28 +140,28 @@ void mqtt_sn_subscribe_topic_name(struct udp_pcb *pcb, const ip_addr_t *gw_addr,
     }
 
     // SUBSCRIBE packet: [len][type=0x12][flags][msg_id(2)][topic_name]
-    u16_t packet_len = 5 + topic_len; // 5 = len(1) + type(1) + flags(1) + msg_id(2)
+    u16_t packet_len = 5 + topic_len;  // 5 = len(1) + type(1) + flags(1) + msg_id(2)
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
     if (!p) {
         printf("Failed to allocate pbuf for SUBSCRIBE\n");
         return;
     }
 
     // Flags: QoS (bits 5-6), TopicIdType=0 (normal topic name)
-    uint8_t flags = 0x00; // TopicIdType = 0 (normal name)
+    uint8_t flags = 0x00;  // TopicIdType = 0 (normal name)
     if (qos == QOS_LEVEL_1) {
-        flags |= MQTTSN_FLAG_QOS1; // QoS 1
+        flags |= MQTTSN_FLAG_QOS1;  // QoS 1
     } else if (qos == QOS_LEVEL_2) {
-        flags |= MQTTSN_FLAG_QOS2; // QoS 2
+        flags |= MQTTSN_FLAG_QOS2;  // QoS 2
     }
 
-    uint8_t *data = (uint8_t *)p->payload;
+    uint8_t* data = (uint8_t*)p->payload;
     data[0] = (uint8_t)packet_len;
     data[1] = MQTTSN_MSG_TYPE_SUBSCRIBE;
     data[2] = flags;
-    data[3] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK; // Msg ID high
-    data[4] = msg_id & MQTTSN_BYTE_MASK;                    // Msg ID low
+    data[3] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;  // Msg ID high
+    data[4] = msg_id & MQTTSN_BYTE_MASK;                     // Msg ID low
     memcpy(&data[5], topic_name, topic_len);
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
@@ -173,21 +174,21 @@ void mqtt_sn_subscribe_topic_name(struct udp_pcb *pcb, const ip_addr_t *gw_addr,
 }
 
 // SUBSCRIBE by Predefined Topic ID
-void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+void mqtt_sn_subscribe_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                                 u16_t topic_id) {
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MQTTSN_SUBSCRIBE_LEN, PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, MQTTSN_SUBSCRIBE_LEN, PBUF_RAM);
     if (!p)
         return;
 
-    uint8_t *data = (uint8_t *)p->payload;
-    data[MQTTSN_OFFSET_LENGTH] = MQTTSN_SUBSCRIBE_LEN;        // length
-    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_SUBSCRIBE; // SUBSCRIBE
-    data[MQTTSN_OFFSET_FLAGS] = MQTTSN_SUBSCRIBE_FLAGS_QOS2;  // flags: QoS2, TopicIdType=predefined
-    data[MQTTSN_OFFSET_PROTOCOL_ID] = 0x00U;                  // msg ID high
-    data[MQTTSN_OFFSET_DURATION_HIGH] = 0x01U;                // msg ID low
+    uint8_t* data = (uint8_t*)p->payload;
+    data[MQTTSN_OFFSET_LENGTH] = MQTTSN_SUBSCRIBE_LEN;         // length
+    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_SUBSCRIBE;  // SUBSCRIBE
+    data[MQTTSN_OFFSET_FLAGS] = MQTTSN_SUBSCRIBE_FLAGS_QOS2;   // flags: QoS2, TopicIdType=predefined
+    data[MQTTSN_OFFSET_PROTOCOL_ID] = 0x00U;                   // msg ID high
+    data[MQTTSN_OFFSET_DURATION_HIGH] = 0x01U;                 // msg ID low
     data[MQTTSN_OFFSET_DURATION_LOW] =
-        (topic_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;          // topic ID high
-    data[MQTTSN_OFFSET_CLIENT_ID] = topic_id & MQTTSN_BYTE_MASK; // topic ID low
+        (topic_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;           // topic ID high
+    data[MQTTSN_OFFSET_CLIENT_ID] = topic_id & MQTTSN_BYTE_MASK;  // topic ID low
 
     err_t err = udp_sendto(pcb, p, gw_addr, gw_port);
     if (err == ERR_OK) {
@@ -199,8 +200,8 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
 }
 
 // PUBLISH to Predefined Topic ID with qos, binary payload support
-void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                              u16_t topic_id, const uint8_t *payload, size_t payload_len, int qos,
+void mqtt_sn_publish_topic_id(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                              u16_t topic_id, const uint8_t* payload, size_t payload_len, int qos,
                               uint16_t msg_id, bool is_retransmit) {
     if (!payload || qos < QOS_LEVEL_0 || qos > QOS_LEVEL_2) {
         printf("Invalid QoS or payload\n");
@@ -215,28 +216,28 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16
         return;
     }
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, packet_len, PBUF_RAM);
     if (!p) {
         printf("Failed to allocate pbuf\n");
         return;
     }
 
     // QOS Flags
-    uint8_t flags = MQTTSN_FLAG_TOPIC_PREDEFINED; // TopicIdType = Predefined
+    uint8_t flags = MQTTSN_FLAG_TOPIC_PREDEFINED;  // TopicIdType = Predefined
 
     if (qos == QOS_LEVEL_1) {
-        flags |= MQTTSN_FLAG_QOS1; // QoS 1 (bit 5 = 1)
+        flags |= MQTTSN_FLAG_QOS1;  // QoS 1 (bit 5 = 1)
     } else if (qos == QOS_LEVEL_2) {
-        flags |= MQTTSN_FLAG_QOS2; // QoS 2 (bit 6 = 1)
+        flags |= MQTTSN_FLAG_QOS2;  // QoS 2 (bit 6 = 1)
     }
 
-    uint8_t *data = (uint8_t *)p->payload;
+    uint8_t* data = (uint8_t*)p->payload;
     data[MQTTSN_OFFSET_LENGTH] = (uint8_t)packet_len;
-    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBLISH; // PUBLISH
+    data[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBLISH;  // PUBLISH
     data[MQTTSN_OFFSET_FLAGS] = flags;
     data[MQTTSN_OFFSET_TOPIC_ID_HIGH] =
-        (topic_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;             // Topic ID high
-    data[MQTTSN_OFFSET_TOPIC_ID_LOW] = topic_id & MQTTSN_BYTE_MASK; // Topic ID low
+        (topic_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;              // Topic ID high
+    data[MQTTSN_OFFSET_TOPIC_ID_LOW] = topic_id & MQTTSN_BYTE_MASK;  // Topic ID low
     data[MQTTSN_OFFSET_MSG_ID_HIGH] =
         (qos > QOS_LEVEL_0) ? (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK : 0x00U;
     data[MQTTSN_OFFSET_MSG_ID_LOW] = (qos > QOS_LEVEL_0) ? (msg_id & MQTTSN_BYTE_MASK) : 0x00U;
@@ -282,9 +283,10 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16
             restore_interrupts(save);
 
             if (!slot_found) {
-                printf("ERROR: All QoS slots full (%d), message %d will not be tracked for "
-                       "retransmission\n",
-                       MAX_PENDING_QOS_MSGS, msg_id);
+                printf(
+                    "ERROR: All QoS slots full (%d), message %d will not be tracked for "
+                    "retransmission\n",
+                    MAX_PENDING_QOS_MSGS, msg_id);
             }
         }
     } else {
@@ -294,18 +296,18 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16
 }
 
 // Send PUBACK for QoS 1
-void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+void mqtt_sn_send_puback(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                          uint16_t topic_id, uint16_t msg_id, uint8_t return_code) {
     uint8_t msg[MQTTSN_PUBACK_LEN];
-    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBACK_LEN;        // Length
-    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBACK; // PUBACK
+    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBACK_LEN;         // Length
+    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBACK;  // PUBACK
     msg[MQTTSN_OFFSET_FLAGS] = (topic_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_PROTOCOL_ID] = topic_id & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_DURATION_HIGH] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_DURATION_LOW] = msg_id & MQTTSN_BYTE_MASK;
-    msg[MQTTSN_OFFSET_CLIENT_ID] = return_code; // typically MQTTSN_RETURN_ACCEPTED
+    msg[MQTTSN_OFFSET_CLIENT_ID] = return_code;  // typically MQTTSN_RETURN_ACCEPTED
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p)
         return;
     memcpy(p->payload, msg, sizeof(msg));
@@ -316,16 +318,16 @@ void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw
 }
 
 // Send PUBREC for QoS 2
-void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubrec(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                          uint16_t msg_id) {
     uint8_t msg[MQTTSN_PUBREC_LEN];
-    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBREC_LEN;        // Length
-    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBREC; // PUBREC
+    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBREC_LEN;         // Length
+    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBREC;  // PUBREC
     msg[MQTTSN_OFFSET_FLAGS] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_PROTOCOL_ID] = msg_id & MQTTSN_BYTE_MASK;
-    msg[MQTTSN_OFFSET_DURATION_HIGH] = MQTTSN_RETURN_ACCEPTED; // Return code: ACCEPTED
+    msg[MQTTSN_OFFSET_DURATION_HIGH] = MQTTSN_RETURN_ACCEPTED;  // Return code: ACCEPTED
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p)
         return;
     memcpy(p->payload, msg, sizeof(msg));
@@ -335,16 +337,16 @@ void mqtt_sn_send_pubrec(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw
 }
 
 //  Send PUBCOMP for QoS 2
-void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubcomp(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                           uint16_t msg_id) {
     uint8_t msg[MQTTSN_PUBCOMP_LEN];
-    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBCOMP_LEN;        // Length
-    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBCOMP; // PUBCOMP
+    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBCOMP_LEN;         // Length
+    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBCOMP;  // PUBCOMP
     msg[MQTTSN_OFFSET_FLAGS] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_PROTOCOL_ID] = msg_id & MQTTSN_BYTE_MASK;
-    msg[MQTTSN_OFFSET_DURATION_HIGH] = MQTTSN_RETURN_ACCEPTED; // Return code: ACCEPTED
+    msg[MQTTSN_OFFSET_DURATION_HIGH] = MQTTSN_RETURN_ACCEPTED;  // Return code: ACCEPTED
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p)
         return;
     memcpy(p->payload, msg, sizeof(msg));
@@ -354,15 +356,15 @@ void mqtt_sn_send_pubcomp(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t g
 }
 
 //  Send PUBREL for QoS 2
-void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+void mqtt_sn_send_pubrel(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
                          uint16_t msg_id) {
     uint8_t msg[MQTTSN_PUBREL_LEN];
-    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBREL_LEN;        // Length
-    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBREL; // PUBREL
+    msg[MQTTSN_OFFSET_LENGTH] = MQTTSN_PUBREL_LEN;         // Length
+    msg[MQTTSN_OFFSET_MSG_TYPE] = MQTTSN_MSG_TYPE_PUBREL;  // PUBREL
     msg[MQTTSN_OFFSET_FLAGS] = (msg_id >> BITS_PER_BYTE) & MQTTSN_BYTE_MASK;
     msg[MQTTSN_OFFSET_PROTOCOL_ID] = msg_id & MQTTSN_BYTE_MASK;
 
-    struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
+    struct pbuf* p = pbuf_alloc(PBUF_TRANSPORT, sizeof(msg), PBUF_RAM);
     if (!p)
         return;
 
@@ -372,7 +374,7 @@ void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw
 }
 
 // Check and handle QoS message timeouts and retransmissions
-void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port) {
+void check_qos_timeouts(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port) {
     // Snapshot entries to retry to avoid use-after-free if ACK arrives during iteration
     typedef struct {
         bool valid;
@@ -475,12 +477,12 @@ void remove_pending_qos_msg(uint16_t msg_id) {
 }
 
 // Callback for when UDP data is received
-void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr,
+void udp_recv_callback(void* arg, struct udp_pcb* pcb, struct pbuf* p, const ip_addr_t* addr,
                        u16_t port) {
-    mqtt_sn_context_t *ctx = (mqtt_sn_context_t *)arg;
+    mqtt_sn_context_t* ctx = (mqtt_sn_context_t*)arg;
 
     if (p != NULL && p->len >= MQTTSN_HEADER_SIZE) {
-        uint8_t *data = (uint8_t *)p->payload;
+        uint8_t* data = (uint8_t*)p->payload;
         uint8_t length = data[MQTTSN_OFFSET_LENGTH];
         uint8_t msg_type = data[MQTTSN_OFFSET_MSG_TYPE];
 
@@ -542,7 +544,7 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
 
         // REGACK (Topic Registration Acknowledgment)
         else if (msg_type == MQTTSN_MSG_TYPE_REGACK) {
-            if (length >= 7) { // REGACK packet: [len][type][topic_id(2)][msg_id(2)][return_code]
+            if (length >= 7) {  // REGACK packet: [len][type][topic_id(2)][msg_id(2)][return_code]
                 uint16_t topic_id = (data[2] << BITS_PER_BYTE) | data[3];
                 uint16_t msg_id = (data[4] << BITS_PER_BYTE) | data[5];
                 uint8_t return_code = data[6];
@@ -589,7 +591,7 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
                 uint16_t msg_id = (data[MQTTSN_OFFSET_MSG_ID_HIGH] << BITS_PER_BYTE) |
                                   data[MQTTSN_OFFSET_MSG_ID_LOW];
                 int payload_len = length - MQTTSN_PUBLISH_HEADER_LEN;
-                const uint8_t *payload = &data[MQTTSN_OFFSET_PAYLOAD];
+                const uint8_t* payload = &data[MQTTSN_OFFSET_PAYLOAD];
 
                 // Check for file transfer topics first
                 if (topic_id == FILE_TRANSFER_TOPIC_METADATA) {
@@ -605,7 +607,16 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
                     }
                 } else if (topic_id == FILE_TRANSFER_TOPIC_DATA) {
                     // file/data topic (expects QoS 1)
-                    handle_file_payload(ctx, payload, payload_len);
+                    handle_file_payload(ctx, payload, payload_len, pcb, addr, port);
+                    // Send PUBACK for QoS 1
+                    if (qos == QOS_LEVEL_1) {
+                        mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id,
+                                            MQTTSN_RETURN_ACCEPTED);
+                    }
+                } else if (topic_id == FILE_TRANSFER_TOPIC_CONTROL) {
+                    // file/control topic - for Go-Back-N flow control (QoS 1)
+                    printf("PUBLISH: Control message received (QoS %d, Msg ID %d)\n", qos, msg_id);
+                    handle_control_message(ctx, payload, payload_len, pcb, addr, port);
                     // Send PUBACK for QoS 1
                     if (qos == QOS_LEVEL_1) {
                         mqtt_sn_send_puback(pcb, addr, port, topic_id, msg_id,
@@ -667,7 +678,7 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
             for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
                 if (g_pending_msgs[i].in_use && g_pending_msgs[i].msg_id == msg_id) {
                     g_pending_msgs[i].step = 1U;
-                    g_pending_msgs[i].timestamp = get_absolute_time(); // reset timer
+                    g_pending_msgs[i].timestamp = get_absolute_time();  // reset timer
                     break;
                 }
             }
@@ -684,7 +695,135 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
         pbuf_free(p);
     } else {
         if (p)
-            pbuf_free(p); // Always free if not handled
+            pbuf_free(p);  // Always free if not handled
+    }
+}
+
+// ============================================================================
+// Go-Back-N Sliding Window Protocol Helper Functions
+// ============================================================================
+
+/*!
+ * @brief Initialize sliding window state for Go-Back-N protocol
+ * @param window Pointer to sliding window structure
+ * @param total_chunks Total number of chunks in file
+ * @param session_id Session identifier for this transfer
+ * @return bool true on success
+ */
+bool init_sliding_window(sliding_window_t* window, uint32_t total_chunks, const char* session_id) {
+    if (!window || !session_id) return false;
+
+    window->base = 1;  // Start from chunk 1 (0 is metadata)
+    window->next_seq = 1;
+    window->window_size = WINDOW_SIZE_CHUNKS;
+    window->total_chunks = total_chunks;
+    window->retries = 0;
+    window->active = true;
+    strncpy(window->session_id, session_id, sizeof(window->session_id) - 1);
+    window->session_id[sizeof(window->session_id) - 1] = '\0';
+
+    // Allocate ACK bitmap for window
+    window->acked = (bool*)calloc(window->window_size, sizeof(bool));
+    if (!window->acked) {
+        printf("ERROR: Failed to allocate ACK bitmap\n");
+        return false;
+    }
+
+    window->last_send_time = get_absolute_time();
+
+    printf("Sliding Window initialized:\n");
+    printf("  Window size: %u chunks (%u bytes)\n",
+           window->window_size, window->window_size * CHUNK_SIZE);
+    printf("  Total chunks: %u\n", total_chunks);
+    printf("  Session ID: %s\n", window->session_id);
+
+    return true;
+}
+
+/*!
+ * @brief Clean up sliding window resources
+ * @param window Pointer to sliding window structure
+ */
+void cleanup_sliding_window(sliding_window_t* window) {
+    if (window && window->acked) {
+        free(window->acked);
+        window->acked = NULL;
+    }
+    if (window) {
+        window->active = false;
+    }
+}
+
+/*!
+ * @brief Send a control message to file/control topic
+ * @param pcb UDP PCB
+ * @param gw_addr Gateway address
+ * @param gw_port Gateway port
+ * @param ctrl_msg Control message to send
+ */
+void send_control_message(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                          const control_message_t* ctrl_msg) {
+    if (!ctrl_msg) return;
+
+    uint16_t msg_id = get_next_msg_id();
+
+    // Publish control message to topic ID 5 (file/control) with QoS 1
+    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, FILE_TRANSFER_TOPIC_CONTROL,
+                             (const uint8_t*)ctrl_msg, sizeof(control_message_t),
+                             QOS_LEVEL_1, msg_id, false);
+
+    // Log control message
+    switch (ctrl_msg->type) {
+        case CTRL_ACK:
+            printf("  [CONTROL] Sent ACK up to chunk %u\n", ctrl_msg->seq_num);
+            break;
+        case CTRL_NACK:
+            printf("  [CONTROL] Sent NACK - retransmit from chunk %u\n", ctrl_msg->seq_num + 1);
+            break;
+        case CTRL_REQUEST_NEXT:
+            printf("  [CONTROL] Sent REQUEST_NEXT window [%u-%u]\n",
+                   ctrl_msg->window_start, ctrl_msg->window_end - 1);
+            break;
+        case CTRL_COMPLETE:
+            printf("  [CONTROL] Sent TRANSFER_COMPLETE\n");
+            break;
+    }
+}
+
+/*!
+ * @brief Check if chunk is within current window
+ * @param window Pointer to sliding window structure
+ * @param seq Sequence number to check
+ * @return bool true if within window
+ */
+static bool is_in_window(const sliding_window_t* window, uint32_t seq) {
+    return (seq >= window->base && seq < window->base + window->window_size);
+}
+
+/*!
+ * @brief Process ACK and slide window if possible
+ * @param window Pointer to sliding window structure
+ * @param ack_seq Sequence number being acknowledged
+ */
+static void process_ack(sliding_window_t* window, uint32_t ack_seq) {
+    if (!is_in_window(window, ack_seq)) {
+        return;  // ACK outside window, ignore
+    }
+
+    // Mark chunk as ACKed
+    uint32_t index = (ack_seq - window->base) % window->window_size;
+    window->acked[index] = true;
+
+    // Try to slide window forward
+    while (window->base < window->total_chunks + 1) {
+        index = (window->base - window->base) % window->window_size;
+        if (!window->acked[index]) {
+            break;  // Stop at first unACKed chunk
+        }
+
+        // Slide window forward
+        window->acked[index] = false;  // Clear old ACK
+        window->base++;
     }
 }
 
@@ -714,8 +853,8 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
  *          after each SD read and during inter-chunk delays to process
  *          incoming ACKs and prevent spurious retransmissions.
  */
-void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                        const char *filename) {
+void send_file_via_mqtt(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                        const char* filename) {
     struct Metadata metadata = {0};
     uint16_t msg_id;
 
@@ -726,7 +865,7 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
     printf("Mode: STREAMING (memory efficient)\n");
 
     // Step 1: Initialize streaming read
-    if (init_streaming_read((char *)filename, &metadata) != 0) {
+    if (init_streaming_read((char*)filename, &metadata) != 0) {
         printf("ERROR: Failed to initialize streaming read\n");
         return;
     }
@@ -759,7 +898,7 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
 
     while (absolute_time_diff_us(wait_start, get_absolute_time()) <
            (METADATA_CONFIRM_TIMEOUT_MS * 1000)) {
-        cyw43_arch_poll(); // Process incoming packets (PUBREC, PUBCOMP)
+        cyw43_arch_poll();  // Process incoming packets (PUBREC, PUBCOMP)
 
         // Check if metadata message was acknowledged (removed from pending queue)
         bool metadata_confirmed = true;
@@ -775,7 +914,7 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
             break;
         }
 
-        sleep_ms(10); // Small delay between checks
+        sleep_ms(10);  // Small delay between checks
     }
 
     // Final check - did we timeout?
@@ -844,8 +983,8 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
         // This prevents QoS 1 timeout/retransmission during file transfer
         absolute_time_t delay_start = get_absolute_time();
         while (absolute_time_diff_us(delay_start, get_absolute_time()) < INTER_CHUNK_DELAY_US) {
-            cyw43_arch_poll();             // Process network events
-            sleep_us(POLL_YIELD_DELAY_US); // Yield CPU briefly
+            cyw43_arch_poll();              // Process network events
+            sleep_us(POLL_YIELD_DELAY_US);  // Yield CPU briefly
         }
     }
 
@@ -868,6 +1007,285 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
 }
 
 /**
+ * @brief Send a file via MQTT-SN using Go-Back-N sliding window protocol
+ *
+ * This function implements the Go-Back-N protocol with:
+ * - 32KB sliding windows (~138 chunks per window)
+ * - Flow control via file/control topic
+ * - Automatic retransmission on NACK
+ * - Window-based transmission with REQUEST_NEXT handshake
+ *
+ * @param pcb UDP PCB
+ * @param gw_addr Gateway address
+ * @param gw_port Gateway port
+ * @param filename Name of file to send from microSD
+ * @param ctx MQTT-SN context (must have file/control topic registered)
+ *
+ * @note Sender must subscribe to file/control topic before calling this function
+ * @note Receiver publishes ACK/NACK/REQUEST_NEXT to file/control topic
+ */
+void send_file_via_mqtt_gbn(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                            const char* filename, mqtt_sn_context_t* ctx) {
+    if (!ctx) {
+        printf("ERROR: NULL context\n");
+        return;
+    }
+
+    struct Metadata metadata = {0};
+    uint16_t msg_id;
+
+    printf("\n=== Starting Go-Back-N File Transfer ===\n");
+    printf("File: %s\n", filename);
+    printf("Protocol: Go-Back-N Sliding Window\n");
+    printf("Window size: %u chunks (%u bytes)\n", WINDOW_SIZE_CHUNKS, WINDOW_SIZE_BYTES);
+
+    // Step 1: Initialize streaming read
+    if (init_streaming_read((char*)filename, &metadata) != 0) {
+        printf("ERROR: Failed to initialize streaming read\n");
+        return;
+    }
+
+    printf("✓ File opened for streaming:\n");
+    printf("  File size: %lu bytes\n", (unsigned long)metadata.total_size);
+    printf("  Chunks: %lu\n", (unsigned long)metadata.chunk_count);
+    printf("  Session ID: %s\n", metadata.session_id);
+
+    // Step 2: Send metadata (chunk 0)
+    uint8_t meta_buffer[PAYLOAD_SIZE];
+    if (serialize_metadata(&metadata, meta_buffer) != PAYLOAD_SIZE) {
+        printf("ERROR: Failed to serialize metadata\n");
+        cleanup_streaming_read();
+        return;
+    }
+
+    uint16_t metadata_msg_id = get_next_msg_id();
+    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, FILE_TRANSFER_TOPIC_DATA, meta_buffer,
+                             PAYLOAD_SIZE, FILE_TRANSFER_METADATA_QOS, metadata_msg_id, false);
+    printf("[MQTT:file/data] Sent metadata (QoS %d, msg_id=%u)\n", FILE_TRANSFER_METADATA_QOS, metadata_msg_id);
+
+    // Wait for metadata confirmation
+    printf("Waiting for metadata confirmation...\n");
+    absolute_time_t wait_start = get_absolute_time();
+    while (absolute_time_diff_us(wait_start, get_absolute_time()) <
+           (METADATA_CONFIRM_TIMEOUT_MS * 1000)) {
+        cyw43_arch_poll();
+
+        bool metadata_confirmed = true;
+        for (size_t i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+            if (g_pending_msgs[i].in_use && g_pending_msgs[i].msg_id == metadata_msg_id) {
+                metadata_confirmed = false;
+                break;
+            }
+        }
+
+        if (metadata_confirmed) {
+            printf("✓ Metadata confirmed by receiver\n");
+            break;
+        }
+        sleep_ms(10);
+    }
+
+    // Step 3: Initialize sliding window
+    if (!init_sliding_window(&ctx->tx_window, metadata.chunk_count, metadata.session_id)) {
+        cleanup_streaming_read();
+        return;
+    }
+
+    uint32_t total_transmitted = 0;
+    uint32_t total_retransmissions = 0;
+    absolute_time_t start_time = get_absolute_time();
+
+    // Step 4: Main transmission loop with Go-Back-N
+    printf("\nStarting Go-Back-N transmission...\n");
+
+    while (ctx->tx_window.base <= metadata.chunk_count) {
+        uint32_t window_end = ctx->tx_window.base + ctx->tx_window.window_size;
+        if (window_end > metadata.chunk_count + 1) {
+            window_end = metadata.chunk_count + 1;
+        }
+
+        printf("\n--- Window [%u-%u] ---\n", ctx->tx_window.base, window_end - 1);
+
+        // Transmit window
+        for (uint32_t seq = ctx->tx_window.base; seq < window_end; seq++) {
+            uint32_t index = (seq - ctx->tx_window.base) % ctx->tx_window.window_size;
+
+            // Skip already ACKed chunks
+            if (ctx->tx_window.acked[index]) {
+                continue;
+            }
+
+            struct Payload chunk = {0};
+
+            // Read chunk (seq is 1-indexed for data chunks)
+            if (read_chunk_streaming(seq - 1, &chunk) != 0) {
+                printf("ERROR: Failed to read chunk %u\n", seq);
+                cleanup_sliding_window(&ctx->tx_window);
+                cleanup_streaming_read();
+                return;
+            }
+
+            cyw43_arch_poll();  // Poll network after SD read
+
+            // Verify chunk
+            if (!verify_chunk(&chunk)) {
+                printf("ERROR: Invalid chunk %u\n", seq);
+                cleanup_sliding_window(&ctx->tx_window);
+                cleanup_streaming_read();
+                return;
+            }
+
+            // Serialize chunk
+            uint8_t payload_buffer[PAYLOAD_SIZE];
+            if (serialize_payload(&chunk, payload_buffer) != PAYLOAD_SIZE) {
+                printf("ERROR: Failed to serialize chunk %u\n", seq);
+                continue;
+            }
+
+            // Publish to file/data topic with QoS 1
+            msg_id = get_next_msg_id();
+            mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, FILE_TRANSFER_TOPIC_DATA,
+                                     payload_buffer, PAYLOAD_SIZE, FILE_TRANSFER_DATA_QOS,
+                                     msg_id, false);
+
+            total_transmitted++;
+
+            // Show progress for first few and periodic chunks
+            if ((seq <= ctx->tx_window.base + 2) || (seq == window_end - 1) ||
+                ((seq - ctx->tx_window.base) % 50 == 0)) {
+                printf("  [MQTT:file/data] Chunk %u/%u (seq=%u, msg_id=%u)\n",
+                       seq, metadata.chunk_count, chunk.sequence, msg_id);
+            }
+
+            // Small delay and poll network
+            sleep_us(POLL_YIELD_DELAY_US);
+            cyw43_arch_poll();
+        }
+
+        printf("  ✓ Transmitted %u chunks in window [%u-%u]\n",
+               window_end - ctx->tx_window.base, ctx->tx_window.base, window_end - 1);
+
+        // Wait for control message from receiver (REQUEST_NEXT or COMPLETE)
+        // The control message handler will update ctx->tx_window accordingly
+        printf("  Waiting for receiver response on file/control...\n");
+
+        absolute_time_t wait_for_control = get_absolute_time();
+        bool control_received = false;
+        uint32_t saved_base = ctx->tx_window.base;
+
+        while (absolute_time_diff_us(wait_for_control, get_absolute_time()) <
+               (QOS_RETRY_INTERVAL_US * 2)) {
+            cyw43_arch_poll();  // Process incoming control messages
+
+            // Check if window slid forward (ACK received)
+            if (ctx->tx_window.base != saved_base) {
+                control_received = true;
+                printf("  ✓ Window slid to base=%u\n", ctx->tx_window.base);
+                break;
+            }
+
+            sleep_ms(10);
+        }
+
+        if (!control_received) {
+            printf("  WARNING: No control message received, retrying window...\n");
+            total_retransmissions += (window_end - ctx->tx_window.base);
+            ctx->tx_window.retries++;
+
+            if (ctx->tx_window.retries >= MAX_RETRIES_GBN) {
+                printf("ERROR: Max retries exceeded\n");
+                cleanup_sliding_window(&ctx->tx_window);
+                cleanup_streaming_read();
+                return;
+            }
+        } else {
+            ctx->tx_window.retries = 0;  // Reset retry counter on success
+        }
+    }
+
+    absolute_time_t end_time = get_absolute_time();
+    int64_t elapsed_ms = absolute_time_diff_us(start_time, end_time) / 1000;
+
+    cleanup_sliding_window(&ctx->tx_window);
+    cleanup_streaming_read();
+
+    printf("\n=== GO-BACK-N TRANSMISSION COMPLETE ===\n");
+    printf("  Total chunks: %u\n", metadata.chunk_count);
+    printf("  Chunks transmitted: %u\n", total_transmitted);
+    printf("  Retransmissions: %u (%.1f%%)\n",
+           total_retransmissions,
+           total_transmitted > 0 ? (float)total_retransmissions * 100.0 / total_transmitted : 0.0);
+    printf("  Total bytes: %u\n", metadata.total_size);
+    printf("  Time: %lld ms\n", elapsed_ms);
+    printf("  Throughput: %.2f KB/s\n",
+           elapsed_ms > 0 ? (float)metadata.total_size / (elapsed_ms / 1000.0) / 1024.0 : 0.0);
+    printf("  Window size: %u chunks (%u bytes)\n", WINDOW_SIZE_CHUNKS, WINDOW_SIZE_BYTES);
+    printf("========================================\n\n");
+}
+
+/**
+ * @brief Automatically select file transfer method based on file size
+ *
+ * This function checks the file size and automatically chooses between:
+ * - Normal transfer (send_file_via_mqtt) for files <= 4KB
+ * - Go-Back-N protocol (send_file_via_mqtt_gbn) for files > 4KB
+ *
+ * @param pcb UDP PCB
+ * @param gw_addr Gateway address
+ * @param gw_port Gateway port
+ * @param filename Name of file to send from microSD
+ * @param ctx MQTT-SN context (required for Go-Back-N transfers)
+ *
+ * @note For Go-Back-N, ctx must have file/control topic registered and subscribed
+ * @note 4KB threshold chosen because it's the minimum size for effective windowing
+ */
+void send_file_via_mqtt_auto(struct udp_pcb* pcb, const ip_addr_t* gw_addr, u16_t gw_port,
+                             const char* filename, mqtt_sn_context_t* ctx) {
+    if (!filename) {
+        printf("ERROR: NULL filename\n");
+        return;
+    }
+
+    // Get file size using FatFS
+    FILINFO file_info;
+    if (!microsd_driver_stat(filename, &file_info)) {
+        printf("ERROR: Could not stat file '%s'\n", filename);
+        return;
+    }
+
+    uint32_t file_size = file_info.fsize;
+    const uint32_t threshold = 4096U;  // 4KB threshold
+
+    printf("\n=== Auto File Transfer Selection ===\n");
+    printf("File: %s\n", filename);
+    printf("Size: %lu bytes (%.2f KB)\n", (unsigned long)file_size, file_size / 1024.0);
+    printf("Threshold: %u bytes (4 KB)\n", threshold);
+
+    if (file_size > threshold) {
+        // Use Go-Back-N for large files
+        printf("Transfer method: Go-Back-N Sliding Window Protocol\n");
+        printf("Reason: File size > 4KB (benefits from windowed flow control)\n");
+        printf("====================================\n");
+
+        if (!ctx) {
+            printf("ERROR: MQTT context required for Go-Back-N transfers\n");
+            printf("Using fallback to normal transfer method...\n");
+            send_file_via_mqtt(pcb, gw_addr, gw_port, filename);
+            return;
+        }
+
+        send_file_via_mqtt_gbn(pcb, gw_addr, gw_port, filename, ctx);
+    } else {
+        // Use normal transfer for small files
+        printf("Transfer method: Normal Streaming Transfer\n");
+        printf("Reason: File size <= 4KB (small file, no windowing needed)\n");
+        printf("====================================\n");
+
+        send_file_via_mqtt(pcb, gw_addr, gw_port, filename);
+    }
+}
+
+/**
  * @brief Handle received file metadata packet
  *
  * Processes the initial metadata chunk that describes the file transfer.
@@ -881,8 +1299,8 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
  * @note Uses QoS 2 for guaranteed metadata delivery
  * @note Session must be initialized successfully before data chunks are accepted
  */
-void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
-                          struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port) {
+void handle_file_metadata(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                          struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port) {
     if (!ctx || !payload) {
         printf("ERROR: NULL parameter in handle_file_metadata\n");
         return;
@@ -894,7 +1312,7 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
     }
 
     struct Metadata metadata = {0};
-    if (deserialize_metadata((uint8_t *)payload, &metadata) != 0) {
+    if (deserialize_metadata((uint8_t*)payload, &metadata) != 0) {
         printf("ERROR: Failed to deserialize metadata\n");
         return;
     }
@@ -948,10 +1366,10 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         printf("└─────────────────────────────────────────────────────┘\n");
 
         // Send error message back to sender
-        const char *error_msg =
+        const char* error_msg =
             "ERROR: SD card not initialized. Cannot receive file. Please insert SD card.";
         uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
+        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t*)error_msg,
                                  strlen(error_msg), QOS_LEVEL_1, msg_id, false);
         printf("✓ Error notification sent to sender\n");
         return;
@@ -962,9 +1380,9 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         printf("✗ ERROR: No session buffer allocated\n");
 
         // Send error message back to sender
-        const char *error_msg = "ERROR: Session buffer not allocated. Cannot receive file.";
+        const char* error_msg = "ERROR: Session buffer not allocated. Cannot receive file.";
         uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
+        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t*)error_msg,
                                  strlen(error_msg), QOS_LEVEL_1, msg_id, false);
         printf("✓ Error notification sent to sender\n");
         return;
@@ -975,20 +1393,25 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         printf("✗ ERROR: Failed to init transfer session (SD card may be full or corrupted)\n");
 
         // Send error message back to sender
-        const char *error_msg =
+        const char* error_msg =
             "ERROR: Failed to initialize transfer session. SD card may be full or corrupted.";
         uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
+        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t*)error_msg,
                                  strlen(error_msg), QOS_LEVEL_1, msg_id, false);
         printf("✓ Error notification sent to sender\n");
         return;
     }
 
     ctx->transfer_in_progress = true;
+    ctx->last_acked_seq = 0;  // Reset for new transfer
+    strncpy(ctx->rx_session_id, metadata.session_id, sizeof(ctx->rx_session_id) - 1);
+    ctx->rx_session_id[sizeof(ctx->rx_session_id) - 1] = '\0';
+
     printf("✓ Transfer session active - READY TO RECEIVE DATA CHUNKS\n");
     printf("  Memory allocated: ~%lu bytes (bitmap)\n",
            (unsigned long)ctx->file_session->chunk_meta.bitmap_size);
     printf("  Temp file handle: OPEN (persistent until complete)\n");
+    printf("  Session ID: %s\n", ctx->rx_session_id);
     printf("=============================\n\n");
 }
 
@@ -1010,7 +1433,27 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
  *       - Duplicates are skipped without error
  *       - Only new chunks are written to microSD
  */
-void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len) {
+/**
+ * @brief Handle received file payload chunk (Go-Back-N receiver)
+ *
+ * Processes incoming file chunks with Go-Back-N flow control:
+ * - Buffers chunks in memory until full window received
+ * - Writes window to SD card after all chunks in window arrive
+ * - Sends REQUEST_NEXT for next window or COMPLETE when done
+ * - Handles missing chunks by sending NACK
+ *
+ * @param ctx MQTT-SN context containing session info
+ * @param payload Serialized payload chunk
+ * @param len Payload length
+ * @param pcb UDP PCB for sending control messages
+ * @param addr Gateway address
+ * @param port Gateway port
+ *
+ * @note Sends control messages to file/control topic
+ * @note Syncs SD card writes after each window
+ */
+void handle_file_payload(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                         struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port) {
     if (!ctx || !payload) {
         printf("ERROR: NULL parameter in handle_file_payload\n");
         return;
@@ -1027,7 +1470,7 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     }
 
     struct Payload chunk = {0};
-    if (deserialize_payload((uint8_t *)payload, &chunk) != 0) {
+    if (deserialize_payload((uint8_t*)payload, &chunk) != 0) {
         printf("ERROR: Failed to deserialize payload\n");
         return;
     }
@@ -1038,10 +1481,7 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
         return;
     }
 
-    // Write chunk to microSD
-    // Note: chunk_transfer_write_payload automatically handles duplicates by checking
-    // the bitmap and skipping chunks that have already been received.
-    // This is essential for QoS 1 which may deliver duplicates.
+    // Write chunk to microSD (buffered)
     if (!chunk_transfer_write_payload(ctx->file_session, &chunk)) {
         printf("ERROR: Failed to write chunk %lu\n", (unsigned long)chunk.sequence);
         return;
@@ -1050,31 +1490,217 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     uint32_t received, total;
     chunk_transfer_get_progress(ctx->file_session, &received, &total);
 
+    // Update last ACKed sequence number
+    if (chunk.sequence > ctx->last_acked_seq) {
+        ctx->last_acked_seq = chunk.sequence;
+    }
+
+    // Show progress
     if (received % PROGRESS_UPDATE_INTERVAL == 0 || received == total) {
-        printf("Progress: %lu/%lu chunks received\n", (unsigned long)received,
+        printf("  Progress: %lu/%lu chunks received\n", (unsigned long)received,
                (unsigned long)total);
     }
 
-    // Check if transfer complete
-    if (chunk_transfer_is_complete(ctx->file_session)) {
-        printf("\n=== File Transfer Complete ===\n");
-        printf("All chunks received! Finalizing...\n");
+    // Calculate current window boundary
+    uint32_t current_window_end = ((ctx->last_acked_seq / WINDOW_SIZE_CHUNKS) + 1) * WINDOW_SIZE_CHUNKS;
+    if (current_window_end > total) {
+        current_window_end = total;
+    }
 
-        if (chunk_transfer_finalize(ctx->file_session)) {
-            printf("✓ File saved: %s\n", ctx->file_session->filename);
-            printf("  Size: %lu bytes\n", (unsigned long)ctx->file_session->metadata.total_size);
-            printf("  Temp file closed and renamed\n");
-            printf("  Bitmap freed: %lu bytes\n",
-                   (unsigned long)ctx->file_session->chunk_meta.bitmap_size);
+    // Check if we've completed a window or the entire transfer
+    bool window_complete = false;
+    bool all_chunks_in_window = true;
 
-            // No need for hex dumps - FatFS handles everything internally
-            printf("✓ File is ready on SD card\n");
+    uint32_t window_start = (ctx->last_acked_seq / WINDOW_SIZE_CHUNKS) * WINDOW_SIZE_CHUNKS + 1;
+    if (window_start == 0) window_start = 1;  // Skip metadata chunk (0)
+
+    // Check if all chunks in current window have been received
+    for (uint32_t i = window_start; i <= ctx->last_acked_seq && i <= current_window_end; i++) {
+        // Check bitmap to see if chunk i has been received
+        uint32_t bitmap_index = i / 8;
+        uint32_t bit_offset = i % 8;
+
+        if (bitmap_index < ctx->file_session->chunk_meta.bitmap_size) {
+            if (!(ctx->file_session->chunk_meta.chunk_bitmap[bitmap_index] & (1 << bit_offset))) {
+                all_chunks_in_window = false;
+                printf("  [RECEIVER] Missing chunk %u in window [%u-%u]\n",
+                       i, window_start, current_window_end);
+                break;
+            }
+        }
+    }
+
+    window_complete = (all_chunks_in_window && ctx->last_acked_seq >= current_window_end);
+
+    if (window_complete || chunk_transfer_is_complete(ctx->file_session)) {
+        printf("\n  [RECEIVER] Window [%u-%u] complete\n", window_start, current_window_end);
+
+        // Sync window to SD card
+        printf("  [RECEIVER] Writing window to SD card...\n");
+        if (!chunk_transfer_sync_window(ctx->file_session)) {
+            printf("ERROR: Failed to sync window to SD card\n");
+            return;
+        }
+        printf("  [RECEIVER] ✓ Window synced to SD card\n");
+
+        // Check if transfer complete
+        if (chunk_transfer_is_complete(ctx->file_session)) {
+            printf("\n=== File Transfer Complete ===\n");
+            printf("All chunks received! Finalizing...\n");
+
+            if (chunk_transfer_finalize(ctx->file_session)) {
+                printf("✓ File saved: %s\n", ctx->file_session->filename);
+                printf("  Size: %lu bytes\n", (unsigned long)ctx->file_session->metadata.total_size);
+                printf("  Temp file closed and renamed\n");
+                printf("  Bitmap freed: %lu bytes\n",
+                       (unsigned long)ctx->file_session->chunk_meta.bitmap_size);
+                printf("✓ File is ready on SD card\n");
+
+                // Send COMPLETE control message
+                control_message_t ctrl_msg = {0};
+                ctrl_msg.type = CTRL_COMPLETE;
+                ctrl_msg.seq_num = total;
+                strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+
+                send_control_message(pcb, addr, port, &ctrl_msg);
+
+            } else {
+                printf("ERROR: Failed to finalize transfer\n");
+            }
+
+            ctx->transfer_in_progress = false;
+            ctx->last_acked_seq = 0;
+            printf("==============================\n\n");
         } else {
-            printf("ERROR: Failed to finalize transfer\n");
+            // Request next window
+            uint32_t next_window_start = current_window_end + 1;
+            uint32_t next_window_end = next_window_start + WINDOW_SIZE_CHUNKS - 1;
+            if (next_window_end > total) {
+                next_window_end = total;
+            }
+
+            control_message_t ctrl_msg = {0};
+            ctrl_msg.type = CTRL_REQUEST_NEXT;
+            ctrl_msg.seq_num = ctx->last_acked_seq;
+            ctrl_msg.window_start = next_window_start;
+            ctrl_msg.window_end = next_window_end;
+            strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+
+            send_control_message(pcb, addr, port, &ctrl_msg);
+        }
+    } else if (!all_chunks_in_window) {
+        // Missing chunks detected - send NACK
+        printf("  [RECEIVER] Window incomplete - waiting for missing chunks\n");
+
+        // Find first missing chunk
+        uint32_t first_missing = 0;
+        for (uint32_t i = window_start; i <= current_window_end; i++) {
+            uint32_t bitmap_index = i / 8;
+            uint32_t bit_offset = i % 8;
+
+            if (bitmap_index < ctx->file_session->chunk_meta.bitmap_size) {
+                if (!(ctx->file_session->chunk_meta.chunk_bitmap[bitmap_index] & (1 << bit_offset))) {
+                    first_missing = i;
+                    break;
+                }
+            }
         }
 
-        ctx->transfer_in_progress = false;
-        printf("==============================\n\n");
+        if (first_missing > 0) {
+            control_message_t ctrl_msg = {0};
+            ctrl_msg.type = CTRL_NACK;
+            ctrl_msg.seq_num = first_missing - 1;  // Last successfully received before gap
+            ctrl_msg.window_start = window_start;
+            ctrl_msg.window_end = current_window_end;
+            strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+
+            send_control_message(pcb, addr, port, &ctrl_msg);
+        }
+    }
+}
+
+// ============================================================================
+// Control Message Handler (Sender side - processes ACK/NACK/REQUEST_NEXT)
+// ============================================================================
+
+/**
+ * @brief Handle control message from receiver (for sender TX side)
+ *
+ * Processes control messages on file/control topic:
+ * - CTRL_ACK: Mark chunks as acknowledged, slide window
+ * - CTRL_NACK: Retransmit from specified sequence number
+ * - CTRL_REQUEST_NEXT: Slide window to next batch
+ * - CTRL_COMPLETE: Transfer complete confirmation
+ *
+ * @param ctx MQTT-SN context (sender side with tx_window)
+ * @param payload Serialized control message
+ * @param len Payload length
+ * @param pcb UDP PCB
+ * @param addr Gateway address
+ * @param port Gateway port
+ */
+void handle_control_message(mqtt_sn_context_t* ctx, const uint8_t* payload, size_t len,
+                            struct udp_pcb* pcb, const ip_addr_t* addr, u16_t port) {
+    if (!ctx || !payload) {
+        printf("ERROR: NULL parameter in handle_control_message\n");
+        return;
+    }
+
+    if (len != sizeof(control_message_t)) {
+        printf("ERROR: Invalid control message size (expected %zu, got %zu)\n",
+               sizeof(control_message_t), len);
+        return;
+    }
+
+    control_message_t ctrl_msg = {0};
+    memcpy(&ctrl_msg, payload, sizeof(control_message_t));
+
+    // Verify session ID matches
+    if (ctx->tx_window.active &&
+        strncmp(ctrl_msg.session_id, ctx->tx_window.session_id, sizeof(ctrl_msg.session_id)) != 0) {
+        printf("WARNING: Control message session ID mismatch\n");
+        return;
+    }
+
+    switch (ctrl_msg.type) {
+        case CTRL_ACK:
+            printf("  [CONTROL] Received ACK up to chunk %u\n", ctrl_msg.seq_num);
+            // Mark chunks as ACKed and slide window
+            for (uint32_t seq = ctx->tx_window.base; seq <= ctrl_msg.seq_num; seq++) {
+                process_ack(&ctx->tx_window, seq);
+            }
+            break;
+
+        case CTRL_NACK:
+            printf("  [CONTROL] Received NACK - retransmit from chunk %u\n", ctrl_msg.seq_num + 1);
+            // Reset window to retransmit from seq_num + 1
+            // Mark all chunks up to seq_num as ACKed
+            for (uint32_t seq = ctx->tx_window.base; seq <= ctrl_msg.seq_num; seq++) {
+                process_ack(&ctx->tx_window, seq);
+            }
+            break;
+
+        case CTRL_REQUEST_NEXT:
+            printf("  [CONTROL] Received REQUEST_NEXT for window [%u-%u]\n",
+                   ctrl_msg.window_start, ctrl_msg.window_end);
+            // Mark all chunks in current window as ACKed and slide to next window
+            for (uint32_t seq = ctx->tx_window.base; seq < ctrl_msg.window_start; seq++) {
+                process_ack(&ctx->tx_window, seq);
+            }
+            break;
+
+        case CTRL_COMPLETE:
+            printf("  [CONTROL] Received TRANSFER_COMPLETE\n");
+            // Mark all remaining chunks as ACKed
+            for (uint32_t seq = ctx->tx_window.base; seq <= ctx->tx_window.total_chunks; seq++) {
+                process_ack(&ctx->tx_window, seq);
+            }
+            ctx->tx_window.active = false;
+            break;
+
+        default:
+            printf("WARNING: Unknown control message type: %d\n", ctrl_msg.type);
+            break;
     }
 }
 
@@ -1088,7 +1714,7 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
  * @param topic_name Topic name to register
  * @return bool true on success, false if no slots available
  */
-bool mqtt_sn_add_topic_for_registration(mqtt_sn_context_t *ctx, const char *topic_name) {
+bool mqtt_sn_add_topic_for_registration(mqtt_sn_context_t* ctx, const char* topic_name) {
     if (!ctx || !topic_name) {
         printf("ERROR: Invalid parameters for topic registration\n");
         return false;
@@ -1136,7 +1762,7 @@ bool mqtt_sn_add_topic_for_registration(mqtt_sn_context_t *ctx, const char *topi
  * @param qos QoS level for subscription
  * @return bool true on success, false if no slots available
  */
-bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t *ctx, const char *topic_name,
+bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t* ctx, const char* topic_name,
                                         uint8_t qos) {
     if (!ctx || !topic_name) {
         printf("ERROR: Invalid parameters for topic subscription\n");
@@ -1193,8 +1819,8 @@ bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t *ctx, const char *topi
  * @note Call this periodically in the main loop
  * @note Automatically retries failed registrations/subscriptions every TOPIC_RETRY_INTERVAL_MS
  */
-void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
-                                         const ip_addr_t *gw_addr, u16_t gw_port) {
+void mqtt_sn_process_topic_registrations(mqtt_sn_context_t* ctx, struct udp_pcb* pcb,
+                                         const ip_addr_t* gw_addr, u16_t gw_port) {
     if (!ctx || !pcb || !gw_addr) {
         return;
     }
@@ -1216,7 +1842,7 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb 
             int64_t elapsed_ms =
                 absolute_time_diff_us(ctx->custom_topics[i].last_attempt, now) / 1000;
             if (elapsed_ms < TOPIC_RETRY_INTERVAL_MS) {
-                continue; // Not time to retry yet
+                continue;  // Not time to retry yet
             }
         }
 
@@ -1242,7 +1868,7 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb 
  * @param topic_name Topic name to look up
  * @return uint16_t Topic ID, or 0 if not found/registered
  */
-uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name) {
+uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t* ctx, const char* topic_name) {
     if (!ctx || !topic_name) {
         return 0;
     }
@@ -1254,5 +1880,5 @@ uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name) {
         }
     }
 
-    return 0; // Not found or not registered yet
+    return 0;  // Not found or not registered yet
 }
