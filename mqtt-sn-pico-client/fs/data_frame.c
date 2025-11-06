@@ -42,8 +42,8 @@
 
 typedef struct {
     uint32_t file_size;
-    uint16_t file_crc;
-    uint16_t crc_accumulator;  // For incremental CRC calculation
+    uint32_t file_crc32;       // CRC32 of entire file (for Metadata)
+    uint32_t crc_accumulator;  // For incremental CRC32 calculation
     uint32_t chunks_processed; // Number of chunks processed for CRC
     char filename[METADATA_FILENAME_SIZE];
     bool initialized;
@@ -91,8 +91,8 @@ int init_streaming_read(char *filename, struct Metadata *meta) {
 
     // Store in streaming context
     g_stream_ctx.file_size = file_size;
-    g_stream_ctx.file_crc = 0xFFFF;        // Will be calculated incrementally as chunks are read
-    g_stream_ctx.crc_accumulator = 0xFFFF; // Initialize CRC state (CCITT-FALSE initial value)
+    g_stream_ctx.file_crc32 = 0xFFFFFFFF; // Will be calculated incrementally as chunks are read
+    g_stream_ctx.crc_accumulator = 0xFFFFFFFF; // Initialize CRC32 state
     g_stream_ctx.chunks_processed = 0;
     g_stream_ctx.crc_finalized = false;
     strncpy(g_stream_ctx.filename, filename, METADATA_FILENAME_SIZE - 1);
@@ -278,18 +278,18 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
     // Calculate CRC32 for the entire data field (239 bytes, including padding)
     chunk->crc32 = crc32(chunk->data, PAYLOAD_DATA_SIZE);
 
-    // Update incremental CRC for entire file (if reading chunks sequentially)
+    // Update incremental CRC32 for entire file (if reading chunks sequentially)
     if (chunk_index == g_stream_ctx.chunks_processed && !g_stream_ctx.crc_finalized) {
-        // Continue CRC calculation
-        uint16_t crc = g_stream_ctx.crc_accumulator;
+        // Continue CRC32 calculation on actual file data (not padding)
+        uint32_t crc = g_stream_ctx.crc_accumulator;
 
         for (uint32_t i = 0; i < chunk_size; i++) {
-            crc ^= (uint16_t)chunk->data[i] << 8;
+            crc ^= chunk->data[i];
             for (int j = 0; j < 8; j++) {
-                if (crc & 0x8000) {
-                    crc = (crc << 1) ^ 0x1021; // CCITT polynomial
+                if (crc & 1) {
+                    crc = (crc >> 1) ^ 0xEDB88320; // CRC32 polynomial
                 } else {
-                    crc = crc << 1;
+                    crc = crc >> 1;
                 }
             }
         }
@@ -297,11 +297,11 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
         g_stream_ctx.crc_accumulator = crc;
         g_stream_ctx.chunks_processed++;
 
-        // If this was the last chunk, finalize the CRC
+        // If this was the last chunk, finalize the CRC32
         if (chunk_index == chunk_count - 1) {
-            g_stream_ctx.file_crc = crc;
+            g_stream_ctx.file_crc32 = ~crc; // Final XOR
             g_stream_ctx.crc_finalized = true;
-            printf("  File CRC calculated: 0x%04X\n", g_stream_ctx.file_crc);
+            printf("  File CRC32 calculated: 0x%08X\n", g_stream_ctx.file_crc32);
         }
     }
 
@@ -309,15 +309,15 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
 }
 
 /**
- * @brief Get the finalized file CRC after all chunks have been read
- * @return uint16_t File CRC16 checksum, or 0 if not finalized
+ * @brief Get the finalized file CRC32 after all chunks have been read
+ * @return uint32_t File CRC32 checksum, or 0 if not finalized
  */
-uint16_t get_streaming_file_crc(void) {
+uint32_t get_streaming_file_crc(void) {
     if (!g_stream_ctx.initialized || !g_stream_ctx.crc_finalized) {
-        printf("Warning: File CRC not yet finalized\n");
+        printf("Warning: File CRC32 not yet finalized\n");
         return 0;
     }
-    return g_stream_ctx.file_crc;
+    return g_stream_ctx.file_crc32;
 }
 
 /**

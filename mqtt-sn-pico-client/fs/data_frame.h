@@ -148,7 +148,7 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk);
  * @brief Get the finalized file CRC32 after all chunks have been read
  * @return uint32_t File CRC32 checksum, or 0 if not finalized
  */
-uint16_t get_streaming_file_crc(void);
+uint32_t get_streaming_file_crc(void);
 
 /**
  * @brief Clean up streaming context

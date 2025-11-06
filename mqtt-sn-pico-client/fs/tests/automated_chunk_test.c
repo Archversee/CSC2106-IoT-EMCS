@@ -50,11 +50,11 @@ static test_results_t g_results = {0};
 /*!
  * @brief Print test header
  */
-static void print_test_header(const char* test_name, uint32_t iteration, uint32_t total) {
+static void print_test_header(const char *test_name, uint32_t iteration, uint32_t total) {
     // Only print every 10th iteration for high-count tests to reduce output
     if (iteration == 1 || iteration == total || iteration % 10 == 0) {
-        printf("\r" COLOR_BLUE "[%s] Iteration %lu/%lu" COLOR_RESET,
-               test_name, (unsigned long)iteration, (unsigned long)total);
+        printf("\r" COLOR_BLUE "[%s] Iteration %lu/%lu" COLOR_RESET, test_name,
+               (unsigned long)iteration, (unsigned long)total);
         fflush(stdout);
     }
 }
@@ -62,7 +62,7 @@ static void print_test_header(const char* test_name, uint32_t iteration, uint32_
 /*!
  * @brief Print test result
  */
-static void print_result(bool passed, const char* message, bool verbose) {
+static void print_result(bool passed, const char *message, bool verbose) {
     if (!passed || verbose) {
         if (passed) {
             printf("\n" COLOR_GREEN "✓ PASS" COLOR_RESET ": %s\n", message);
@@ -82,7 +82,7 @@ static void print_result(bool passed, const char* message, bool verbose) {
 /*!
  * @brief Print error message
  */
-static void print_error(const char* message) {
+static void print_error(const char *message) {
     printf("\n" COLOR_RED "ERROR" COLOR_RESET ": %s\n", message);
     g_results.errors++;
 }
@@ -101,10 +101,9 @@ static void test_serialize_payload(void) {
         // Create test payload
         struct Payload payload;
         payload.sequence = i;
-        payload.size = (i % PAYLOAD_DATA_SIZE) + 1;  // 1 to 237 bytes
 
-        // Fill with test pattern
-        for (size_t j = 0; j < payload.size; j++) {
+        // Fill with test pattern (all 239 bytes)
+        for (size_t j = 0; j < PAYLOAD_DATA_SIZE; j++) {
             payload.data[j] = (uint8_t)((i + j) & 0xFF);
         }
 
@@ -133,14 +132,13 @@ static void test_serialize_payload(void) {
         }
 
         // Verify sequence number in buffer (little-endian, first 4 bytes)
-        uint32_t serialized_seq = buffer[0] | (buffer[1] << 8) |
-                                  (buffer[2] << 16) | (buffer[3] << 24);
+        uint32_t serialized_seq =
+            buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
 
         if (serialized_seq != i) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Sequence mismatch: expected %lu, got %lu",
-                     (unsigned long)i, (unsigned long)serialized_seq);
+            snprintf(msg, sizeof(msg), "Sequence mismatch: expected %lu, got %lu", (unsigned long)i,
+                     (unsigned long)serialized_seq);
             print_result(false, msg, true);
             continue;
         }
@@ -164,9 +162,9 @@ static void test_deserialize_payload(void) {
         // Create original payload
         struct Payload original;
         original.sequence = i;
-        original.size = ((i * 7) % PAYLOAD_DATA_SIZE) + 1;
 
-        for (size_t j = 0; j < original.size; j++) {
+        // Fill with test pattern (all 239 bytes)
+        for (size_t j = 0; j < PAYLOAD_DATA_SIZE; j++) {
             original.data[j] = (uint8_t)((i * 3 + j) & 0xFF);
         }
 
@@ -189,27 +187,14 @@ static void test_deserialize_payload(void) {
         // Verify sequence number
         if (deserialized.sequence != original.sequence) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Sequence mismatch: expected %lu, got %lu",
-                     (unsigned long)original.sequence,
-                     (unsigned long)deserialized.sequence);
+            snprintf(msg, sizeof(msg), "Sequence mismatch: expected %lu, got %lu",
+                     (unsigned long)original.sequence, (unsigned long)deserialized.sequence);
             print_result(false, msg, true);
             continue;
         }
 
-        // Verify size
-        if (deserialized.size != original.size) {
-            char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Size mismatch: expected %lu, got %lu",
-                     (unsigned long)original.size,
-                     (unsigned long)deserialized.size);
-            print_result(false, msg, true);
-            continue;
-        }
-
-        // Verify data
-        bool data_match = (memcmp(original.data, deserialized.data, original.size) == 0);
+        // Verify data (all 239 bytes)
+        bool data_match = (memcmp(original.data, deserialized.data, PAYLOAD_DATA_SIZE) == 0);
         if (!data_match) {
             print_result(false, "Data mismatch after deserialization", true);
             continue;
@@ -231,17 +216,17 @@ static void test_crc_verification(void) {
     for (uint32_t i = 1; i <= TEST_CRC_EXECUTIONS; i++) {
         print_test_header("UT-3 CRC", i, TEST_CRC_EXECUTIONS);
 
-        // Create payload with varying size
+        // Create payload with varying pattern
         struct Payload payload;
         payload.sequence = i * 100;
-        payload.size = ((i * 11) % PAYLOAD_DATA_SIZE) + 1;
 
-        for (size_t j = 0; j < payload.size; j++) {
+        // Fill with test pattern (all 239 bytes)
+        for (size_t j = 0; j < PAYLOAD_DATA_SIZE; j++) {
             payload.data[j] = (uint8_t)((i * 5 + j * 3) & 0xFF);
         }
 
         // Calculate CRC for the payload data (THIS IS CRITICAL!)
-        payload.crc = crc16(payload.data, payload.size);
+        payload.crc32 = crc32(payload.data, PAYLOAD_DATA_SIZE);
 
         // Serialize (writes the calculated CRC to buffer)
         static uint8_t buffer[PAYLOAD_SIZE];
@@ -281,10 +266,9 @@ static void test_crc_verification(void) {
         }
 
         char msg[64];
-        snprintf(msg, sizeof(msg), "CRC verified (seq=%lu, size=%lu)",
-                 (unsigned long)payload.sequence,
-                 (unsigned long)payload.size);
-        print_result(true, msg, i == TEST_CRC_EXECUTIONS);  // Verbose on last
+        snprintf(msg, sizeof(msg), "CRC verified (seq=%lu, %d bytes)",
+                 (unsigned long)payload.sequence, PAYLOAD_DATA_SIZE);
+        print_result(true, msg, i == TEST_CRC_EXECUTIONS); // Verbose on last
     }
     printf("\n");
 }
@@ -302,12 +286,13 @@ static void test_serialize_metadata(void) {
 
         // Create test metadata
         struct Metadata metadata;
-        snprintf(metadata.session_id, sizeof(metadata.session_id), "SESSION_%03lu", (unsigned long)i);
+        snprintf(metadata.session_id, sizeof(metadata.session_id), "SESSION_%03lu",
+                 (unsigned long)i);
         snprintf(metadata.filename, sizeof(metadata.filename), "TEST_%03lu.DAT", (unsigned long)i);
         metadata.total_size = 1000 + (i * 100);
         metadata.chunk_count = (metadata.total_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
         metadata.last_modified = 1730000000 + i;
-        metadata.file_crc = (uint16_t)(i & 0xFFFF);
+        metadata.file_crc32 = (uint32_t)(i & 0xFFFFFFFF);
 
         // Serialize
         static uint8_t buffer[PAYLOAD_SIZE];
@@ -356,7 +341,7 @@ static void test_deserialize_metadata(void) {
         original.total_size = 5000 + (i * 50);
         original.chunk_count = ((original.total_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE);
         original.last_modified = 1730500000 + i;
-        original.file_crc = (uint16_t)((i * 3) & 0xFFFF);
+        original.file_crc32 = (uint32_t)((i * 3) & 0xFFFFFFFF);
 
         // Serialize
         static uint8_t buffer[PAYLOAD_SIZE];
@@ -377,8 +362,7 @@ static void test_deserialize_metadata(void) {
         // Verify session_id
         if (strcmp(deserialized.session_id, original.session_id) != 0) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Session ID mismatch: expected %s, got %s",
+            snprintf(msg, sizeof(msg), "Session ID mismatch: expected %s, got %s",
                      original.session_id, deserialized.session_id);
             print_result(false, msg, true);
             continue;
@@ -387,9 +371,8 @@ static void test_deserialize_metadata(void) {
         // Verify filename
         if (strcmp(deserialized.filename, original.filename) != 0) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Filename mismatch: expected %s, got %s",
-                     original.filename, deserialized.filename);
+            snprintf(msg, sizeof(msg), "Filename mismatch: expected %s, got %s", original.filename,
+                     deserialized.filename);
             print_result(false, msg, true);
             continue;
         }
@@ -397,10 +380,8 @@ static void test_deserialize_metadata(void) {
         // Verify total_size
         if (deserialized.total_size != original.total_size) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Size mismatch: expected %lu, got %lu",
-                     (unsigned long)original.total_size,
-                     (unsigned long)deserialized.total_size);
+            snprintf(msg, sizeof(msg), "Size mismatch: expected %lu, got %lu",
+                     (unsigned long)original.total_size, (unsigned long)deserialized.total_size);
             print_result(false, msg, true);
             continue;
         }
@@ -426,9 +407,9 @@ static void test_sequence_validation(void) {
         // Create payload with incrementing sequence
         struct Payload payload;
         payload.sequence = expected_seq;
-        payload.size = 100;
 
-        for (size_t j = 0; j < payload.size; j++) {
+        // Fill with test pattern (all 239 bytes)
+        for (size_t j = 0; j < PAYLOAD_DATA_SIZE; j++) {
             payload.data[j] = (uint8_t)((payload.sequence + j) & 0xFF);
         }
 
@@ -448,10 +429,8 @@ static void test_sequence_validation(void) {
         // Validate sequence number matches expected
         if (received.sequence != expected_seq) {
             char msg[128];
-            snprintf(msg, sizeof(msg),
-                     "Out-of-order sequence: expected %lu, got %lu",
-                     (unsigned long)expected_seq,
-                     (unsigned long)received.sequence);
+            snprintf(msg, sizeof(msg), "Out-of-order sequence: expected %lu, got %lu",
+                     (unsigned long)expected_seq, (unsigned long)received.sequence);
             print_result(false, msg, true);
             continue;
         }
@@ -475,11 +454,9 @@ static void print_summary(void) {
     printf("\n");
 
     printf("Total test executions: %lu\n", (unsigned long)g_results.total_tests);
-    printf(COLOR_GREEN "Passed:  %lu" COLOR_RESET " (%.1f%%)\n",
-           (unsigned long)g_results.passed,
+    printf(COLOR_GREEN "Passed:  %lu" COLOR_RESET " (%.1f%%)\n", (unsigned long)g_results.passed,
            g_results.total_tests > 0 ? (g_results.passed * 100.0 / g_results.total_tests) : 0.0);
-    printf(COLOR_RED "Failed:  %lu" COLOR_RESET " (%.1f%%)\n",
-           (unsigned long)g_results.failed,
+    printf(COLOR_RED "Failed:  %lu" COLOR_RESET " (%.1f%%)\n", (unsigned long)g_results.failed,
            g_results.total_tests > 0 ? (g_results.failed * 100.0 / g_results.total_tests) : 0.0);
     printf(COLOR_YELLOW "Errors:  %lu" COLOR_RESET "\n", (unsigned long)g_results.errors);
 
@@ -493,9 +470,9 @@ static void print_summary(void) {
     printf("  IT-2 (Seq validation):    %d executions\n", TEST_SEQUENCE_VALIDATION_EXECUTIONS);
     printf("  ─────────────────────────────────────\n");
     printf("  Total:                    %d executions\n",
-           TEST_SERIALIZE_EXECUTIONS + TEST_DESERIALIZE_EXECUTIONS +
-               TEST_CRC_EXECUTIONS + TEST_META_SERIALIZE_EXECUTIONS +
-               TEST_META_DESERIALIZE_EXECUTIONS + TEST_SEQUENCE_VALIDATION_EXECUTIONS);
+           TEST_SERIALIZE_EXECUTIONS + TEST_DESERIALIZE_EXECUTIONS + TEST_CRC_EXECUTIONS +
+               TEST_META_SERIALIZE_EXECUTIONS + TEST_META_DESERIALIZE_EXECUTIONS +
+               TEST_SEQUENCE_VALIDATION_EXECUTIONS);
 
     printf("\n");
     if (g_results.failed == 0 && g_results.errors == 0) {
@@ -535,9 +512,10 @@ int main(void) {
     printf("\nPerforming sanity check...\n");
     struct Payload test_payload;
     test_payload.sequence = 1;
-    test_payload.size = 10;
-    for (int i = 0; i < 10; i++) {
-        test_payload.data[i] = (uint8_t)i;
+
+    // Fill with simple pattern
+    for (int i = 0; i < PAYLOAD_DATA_SIZE; i++) {
+        test_payload.data[i] = (uint8_t)(i & 0xFF);
     }
 
     uint8_t test_buffer[PAYLOAD_SIZE];
