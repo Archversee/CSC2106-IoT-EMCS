@@ -34,27 +34,27 @@
 #include <string.h>
 
 #include "../drivers/microsd_driver.h"
-#include "ff.h"         // FatFS library
-#include "hw_config.h"  // For sd_get_by_num()
+#include "ff.h"        // FatFS library
+#include "hw_config.h" // For sd_get_by_num()
 
 /*! Static file context for streaming operations */
-#define READ_BUFFER_SIZE (32 * 1024)  // 32KB read buffer
+#define READ_BUFFER_SIZE (32 * 1024) // 32KB read buffer
 
 typedef struct {
     uint32_t file_size;
     uint16_t file_crc;
-    uint16_t crc_accumulator;   // For incremental CRC calculation
-    uint32_t chunks_processed;  // Number of chunks processed for CRC
+    uint16_t crc_accumulator;  // For incremental CRC calculation
+    uint32_t chunks_processed; // Number of chunks processed for CRC
     char filename[METADATA_FILENAME_SIZE];
     bool initialized;
-    bool crc_finalized;  // True when CRC calculation is complete
-    FIL file_handle;     // Keep file open during streaming session
-    bool file_is_open;   // Track if file handle is valid
+    bool crc_finalized; // True when CRC calculation is complete
+    FIL file_handle;    // Keep file open during streaming session
+    bool file_is_open;  // Track if file handle is valid
 
     // Read buffering for efficiency
-    uint8_t* read_buffer;         // Dynamically allocated 32KB buffer
-    uint32_t buffer_file_offset;  // File offset of first byte in buffer
-    uint32_t buffer_valid_bytes;  // Number of valid bytes currently in buffer
+    uint8_t *read_buffer;        // Dynamically allocated 32KB buffer
+    uint32_t buffer_file_offset; // File offset of first byte in buffer
+    uint32_t buffer_valid_bytes; // Number of valid bytes currently in buffer
 } streaming_context_t;
 
 static streaming_context_t g_stream_ctx = {0};
@@ -69,7 +69,7 @@ static streaming_context_t g_stream_ctx = {0};
  * @param meta Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on failure
  */
-int init_streaming_read(char* filename, struct Metadata* meta) {
+int init_streaming_read(char *filename, struct Metadata *meta) {
     if (filename == NULL || meta == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -91,8 +91,8 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
 
     // Store in streaming context
     g_stream_ctx.file_size = file_size;
-    g_stream_ctx.file_crc = 0xFFFF;         // Will be calculated incrementally as chunks are read
-    g_stream_ctx.crc_accumulator = 0xFFFF;  // Initialize CRC state (CCITT-FALSE initial value)
+    g_stream_ctx.file_crc = 0xFFFF;        // Will be calculated incrementally as chunks are read
+    g_stream_ctx.crc_accumulator = 0xFFFF; // Initialize CRC state (CCITT-FALSE initial value)
     g_stream_ctx.chunks_processed = 0;
     g_stream_ctx.crc_finalized = false;
     strncpy(g_stream_ctx.filename, filename, METADATA_FILENAME_SIZE - 1);
@@ -108,7 +108,7 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
     g_stream_ctx.initialized = true;
 
     // Allocate 32KB read buffer for efficient SD card access
-    g_stream_ctx.read_buffer = (uint8_t*)malloc(READ_BUFFER_SIZE);
+    g_stream_ctx.read_buffer = (uint8_t *)malloc(READ_BUFFER_SIZE);
     if (!g_stream_ctx.read_buffer) {
         printf("ERROR: Failed to allocate %d byte read buffer\n", READ_BUFFER_SIZE);
         microsd_driver_close(&g_stream_ctx.file_handle);
@@ -124,7 +124,7 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
     meta->total_size = file_size;
     meta->chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
     meta->last_modified = 0;
-    meta->file_crc = 0;  // Will be set after all chunks are read
+    meta->file_crc = 0; // Will be set after all chunks are read
 
     // Generate session ID
     snprintf(meta->session_id, SESSION_ID_SIZE, "stream_%lu",
@@ -155,7 +155,7 @@ int init_streaming_read(char* filename, struct Metadata* meta) {
  * @param chunk Pointer to Payload structure to populate
  * @return int 0 on success, -1 on failure
  */
-int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
+int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk) {
     if (chunk == NULL) {
         printf("Error: NULL chunk pointer\n");
         return -1;
@@ -207,7 +207,8 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
     if (need_refill) {
         // Seek to chunk offset
         if (!microsd_driver_seek(&g_stream_ctx.file_handle, file_offset)) {
-            printf("Error: Failed to seek to offset %lu, attempting file reopen...\n", (unsigned long)file_offset);
+            printf("Error: Failed to seek to offset %lu, attempting file reopen...\n",
+                   (unsigned long)file_offset);
 
             // Try to recover by reopening the file
             microsd_driver_close(&g_stream_ctx.file_handle);
@@ -250,8 +251,8 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
                 return -1;
             }
 
-            if (!microsd_driver_read(&g_stream_ctx.file_handle, g_stream_ctx.read_buffer, bytes_to_read,
-                                     &bytes_read)) {
+            if (!microsd_driver_read(&g_stream_ctx.file_handle, g_stream_ctx.read_buffer,
+                                     bytes_to_read, &bytes_read)) {
                 printf("Error: Failed to read buffer even after file reopen\n");
                 return -1;
             }
@@ -274,8 +275,8 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
     // Set chunk sequence number (data chunks start from sequence 1, metadata uses 0xFFFFFFFF)
     chunk->sequence = chunk_index + 1;
 
-    // Calculate CRC16 for the entire data field (243 bytes, including padding)
-    chunk->crc = crc16((const char*)chunk->data, PAYLOAD_DATA_SIZE);
+    // Calculate CRC32 for the entire data field (239 bytes, including padding)
+    chunk->crc32 = crc32(chunk->data, PAYLOAD_DATA_SIZE);
 
     // Update incremental CRC for entire file (if reading chunks sequentially)
     if (chunk_index == g_stream_ctx.chunks_processed && !g_stream_ctx.crc_finalized) {
@@ -286,7 +287,7 @@ int read_chunk_streaming(uint32_t chunk_index, struct Payload* chunk) {
             crc ^= (uint16_t)chunk->data[i] << 8;
             for (int j = 0; j < 8; j++) {
                 if (crc & 0x8000) {
-                    crc = (crc << 1) ^ 0x1021;  // CCITT polynomial
+                    crc = (crc << 1) ^ 0x1021; // CCITT polynomial
                 } else {
                     crc = crc << 1;
                 }
@@ -342,20 +343,20 @@ void cleanup_streaming_read(void) {
 }
 
 /**
- * @brief Verify integrity of a chunk using CRC16
+ * @brief Verify integrity of a chunk using CRC32
  * @param chunk Pointer to Payload structure
  * @return int 1 if valid, 0 if invalid
  */
-int verify_chunk(struct Payload* chunk) {
+int verify_chunk(struct Payload *chunk) {
     if (chunk == NULL) {
         return 0;
     }
 
-    // Calculate CRC16 of the entire data field (243 bytes)
-    uint16_t calculated_crc = crc16((const char*)chunk->data, PAYLOAD_DATA_SIZE);
+    // Calculate CRC32 of the entire data field (239 bytes)
+    uint32_t calculated_crc = crc32(chunk->data, PAYLOAD_DATA_SIZE);
 
     // Compare with stored CRC
-    return (calculated_crc == chunk->crc) ? 1 : 0;
+    return (calculated_crc == chunk->crc32) ? 1 : 0;
 }
 
 /**
@@ -365,7 +366,7 @@ int verify_chunk(struct Payload* chunk) {
  * @param chunks Pointer to array of Payload pointers (output)
  * @return int 0 on success, -1 on failure
  */
-int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) {
+int deconstruct(char *filename, struct Metadata *meta, struct Payload **chunks) {
     if (filename == NULL || meta == NULL || chunks == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -395,7 +396,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
         return -1;
     }
 
-    uint8_t* file_buffer = (uint8_t*)malloc(file_size);
+    uint8_t *file_buffer = (uint8_t *)malloc(file_size);
     if (file_buffer == NULL) {
         printf("Error: Memory allocation failed for file buffer (%u bytes)\n", file_size);
         return -1;
@@ -421,7 +422,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
     uint32_t chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
 
     // Allocate memory for chunks array
-    *chunks = (struct Payload*)malloc(sizeof(struct Payload) * chunk_count);
+    *chunks = (struct Payload *)malloc(sizeof(struct Payload) * chunk_count);
     if (*chunks == NULL) {
         printf("Error: Failed to allocate memory for %u chunks (%u bytes)\n", chunk_count,
                sizeof(struct Payload) * chunk_count);
@@ -431,21 +432,21 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
 
     printf("Allocated %u chunks (%u bytes)\n", chunk_count, sizeof(struct Payload) * chunk_count);
 
-    // Calculate file CRC16
-    uint16_t file_crc = crc16((const char*)file_buffer, file_size);
+    // Calculate file CRC32
+    uint32_t file_crc = crc32(file_buffer, file_size);
 
     // Fill metadata
     strncpy(meta->filename, filename, METADATA_FILENAME_SIZE - 1);
     meta->filename[METADATA_FILENAME_SIZE - 1] = '\0';
     meta->total_size = file_size;
     meta->chunk_count = chunk_count;
-    meta->last_modified = 0;  // Would need RTC for actual timestamp
-    meta->file_crc = file_crc;
+    meta->last_modified = 0; // Would need RTC for actual timestamp
+    meta->file_crc32 = file_crc;
 
     printf("Deconstructing file: %s\n", filename);
     printf("Total size: %u bytes\n", file_size);
     printf("Chunks: %u (%d bytes data per chunk)\n", chunk_count, PAYLOAD_DATA_SIZE);
-    printf("File CRC16: 0x%04X\n", meta->file_crc);
+    printf("File CRC32: 0x%08X\n", meta->file_crc32);
 
     // Create chunks
     for (uint32_t i = 0; i < chunk_count; i++) {
@@ -464,8 +465,8 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
             memset((*chunks)[i].data + chunk_size, 0, PAYLOAD_DATA_SIZE - chunk_size);
         }
 
-        // Calculate CRC16 for the entire data field (243 bytes, including padding)
-        (*chunks)[i].crc = crc16((const char*)(*chunks)[i].data, PAYLOAD_DATA_SIZE);
+        // Calculate CRC32 for the entire data field (239 bytes, including padding)
+        (*chunks)[i].crc32 = crc32((*chunks)[i].data, PAYLOAD_DATA_SIZE);
 
         if ((i + 1) % 10 == 0 || i == chunk_count - 1) {
             printf("Processed chunk %u/%u\n", i + 1, chunk_count);
@@ -484,7 +485,7 @@ int deconstruct(char* filename, struct Metadata* meta, struct Payload** chunks) 
  * @param output_filename Name of file to write to SD card
  * @return int 0 on success, -1 on failure
  */
-int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_filename) {
+int reconstruct(struct Metadata *meta, struct Payload **chunks, char *output_filename) {
     if (meta == NULL || chunks == NULL || *chunks == NULL || output_filename == NULL) {
         printf("Error: NULL parameters\n");
         return -1;
@@ -515,7 +516,7 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
     }
 
     // Allocate buffer for complete file
-    uint8_t* file_buffer = (uint8_t*)malloc(meta->total_size);
+    uint8_t *file_buffer = (uint8_t *)malloc(meta->total_size);
     if (file_buffer == NULL) {
         printf("Error: Memory allocation failed\n");
         return -1;
@@ -552,16 +553,16 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
         return -1;
     }
 
-    // Verify file CRC16
-    uint16_t calculated_file_crc = crc16((const char*)file_buffer, meta->total_size);
-    if (calculated_file_crc != meta->file_crc) {
-        printf("Error: File CRC16 mismatch - Expected: 0x%04X, Got: 0x%04X\n", meta->file_crc,
+    // Verify file CRC32
+    uint32_t calculated_file_crc = crc32(file_buffer, meta->total_size);
+    if (calculated_file_crc != meta->file_crc32) {
+        printf("Error: File CRC32 mismatch - Expected: 0x%08X, Got: 0x%08X\n", meta->file_crc32,
                calculated_file_crc);
         free(file_buffer);
         return -1;
     }
 
-    printf("File CRC16 verification passed: 0x%04X\n", calculated_file_crc);
+    printf("File CRC32 verification passed: 0x%08X\n", calculated_file_crc);
 
     // Write reconstructed file to SD card using microsd_driver
     if (!microsd_driver_write_file(output_filename, file_buffer, meta->total_size)) {
@@ -576,18 +577,41 @@ int reconstruct(struct Metadata* meta, struct Payload** chunks, char* output_fil
 }
 
 /**
+ * @brief Calculate CRC32 checksum for data buffer
+ * @param data Pointer to data buffer
+ * @param length Length of data in bytes
+ * @return uint32_t CRC32 checksum value
+ */
+uint32_t crc32(const uint8_t *data, size_t length) {
+    uint32_t crc = 0xFFFFFFFF; // Initial value
+
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            if (crc & 1) {
+                crc = (crc >> 1) ^ 0xEDB88320; // CRC32 polynomial
+            } else {
+                crc = crc >> 1;
+            }
+        }
+    }
+
+    return ~crc; // Final XOR
+}
+
+/**
  * @brief Serialize Payload struct into a 247-byte buffer for MQTT transmission
- * Format: [4 bytes sequence][243 bytes data]
+ * Format: [4 bytes sequence][239 bytes data][4 bytes CRC32]
  * @param payload Pointer to Payload structure to serialize
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_payload(struct Payload* payload, uint8_t* buffer) {
+int serialize_payload(struct Payload *payload, uint8_t *buffer) {
     if (!payload || !buffer) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Write sequence (4 bytes, little-endian)
     *ptr++ = (uint8_t)(payload->sequence & 0xFF);
@@ -595,35 +619,46 @@ int serialize_payload(struct Payload* payload, uint8_t* buffer) {
     *ptr++ = (uint8_t)((payload->sequence >> 16) & 0xFF);
     *ptr++ = (uint8_t)((payload->sequence >> 24) & 0xFF);
 
-    // Write data (243 bytes)
+    // Write data (239 bytes)
     memcpy(ptr, payload->data, PAYLOAD_DATA_SIZE);
     ptr += PAYLOAD_DATA_SIZE;
 
-    return (int)(ptr - buffer);  // Should be 247 bytes
+    // Write CRC32 (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(payload->crc32 & 0xFF);
+    *ptr++ = (uint8_t)((payload->crc32 >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((payload->crc32 >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((payload->crc32 >> 24) & 0xFF);
+
+    return (int)(ptr - buffer); // Should be 247 bytes
 }
 
 /**
  * @brief Deserialize 247-byte buffer into Payload struct after MQTT reception
- * Format: [4 bytes sequence][243 bytes data]
+ * Format: [4 bytes sequence][239 bytes data][4 bytes CRC32]
  * @param buffer Pointer to input buffer containing serialized data
  * @param payload Pointer to Payload structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
+int deserialize_payload(uint8_t *buffer, struct Payload *payload) {
     if (!buffer || !payload) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Read sequence (4 bytes, little-endian)
     payload->sequence = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
                         ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
-    // Read data (243 bytes)
+    // Read data (239 bytes)
     memcpy(payload->data, ptr, PAYLOAD_DATA_SIZE);
     ptr += PAYLOAD_DATA_SIZE;
+
+    // Read CRC32 (4 bytes, little-endian)
+    payload->crc32 = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
+                     ((uint32_t)ptr[3] << 24);
+    ptr += 4;
 
     return 0;
 }
@@ -635,12 +670,12 @@ int deserialize_payload(uint8_t* buffer, struct Payload* payload) {
  * @param buffer Pointer to output buffer (must be at least PAYLOAD_SIZE bytes)
  * @return int Number of bytes written, or -1 on error
  */
-int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
+int serialize_metadata(struct Metadata *metadata, uint8_t *buffer) {
     if (!metadata || !buffer) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Write sequence = 0xFFFFFFFF to indicate metadata packet (4 bytes, little-endian)
     *ptr++ = 0xFF;
@@ -675,17 +710,19 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
     *ptr++ = (uint8_t)((metadata->last_modified >> 16) & 0xFF);
     *ptr++ = (uint8_t)((metadata->last_modified >> 24) & 0xFF);
 
-    // Write file_crc (2 bytes, little-endian)
-    *ptr++ = (uint8_t)(metadata->file_crc & 0xFF);
-    *ptr++ = (uint8_t)((metadata->file_crc >> 8) & 0xFF);
+    // Write file_crc32 (4 bytes, little-endian)
+    *ptr++ = (uint8_t)(metadata->file_crc32 & 0xFF);
+    *ptr++ = (uint8_t)((metadata->file_crc32 >> 8) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->file_crc32 >> 16) & 0xFF);
+    *ptr++ = (uint8_t)((metadata->file_crc32 >> 24) & 0xFF);
 
     // Fill remaining bytes with zeros to make it 247 bytes total
-    size_t bytes_written = ptr - buffer;  // Should be 4 + 110 = 114 bytes
+    size_t bytes_written = ptr - buffer; // Should be 4 + 112 = 116 bytes
     if (bytes_written < PAYLOAD_SIZE) {
         memset(ptr, 0, PAYLOAD_SIZE - bytes_written);
     }
 
-    return PAYLOAD_SIZE;  // Always return 247 bytes for consistency
+    return PAYLOAD_SIZE; // Always return 247 bytes for consistency
 }
 
 /**
@@ -695,12 +732,12 @@ int serialize_metadata(struct Metadata* metadata, uint8_t* buffer) {
  * @param metadata Pointer to Metadata structure to populate
  * @return int 0 on success, -1 on error
  */
-int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata) {
+int deserialize_metadata(uint8_t *buffer, struct Metadata *metadata) {
     if (!buffer || !metadata) {
         return -1;
     }
 
-    uint8_t* ptr = buffer;
+    uint8_t *ptr = buffer;
 
     // Skip sequence field (4 bytes) - should be 0xFFFFFFFF but we don't validate here
     ptr += 4;
@@ -708,12 +745,12 @@ int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata) {
     // Read metadata from data field (110 bytes total)
     // Read session_id (32 bytes)
     memcpy(metadata->session_id, ptr, SESSION_ID_SIZE);
-    metadata->session_id[SESSION_ID_SIZE - 1] = '\0';  // Ensure null termination
+    metadata->session_id[SESSION_ID_SIZE - 1] = '\0'; // Ensure null termination
     ptr += SESSION_ID_SIZE;
 
     // Read filename (64 bytes)
     memcpy(metadata->filename, ptr, METADATA_FILENAME_SIZE);
-    metadata->filename[METADATA_FILENAME_SIZE - 1] = '\0';  // Ensure null termination
+    metadata->filename[METADATA_FILENAME_SIZE - 1] = '\0'; // Ensure null termination
     ptr += METADATA_FILENAME_SIZE;
 
     // Read total_size (4 bytes, little-endian)
@@ -731,9 +768,10 @@ int deserialize_metadata(uint8_t* buffer, struct Metadata* metadata) {
                               ((uint32_t)ptr[2] << 16) | ((uint32_t)ptr[3] << 24);
     ptr += 4;
 
-    // Read file_crc (2 bytes, little-endian)
-    metadata->file_crc = (uint16_t)ptr[0] | ((uint16_t)ptr[1] << 8);
-    ptr += 2;
+    // Read file_crc32 (4 bytes, little-endian)
+    metadata->file_crc32 = (uint32_t)ptr[0] | ((uint32_t)ptr[1] << 8) | ((uint32_t)ptr[2] << 16) |
+                           ((uint32_t)ptr[3] << 24);
+    ptr += 4;
 
     return 0;
 }
