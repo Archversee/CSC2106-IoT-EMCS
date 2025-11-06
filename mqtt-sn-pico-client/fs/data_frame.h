@@ -145,8 +145,8 @@ int init_streaming_read(char *filename, struct Metadata *meta);
 int read_chunk_streaming(uint32_t chunk_index, struct Payload *chunk);
 
 /**
- * @brief Get the finalized file CRC after all chunks have been read
- * @return uint16_t File CRC16 checksum, or 0 if not finalized
+ * @brief Get the finalized file CRC32 after all chunks have been read
+ * @return uint32_t File CRC32 checksum, or 0 if not finalized
  */
 uint16_t get_streaming_file_crc(void);
 

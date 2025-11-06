@@ -124,7 +124,7 @@ int init_streaming_read(char *filename, struct Metadata *meta) {
     meta->total_size = file_size;
     meta->chunk_count = (file_size + PAYLOAD_DATA_SIZE - 1) / PAYLOAD_DATA_SIZE;
     meta->last_modified = 0;
-    meta->file_crc = 0; // Will be set after all chunks are read
+    meta->file_crc32 = 0; // Will be set after all chunks are read
 
     // Generate session ID
     snprintf(meta->session_id, SESSION_ID_SIZE, "stream_%lu",

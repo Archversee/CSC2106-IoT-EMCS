@@ -29,13 +29,13 @@ static bool test_payload_serialization(void) {
         original_payload.data[i] = (uint8_t)(i & 0xFF);
     }
 
-    // Calculate CRC
-    original_payload.crc = crc16((const char*)original_payload.data, PAYLOAD_DATA_SIZE);
+    // Calculate CRC32
+    original_payload.crc32 = crc32(original_payload.data, PAYLOAD_DATA_SIZE);
 
     printf("Original Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)original_payload.sequence);
     printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
-    printf("  CRC: 0x%04X\n", original_payload.crc);
+    printf("  CRC32: 0x%08X\n", original_payload.crc32);
 
     // Serialize
     uint8_t buffer[PAYLOAD_SIZE];
@@ -56,8 +56,8 @@ static bool test_payload_serialization(void) {
     printf("\n");
 
     if (serialized_bytes != PAYLOAD_SIZE) {
-        printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n",
-               serialized_bytes, PAYLOAD_SIZE);
+        printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n", serialized_bytes,
+               PAYLOAD_SIZE);
         return false;
     }
 
@@ -75,7 +75,7 @@ static bool test_payload_serialization(void) {
     printf("Deserialized Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)deserialized_payload.sequence);
     printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
-    printf("  CRC: 0x%04X\n", deserialized_payload.crc);
+    printf("  CRC32: 0x%08X\n", deserialized_payload.crc32);
 
     // Verify fields match
     bool fields_match = true;
@@ -87,9 +87,9 @@ static bool test_payload_serialization(void) {
         fields_match = false;
     }
 
-    if (original_payload.crc != deserialized_payload.crc) {
-        printf("✗ FAILED: CRC mismatch (0x%04X != 0x%04X)\n",
-               original_payload.crc, deserialized_payload.crc);
+    if (original_payload.crc32 != deserialized_payload.crc32) {
+        printf("✗ FAILED: CRC32 mismatch (0x%08X != 0x%08X)\n", original_payload.crc32,
+               deserialized_payload.crc32);
         fields_match = false;
     }
 
@@ -97,8 +97,8 @@ static bool test_payload_serialization(void) {
     bool data_match = true;
     for (int i = 0; i < PAYLOAD_DATA_SIZE; i++) {
         if (original_payload.data[i] != deserialized_payload.data[i]) {
-            printf("✗ FAILED: Data mismatch at byte %d (0x%02X != 0x%02X)\n",
-                   i, original_payload.data[i], deserialized_payload.data[i]);
+            printf("✗ FAILED: Data mismatch at byte %d (0x%02X != 0x%02X)\n", i,
+                   original_payload.data[i], deserialized_payload.data[i]);
             data_match = false;
             break;
         }
@@ -135,7 +135,7 @@ static bool test_metadata_serialization(void) {
     original_meta.total_size = 123456;
     original_meta.chunk_count = 520;
     original_meta.last_modified = 1698754321;
-    original_meta.file_crc = 0xABCD;
+    original_meta.file_crc32 = 0xABCDEF12;
 
     printf("Original Metadata:\n");
     printf("  Session ID: %s\n", original_meta.session_id);
@@ -143,7 +143,7 @@ static bool test_metadata_serialization(void) {
     printf("  Total size: %lu bytes\n", (unsigned long)original_meta.total_size);
     printf("  Chunk count: %lu\n", (unsigned long)original_meta.chunk_count);
     printf("  Last modified: %lu\n", (unsigned long)original_meta.last_modified);
-    printf("  File CRC: 0x%04X\n", original_meta.file_crc);
+    printf("  File CRC32: 0x%08X\n", original_meta.file_crc32);
 
     // Serialize
     uint8_t buffer[PAYLOAD_SIZE];
@@ -162,8 +162,8 @@ static bool test_metadata_serialization(void) {
     }
 
     if (serialized_bytes != PAYLOAD_SIZE) {
-        printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n",
-               serialized_bytes, PAYLOAD_SIZE);
+        printf("✗ FAILED: Serialization returned %d bytes (expected %d)\n", serialized_bytes,
+               PAYLOAD_SIZE);
         return false;
     }
 
@@ -184,7 +184,7 @@ static bool test_metadata_serialization(void) {
     printf("  Total size: %lu bytes\n", (unsigned long)deserialized_meta.total_size);
     printf("  Chunk count: %lu\n", (unsigned long)deserialized_meta.chunk_count);
     printf("  Last modified: %lu\n", (unsigned long)deserialized_meta.last_modified);
-    printf("  File CRC: 0x%04X\n", deserialized_meta.file_crc);
+    printf("  File CRC32: 0x%08X\n", deserialized_meta.file_crc32);
 
     // Verify fields match
     bool all_match = true;
@@ -214,8 +214,8 @@ static bool test_metadata_serialization(void) {
         all_match = false;
     }
 
-    if (original_meta.file_crc != deserialized_meta.file_crc) {
-        printf("✗ FAILED: File CRC mismatch\n");
+    if (original_meta.file_crc32 != deserialized_meta.file_crc32) {
+        printf("✗ FAILED: File CRC32 mismatch\n");
         all_match = false;
     }
 
@@ -248,12 +248,12 @@ static bool test_mqtt_simulation(void) {
         tx_payload.data[i] = 0;
     }
 
-    tx_payload.crc = crc16((const char*)tx_payload.data, PAYLOAD_DATA_SIZE);
+    tx_payload.crc32 = crc32(tx_payload.data, PAYLOAD_DATA_SIZE);
 
     printf("Transmitting Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)tx_payload.sequence);
     printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
-    printf("  CRC: 0x%04X\n", tx_payload.crc);
+    printf("  CRC32: 0x%08X\n", tx_payload.crc32);
 
     // Serialize for MQTT transmission
     uint8_t mqtt_buffer[PAYLOAD_SIZE];
@@ -273,7 +273,7 @@ static bool test_mqtt_simulation(void) {
     printf("Received Payload:\n");
     printf("  Sequence: %lu\n", (unsigned long)rx_payload.sequence);
     printf("  Size: %lu bytes\n", (unsigned long)PAYLOAD_DATA_SIZE);
-    printf("  CRC: 0x%04X\n", rx_payload.crc);
+    printf("  CRC32: 0x%08X\n", rx_payload.crc32);
 
     // Verify integrity
     if (verify_chunk(&rx_payload)) {
@@ -342,7 +342,7 @@ static bool test_edge_cases(void) {
     for (int i = 1; i < PAYLOAD_DATA_SIZE; i++) {
         payload.data[i] = 0;
     }
-    payload.crc = crc16((const char*)payload.data, PAYLOAD_DATA_SIZE);
+    payload.crc32 = crc32(payload.data, PAYLOAD_DATA_SIZE);
 
     serialize_payload(&payload, buffer);
     struct Payload rx_payload;
@@ -361,7 +361,7 @@ static bool test_edge_cases(void) {
     for (int i = 0; i < PAYLOAD_DATA_SIZE; i++) {
         payload.data[i] = 0xFF;
     }
-    payload.crc = crc16((const char*)payload.data, PAYLOAD_DATA_SIZE);
+    payload.crc32 = crc32(payload.data, PAYLOAD_DATA_SIZE);
 
     serialize_payload(&payload, buffer);
     deserialize_payload(buffer, &rx_payload);

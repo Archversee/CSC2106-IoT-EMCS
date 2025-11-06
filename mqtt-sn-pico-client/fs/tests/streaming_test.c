@@ -22,49 +22,49 @@
 #include "../../drivers/microsd_driver.h"
 #include "../chunk_transfer.h"
 #include "data_frame.h"
-#include "ff.h"  // FatFS
+#include "ff.h" // FatFS
 #include "pico/stdlib.h"
 
 /*! Test configuration constants */
 #define SOURCE_FILENAME "test.jpg"
 
 /*! Go-Back-N Sliding Window Protocol Configuration */
-#define CHUNK_SIZE 237                                       // Size of each data chunk in bytes (PAYLOAD_DATA_SIZE)
-#define WINDOW_SIZE_BYTES (32 * 1024)                        // 32KB window size (optimized for Pico W 264KB RAM)
-#define WINDOW_SIZE_CHUNKS (WINDOW_SIZE_BYTES / CHUNK_SIZE)  // ~138 chunks per window
-#define MAX_RETRIES 3                                        // Maximum retransmission attempts
+#define CHUNK_SIZE 237                // Size of each data chunk in bytes (PAYLOAD_DATA_SIZE)
+#define WINDOW_SIZE_BYTES (32 * 1024) // 32KB window size (optimized for Pico W 264KB RAM)
+#define WINDOW_SIZE_CHUNKS (WINDOW_SIZE_BYTES / CHUNK_SIZE) // ~138 chunks per window
+#define MAX_RETRIES 3                                       // Maximum retransmission attempts
 
 /*! MQTT Topic Simulation */
 typedef enum {
-    TOPIC_FILE_DATA,    // For transmitting metadata and data chunks
-    TOPIC_FILE_CONTROL  // For flow control (ACK/NACK/Request)
+    TOPIC_FILE_DATA,   // For transmitting metadata and data chunks
+    TOPIC_FILE_CONTROL // For flow control (ACK/NACK/Request)
 } mqtt_topic_t;
 
 /*! Control Message Types */
 typedef enum {
-    CTRL_ACK,           // Acknowledge chunks up to seq_num
-    CTRL_NACK,          // Negative acknowledgment - request retransmission
-    CTRL_REQUEST_NEXT,  // Request next batch of chunks
-    CTRL_COMPLETE       // Transfer complete confirmation
+    CTRL_ACK,          // Acknowledge chunks up to seq_num
+    CTRL_NACK,         // Negative acknowledgment - request retransmission
+    CTRL_REQUEST_NEXT, // Request next batch of chunks
+    CTRL_COMPLETE      // Transfer complete confirmation
 } control_msg_type_t;
 
 /*! Control Message Structure */
 typedef struct {
     control_msg_type_t type;
-    uint32_t seq_num;       // Sequence number (for ACK/NACK)
-    uint32_t window_start;  // Start of next requested window
-    uint32_t window_end;    // End of next requested window
-    char session_id[32];    // Session identifier
+    uint32_t seq_num;      // Sequence number (for ACK/NACK)
+    uint32_t window_start; // Start of next requested window
+    uint32_t window_end;   // End of next requested window
+    char session_id[32];   // Session identifier
 } control_message_t;
 
 /*! Sliding Window State */
 typedef struct {
-    uint32_t base;          // Base of sliding window (oldest unACKed)
-    uint32_t next_seq;      // Next sequence to send
-    uint32_t window_size;   // Window size in chunks
-    uint32_t total_chunks;  // Total chunks in file
-    bool* acked;            // ACK bitmap for chunks in current window
-    uint32_t retries;       // Retry counter
+    uint32_t base;         // Base of sliding window (oldest unACKed)
+    uint32_t next_seq;     // Next sequence to send
+    uint32_t window_size;  // Window size in chunks
+    uint32_t total_chunks; // Total chunks in file
+    bool *acked;           // ACK bitmap for chunks in current window
+    uint32_t retries;      // Retry counter
     absolute_time_t last_send_time;
 } sliding_window_t;
 
@@ -73,7 +73,7 @@ typedef struct {
  * @param filename Filename to check
  * @return uint32_t File size in bytes, 0 if not found
  */
-static uint32_t get_file_size(const char* filename) {
+static uint32_t get_file_size(const char *filename) {
     printf("  get_file_size() called for: %s\n", filename);
 
     FILINFO fno;
@@ -93,9 +93,9 @@ static uint32_t get_file_size(const char* filename) {
  * @param meta Pointer to Metadata structure
  * @return uint32_t Actual data size in bytes
  */
-static uint32_t get_chunk_data_size(uint32_t chunk_index, const struct Metadata* meta) {
+static uint32_t get_chunk_data_size(uint32_t chunk_index, const struct Metadata *meta) {
     if (chunk_index >= meta->chunk_count) {
-        return 0;  // Invalid chunk index
+        return 0; // Invalid chunk index
     }
 
     // Last chunk might be smaller
@@ -112,13 +112,13 @@ static uint32_t get_chunk_data_size(uint32_t chunk_index, const struct Metadata*
  * @param filename Source file to stream
  * @return bool true on success
  */
-static bool test_streaming_read(const char* filename) {
+static bool test_streaming_read(const char *filename) {
     printf("\n=== Step 1: Initialize Streaming Read ===\n");
 
     struct Metadata meta = {0};
 
     // Initialize streaming read
-    if (init_streaming_read((char*)filename, &meta) != 0) {
+    if (init_streaming_read((char *)filename, &meta) != 0) {
         printf("ERROR: Failed to initialize streaming read\n");
         return false;
     }
@@ -128,7 +128,7 @@ static bool test_streaming_read(const char* filename) {
     printf("  File size: %u bytes\n", meta.total_size);
     printf("  Total chunks: %u\n", meta.chunk_count);
     printf("  Session ID: %s\n", meta.session_id);
-    printf("  File CRC: 0x%04X\n", meta.file_crc);
+    printf("  File CRC32: 0x%08X\n", meta.file_crc32);
 
     // Show sample chunks
     printf("\n=== Sample Chunk Preview ===\n");
@@ -150,8 +150,8 @@ static bool test_streaming_read(const char* filename) {
         }
 
         uint32_t chunk_size = get_chunk_data_size(i, &meta);
-        printf("\nChunk %u: seq=%u, size=%u bytes, crc=0x%04X\n", i, chunk.sequence, chunk_size,
-               chunk.crc);
+        printf("\nChunk %u: seq=%u, size=%u bytes, crc32=0x%08X\n", i, chunk.sequence, chunk_size,
+               chunk.crc32);
 
         printf("  Data preview: \"");
         for (uint32_t j = 0; j < 80 && j < chunk_size; j++) {
@@ -172,8 +172,8 @@ static bool test_streaming_read(const char* filename) {
  * @param data Pointer to data to publish
  * @param size Size of data in bytes
  */
-static void mqtt_publish(mqtt_topic_t topic, const void* data, size_t size) {
-    const char* topic_name = (topic == TOPIC_FILE_DATA) ? "file/data" : "file/control";
+static void mqtt_publish(mqtt_topic_t topic, const void *data, size_t size) {
+    const char *topic_name = (topic == TOPIC_FILE_DATA) ? "file/data" : "file/control";
 
     // Simulate network delay (5-20ms)
     sleep_ms(5 + (rand() % 15));
@@ -181,20 +181,20 @@ static void mqtt_publish(mqtt_topic_t topic, const void* data, size_t size) {
     // In real implementation, this would publish to MQTT broker
     // For simulation, just log the action
     if (topic == TOPIC_FILE_CONTROL) {
-        const control_message_t* ctrl = (const control_message_t*)data;
+        const control_message_t *ctrl = (const control_message_t *)data;
         switch (ctrl->type) {
-            case CTRL_ACK:
-                printf("    [MQTT:%s] ACK up to chunk %u\n", topic_name, ctrl->seq_num);
-                break;
-            case CTRL_REQUEST_NEXT:
-                printf("    [MQTT:%s] REQUEST_NEXT window [%u-%u]\n",
-                       topic_name, ctrl->window_start, ctrl->window_end);
-                break;
-            case CTRL_COMPLETE:
-                printf("    [MQTT:%s] TRANSFER_COMPLETE\n", topic_name);
-                break;
-            default:
-                break;
+        case CTRL_ACK:
+            printf("    [MQTT:%s] ACK up to chunk %u\n", topic_name, ctrl->seq_num);
+            break;
+        case CTRL_REQUEST_NEXT:
+            printf("    [MQTT:%s] REQUEST_NEXT window [%u-%u]\n", topic_name, ctrl->window_start,
+                   ctrl->window_end);
+            break;
+        case CTRL_COMPLETE:
+            printf("    [MQTT:%s] TRANSFER_COMPLETE\n", topic_name);
+            break;
+        default:
+            break;
         }
     }
 }
@@ -205,17 +205,18 @@ static void mqtt_publish(mqtt_topic_t topic, const void* data, size_t size) {
  * @param total_chunks Total number of chunks in file
  * @return bool true on success
  */
-static bool init_sliding_window(sliding_window_t* window, uint32_t total_chunks) {
-    if (!window) return false;
+static bool init_sliding_window(sliding_window_t *window, uint32_t total_chunks) {
+    if (!window)
+        return false;
 
-    window->base = 1;  // Start from chunk 1 (0 is metadata)
+    window->base = 1; // Start from chunk 1 (0 is metadata)
     window->next_seq = 1;
     window->window_size = WINDOW_SIZE_CHUNKS;
     window->total_chunks = total_chunks;
     window->retries = 0;
 
     // Allocate ACK bitmap for window
-    window->acked = (bool*)calloc(window->window_size, sizeof(bool));
+    window->acked = (bool *)calloc(window->window_size, sizeof(bool));
     if (!window->acked) {
         printf("ERROR: Failed to allocate ACK bitmap\n");
         return false;
@@ -224,8 +225,8 @@ static bool init_sliding_window(sliding_window_t* window, uint32_t total_chunks)
     window->last_send_time = get_absolute_time();
 
     printf("Sliding Window initialized:\n");
-    printf("  Window size: %u chunks (%u bytes)\n",
-           window->window_size, window->window_size * CHUNK_SIZE);
+    printf("  Window size: %u chunks (%u bytes)\n", window->window_size,
+           window->window_size * CHUNK_SIZE);
     printf("  Total chunks: %u\n", total_chunks);
 
     return true;
@@ -235,7 +236,7 @@ static bool init_sliding_window(sliding_window_t* window, uint32_t total_chunks)
  * @brief Clean up sliding window resources
  * @param window Pointer to sliding window structure
  */
-static void cleanup_sliding_window(sliding_window_t* window) {
+static void cleanup_sliding_window(sliding_window_t *window) {
     if (window && window->acked) {
         free(window->acked);
         window->acked = NULL;
@@ -248,7 +249,7 @@ static void cleanup_sliding_window(sliding_window_t* window) {
  * @param seq Sequence number to check
  * @return bool true if within window
  */
-static bool is_in_window(const sliding_window_t* window, uint32_t seq) {
+static bool is_in_window(const sliding_window_t *window, uint32_t seq) {
     return (seq >= window->base && seq < window->base + window->window_size);
 }
 
@@ -257,9 +258,9 @@ static bool is_in_window(const sliding_window_t* window, uint32_t seq) {
  * @param window Pointer to sliding window structure
  * @param ack_seq Sequence number being acknowledged
  */
-static void process_ack(sliding_window_t* window, uint32_t ack_seq) {
+static void process_ack(sliding_window_t *window, uint32_t ack_seq) {
     if (!is_in_window(window, ack_seq)) {
-        return;  // ACK outside window, ignore
+        return; // ACK outside window, ignore
     }
 
     // Mark chunk as ACKed
@@ -270,11 +271,11 @@ static void process_ack(sliding_window_t* window, uint32_t ack_seq) {
     while (window->base < window->total_chunks + 1) {
         index = (window->base - window->base) % window->window_size;
         if (!window->acked[index]) {
-            break;  // Stop at first unACKed chunk
+            break; // Stop at first unACKed chunk
         }
 
         // Slide window forward
-        window->acked[index] = false;  // Clear old ACK
+        window->acked[index] = false; // Clear old ACK
         window->base++;
     }
 }
@@ -284,14 +285,14 @@ static void process_ack(sliding_window_t* window, uint32_t ack_seq) {
  * @param filename Source file to transfer
  * @return bool true on success
  */
-static bool test_mqtt_gbn_streaming(const char* filename) {
+static bool test_mqtt_gbn_streaming(const char *filename) {
     printf("\n=== Step 2: Go-Back-N MQTT Streaming with Sliding Window ===\n");
 
     struct Metadata meta = {0};
     sliding_window_t window = {0};
 
     // Initialize streaming
-    if (init_streaming_read((char*)filename, &meta) != 0) {
+    if (init_streaming_read((char *)filename, &meta) != 0) {
         printf("ERROR: Failed to initialize streaming\n");
         return false;
     }
@@ -310,7 +311,7 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
     // Send metadata first (chunk 0)
     printf("\n[MQTT:file/data] Publishing metadata (chunk 0)...\n");
     mqtt_publish(TOPIC_FILE_DATA, &meta, sizeof(meta));
-    sleep_ms(50);  // Wait for metadata to be received
+    sleep_ms(50); // Wait for metadata to be received
 
     uint32_t total_transmitted = 0;
     uint32_t total_retransmissions = 0;
@@ -356,20 +357,21 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
             uint32_t chunk_size = get_chunk_data_size(seq - 1, &meta);
 
             // Publish to MQTT (show first 3, last, and middle for progress)
-            bool show_output = (seq <= window.base + 2) ||                                // First 3
-                               (seq == window_end - 1) ||                                 // Last in window
-                               ((seq - window.base) % 50 == 0 && seq > window.base + 2);  // Every 50th
+            bool show_output =
+                (seq <= window.base + 2) ||                               // First 3
+                (seq == window_end - 1) ||                                // Last in window
+                ((seq - window.base) % 50 == 0 && seq > window.base + 2); // Every 50th
 
             if (show_output) {
-                printf("  [MQTT:file/data] Chunk %u/%u (seq=%u, size=%u, crc=0x%04X)\n",
-                       seq, meta.chunk_count, chunk.sequence, chunk_size, chunk.crc);
+                printf("  [MQTT:file/data] Chunk %u/%u (seq=%u, size=%u, crc32=0x%08X)\n", seq,
+                       meta.chunk_count, chunk.sequence, chunk_size, chunk.crc32);
             }
             mqtt_publish(TOPIC_FILE_DATA, &chunk, sizeof(chunk));
             total_transmitted++;
         }
 
-        printf("  ✓ Transmitted %u chunks in window [%u-%u]\n",
-               window_end - window.base, window.base, window_end - 1);
+        printf("  ✓ Transmitted %u chunks in window [%u-%u]\n", window_end - window.base,
+               window.base, window_end - 1);
 
         // === RECEIVER SIDE SIMULATION ===
         printf("\n  [RECEIVER] Processing window...\n");
@@ -383,7 +385,7 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
         uint32_t first_lost_chunk = 0;
 
         for (uint32_t seq = window.base; seq < window_end; seq++) {
-            if ((rand() % 100) < 5) {  // 5% packet loss
+            if ((rand() % 100) < 5) { // 5% packet loss
                 all_received = false;
                 first_lost_chunk = seq;
                 printf("  [RECEIVER] ✗ Packet loss detected at chunk %u\n", seq);
@@ -398,7 +400,7 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
 
             // STEP 1: Write window to SD card (buffered write, then sync)
             printf("  [RECEIVER] Writing window to SD card...\n");
-            sleep_ms(100);  // Simulate SD card write time
+            sleep_ms(100); // Simulate SD card write time
             printf("  [RECEIVER] ✓ Window synced to SD card\n");
 
             // STEP 2: Send control message to request next window
@@ -426,8 +428,8 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
                 if (ctrl_msg.window_end > meta.chunk_count + 1) {
                     ctrl_msg.window_end = meta.chunk_count + 1;
                 }
-                printf("  [RECEIVER] Requesting next window [%u-%u]\n",
-                       ctrl_msg.window_start, ctrl_msg.window_end - 1);
+                printf("  [RECEIVER] Requesting next window [%u-%u]\n", ctrl_msg.window_start,
+                       ctrl_msg.window_end - 1);
                 mqtt_publish(TOPIC_FILE_CONTROL, &ctrl_msg, sizeof(ctrl_msg));
 
                 // Mark all as ACKed and slide window
@@ -472,15 +474,13 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
     printf("\n=== TRANSMISSION COMPLETE ===\n");
     printf("  Total chunks: %u\n", meta.chunk_count);
     printf("  Chunks transmitted: %u\n", total_transmitted);
-    printf("  Retransmissions: %u (%.1f%%)\n",
-           total_retransmissions,
+    printf("  Retransmissions: %u (%.1f%%)\n", total_retransmissions,
            (float)total_retransmissions * 100.0 / total_transmitted);
     printf("  Total bytes: %u\n", meta.total_size);
     printf("  Time: %lld ms\n", elapsed_ms);
     printf("  Throughput: %.2f KB/s\n",
            (float)meta.total_size / (elapsed_ms > 0 ? elapsed_ms / 1000.0 : 1.0) / 1024.0);
-    printf("  Window size: %u chunks (%u bytes)\n",
-           WINDOW_SIZE_CHUNKS, WINDOW_SIZE_BYTES);
+    printf("  Window size: %u chunks (%u bytes)\n", WINDOW_SIZE_CHUNKS, WINDOW_SIZE_BYTES);
 
     return true;
 }
@@ -490,13 +490,13 @@ static bool test_mqtt_gbn_streaming(const char* filename) {
  * @param filename Source file to transfer
  * @return bool true on success
  */
-static bool test_mqtt_streaming(const char* filename) {
+static bool test_mqtt_streaming(const char *filename) {
     printf("\n=== Step 2: Simulated MQTT-SN Streaming Transfer ===\n");
 
     struct Metadata meta = {0};
 
     // Initialize streaming
-    if (init_streaming_read((char*)filename, &meta) != 0) {
+    if (init_streaming_read((char *)filename, &meta) != 0) {
         printf("ERROR: Failed to initialize streaming\n");
         return false;
     }
@@ -506,7 +506,7 @@ static bool test_mqtt_streaming(const char* filename) {
     printf("  Total chunks: %u\n", meta.chunk_count);
 
     printf("\n[0/%u] Sending metadata packet...\n", meta.chunk_count);
-    sleep_ms(20);  // Simulate network delay
+    sleep_ms(20); // Simulate network delay
 
     // Stream chunks one at a time (simulating MQTT transmission)
     uint32_t bytes_sent = 0;
@@ -534,8 +534,8 @@ static bool test_mqtt_streaming(const char* filename) {
 
         // Show detailed info for first, last, and periodic chunks
         if (i < 2 || i == meta.chunk_count - 1 || (i + 1) % 10 == 0) {
-            printf("[%u/%u] Chunk transmitted (seq=%u, size=%u, crc=0x%04X)\n", i + 1,
-                   meta.chunk_count, chunk.sequence, chunk_size, chunk.crc);
+            printf("[%u/%u] Chunk transmitted (seq=%u, size=%u, crc32=0x%08X)\n", i + 1,
+                   meta.chunk_count, chunk.sequence, chunk_size, chunk.crc32);
         }
 
         // Simulate network delay
@@ -563,13 +563,13 @@ static bool test_mqtt_streaming(const char* filename) {
  * @param expected_size Expected file size in bytes
  * @return bool true on success
  */
-static bool test_reconstruction(const char* source_filename, uint32_t expected_size) {
+static bool test_reconstruction(const char *source_filename, uint32_t expected_size) {
     printf("\n=== Step 3: File Reconstruction (Receiver Side) ===\n");
 
     struct Metadata meta = {0};
 
     // Initialize streaming (sender side - simulating transmission)
-    if (init_streaming_read((char*)source_filename, &meta) != 0) {
+    if (init_streaming_read((char *)source_filename, &meta) != 0) {
         printf("ERROR: Failed to initialize streaming\n");
         return false;
     }
@@ -597,7 +597,7 @@ static bool test_reconstruction(const char* source_filename, uint32_t expected_s
     // No array allocation - uses only a single chunk buffer
     printf("\nStreaming chunks (read -> verify -> write)...\n");
 
-    struct Payload chunk = {0};  // Single chunk buffer (~250 bytes)
+    struct Payload chunk = {0}; // Single chunk buffer (~250 bytes)
 
     for (uint32_t i = 0; i < meta.chunk_count; i++) {
         // Read chunk from source file (simulating MQTT reception)
@@ -804,7 +804,8 @@ int main(void) {
             printf("    ✓ Step 3: Reconstructed file with integrity verification\n");
             printf("\n  Key Features:\n");
             printf("    • Protocol: Go-Back-N with %u-chunk sliding window\n", WINDOW_SIZE_CHUNKS);
-            printf("    • Window size: %u bytes (%u KB)\n", WINDOW_SIZE_BYTES, WINDOW_SIZE_BYTES / 1024);
+            printf("    • Window size: %u bytes (%u KB)\n", WINDOW_SIZE_BYTES,
+                   WINDOW_SIZE_BYTES / 1024);
             printf("    • Memory usage: ~33 KB (32KB read buffer + chunk buffer)\n");
             printf("    • MQTT Topics: file/data (tx), file/control (rx)\n");
             printf("    • Flow control: ACK/NACK/REQUEST_NEXT messages\n");
