@@ -255,6 +255,7 @@ bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t *ctx, const char *topi
                                         uint8_t qos);
 void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
                                          const ip_addr_t *gw_addr, u16_t gw_port);
+void mqtt_sn_invalidate_all_topics(mqtt_sn_context_t *ctx);
 uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name);
 
 #endif // MQTT_SN_UDP_H

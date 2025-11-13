@@ -690,7 +690,6 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
                 (data[MQTTSN_OFFSET_FLAGS] << BITS_PER_BYTE) | data[MQTTSN_OFFSET_PROTOCOL_ID];
             printf("PUBREL received for Msg ID: %d. Sending PUBCOMP...\n", msg_id);
             mqtt_sn_send_pubcomp(pcb, addr, port, msg_id);
-            remove_pending_qos_msg(msg_id);
         }
         pbuf_free(p);
     } else {
@@ -1864,6 +1863,22 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb 
             // Receiver: Subscribe to topic
             mqtt_sn_subscribe_topic_name(pcb, gw_addr, gw_port, ctx->custom_topics[i].topic_name,
                                          msg_id, ctx->custom_topics[i].qos);
+        }
+    }
+}
+
+/**
+ * @brief Invalidate all registered/subscribed topics in the MQTT-SN context
+ * @param[in] ctx Pointer to the MQTT-SN client context
+ */
+void mqtt_sn_invalidate_all_topics(mqtt_sn_context_t *ctx) {
+    if (!ctx)
+        return;
+    for (size_t i = 0; i < MAX_CUSTOM_TOPICS; i++) {
+        if (ctx->custom_topics[i].in_use) {
+            ctx->custom_topics[i].is_registered = false;
+            ctx->custom_topics[i].topic_id = 0;
+            ctx->custom_topics[i].last_attempt = nil_time;
         }
     }
 }

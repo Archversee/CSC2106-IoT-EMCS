@@ -61,15 +61,9 @@ static void handle_message_button(bool *last_state, struct udp_pcb *pcb, ip_addr
     if (*last_state && !current) {
         printf("Button pressed! Publishing message...\n");
 
-        uint16_t topic_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/status");
-        if (topic_id == 0) {
-            printf("ERROR: Topic 'pico/status' not registered yet. Skipping publish.\n");
-            return;
-        }
-
         uint16_t id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, gateway_addr, UDP_PORT, topic_id, payload, payload_size,
-                                 (int)qos_level, id, false);
+        mqtt_sn_publish_topic_id(pcb, gateway_addr, UDP_PORT, TOPIC_ID_PICO_STATUS, payload,
+                                 payload_size, (int)qos_level, id, false);
         sleep_ms(200);
     }
     *last_state = current;
