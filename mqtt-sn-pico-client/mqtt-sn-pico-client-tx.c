@@ -43,7 +43,7 @@
 #include "sd_card.h"
 
 /*! Application constants */
-#define FILE_TRANSFER_NAME "test.txt"
+#define FILE_TRANSFER_NAME "test.jpg"
 
 /*! Static variables for ping tracking */
 static uint32_t s_last_pingreq = 0U;
@@ -54,9 +54,9 @@ static uint32_t s_last_pingreq = 0U;
 /*!
  * @brief Handle message button press - publishes test message
  */
-static void handle_message_button(bool *last_state, struct udp_pcb *pcb, ip_addr_t *gateway_addr,
-                                  uint8_t qos_level, uint8_t *payload, size_t payload_size,
-                                  mqtt_sn_context_t *mqtt_ctx) {
+static void handle_message_button(bool* last_state, struct udp_pcb* pcb, ip_addr_t* gateway_addr,
+                                  uint8_t qos_level, uint8_t* payload, size_t payload_size,
+                                  mqtt_sn_context_t* mqtt_ctx) {
     bool current = gpio_get(MESSAGEBUTTON_PIN);
     if (*last_state && !current) {
         printf("Button pressed! Publishing message...\n");
@@ -78,7 +78,7 @@ static void handle_message_button(bool *last_state, struct udp_pcb *pcb, ip_addr
 /*!
  * @brief Handle QoS button press - cycles through QoS levels
  */
-static void handle_qos_button(bool *last_state, uint8_t *qos_level) {
+static void handle_qos_button(bool* last_state, uint8_t* qos_level) {
     bool current = gpio_get(QOSBUTTON_PIN);
     if (*last_state && !current) {
         (*qos_level)++;
@@ -94,9 +94,9 @@ static void handle_qos_button(bool *last_state, uint8_t *qos_level) {
 /*!
  * @brief Handle file transfer button press - sends file via MQTT
  */
-static void handle_file_transfer_button(bool *last_state, struct udp_pcb *pcb,
-                                        ip_addr_t *gateway_addr, bool *fs_initialized,
-                                        bool *sd_was_initialized, mqtt_sn_context_t *mqtt_ctx) {
+static void handle_file_transfer_button(bool* last_state, struct udp_pcb* pcb,
+                                        ip_addr_t* gateway_addr, bool* fs_initialized,
+                                        bool* sd_was_initialized, mqtt_sn_context_t* mqtt_ctx) {
     bool current = gpio_get(FILE_TRANSFER_BUTTON_PIN);
     if (*last_state && !current) {
         printf("\n>>> File Transfer Button Pressed <<<\n");
@@ -128,7 +128,7 @@ static void handle_file_transfer_button(bool *last_state, struct udp_pcb *pcb,
 /*!
  * @brief Handle drop ACK button press - toggles ACK dropping for testing
  */
-static void handle_drop_ack_button(bool *last_state, mqtt_sn_context_t *mqtt_ctx) {
+static void handle_drop_ack_button(bool* last_state, mqtt_sn_context_t* mqtt_ctx) {
     bool current = gpio_get(DROP_ACK_BUTTON_PIN);
     if (*last_state && !current) {
         mqtt_ctx->drop_acks = !mqtt_ctx->drop_acks;
@@ -141,7 +141,7 @@ static void handle_drop_ack_button(bool *last_state, mqtt_sn_context_t *mqtt_ctx
 /*!
  * @brief Handle MQTT-SN ping and reconnection logic
  */
-static void handle_mqtt_ping(struct udp_pcb *pcb, ip_addr_t *gateway_addr, uint32_t now) {
+static void handle_mqtt_ping(struct udp_pcb* pcb, ip_addr_t* gateway_addr, uint32_t now) {
     if (g_ping_ack_received) {
         // Previous ping acknowledged, send new PINGREQ periodically
         if (now - s_last_pingreq >= PING_INTERVAL_MS) {
@@ -169,8 +169,8 @@ static void handle_mqtt_ping(struct udp_pcb *pcb, ip_addr_t *gateway_addr, uint3
 /*!
  * @brief Handle microSD card hot-plug detection
  */
-static void handle_microsd_hotplug(uint32_t *last_check, uint32_t now, bool *fs_initialized,
-                                   bool *sd_was_initialized, mqtt_sn_context_t *mqtt_ctx) {
+static void handle_microsd_hotplug(uint32_t* last_check, uint32_t now, bool* fs_initialized,
+                                   bool* sd_was_initialized, mqtt_sn_context_t* mqtt_ctx) {
     if (now - *last_check >= SD_CHECK_INTERVAL_MS) {
         *last_check = now;
 
@@ -216,12 +216,12 @@ int main() {
     printf("===========================================\n");
 
     // Initialize network stack (Wi-Fi, UDP, MQTT-SN connection)
-    mqtt_sn_context_t *mqtt_ctx;
-    struct udp_pcb *pcb;
+    mqtt_sn_context_t* mqtt_ctx;
+    struct udp_pcb* pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
-    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
+    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr,
                                  &fs_initialized) != 0) {
         printf("Network initialization failed\n");
         return -1;
@@ -257,7 +257,7 @@ int main() {
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "pico/status");
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/meta");
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/data");
-    mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/control"); // For Go-Back-N flow control
+    mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/control");  // For Go-Back-N flow control
     printf("Topics queued for registration:\n");
     printf("  - pico/cmd\n");
     printf("  - pico/status\n");

@@ -40,7 +40,7 @@ static uint32_t s_last_pingreq = 0U;
 bool mqtt_client_initialize_microsd(uint8_t max_attempts, bool verbose) {
     static bool driver_initialized = false;
 
-    (void)max_attempts; // Unused parameter - kept for API compatibility
+    (void)max_attempts;  // Unused parameter - kept for API compatibility
 
     if (verbose) {
         printf("Initializing microSD card...\n");
@@ -119,10 +119,11 @@ void mqtt_client_set_last_pingreq(uint32_t timestamp) { s_last_pingreq = timesta
  * @param fs_initialized_out Output parameter for filesystem initialization status
  * @return 0 on success, -1 on error
  */
-int mqtt_client_network_init(void **mqtt_ctx_out, void **pcb_out, void *gateway_addr_out,
-                             bool *fs_initialized_out) {
-    // Initialize stdio
+int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_addr_out,
+                             bool* fs_initialized_out) {
+    // Initialize stdio with custom baud rate from config
     stdio_init_all();
+    stdio_uart_init_full(uart0, UART_BAUD_RATE, 0, 1);  // Set custom baud rate on UART0
 
     // Initialize common MQTT client components
     mqtt_client_init();
@@ -159,7 +160,7 @@ int mqtt_client_network_init(void **mqtt_ctx_out, void **pcb_out, void *gateway_
     printf("Wi-Fi connected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
 
     // Setup UDP
-    struct udp_pcb *pcb = udp_new();
+    struct udp_pcb* pcb = udp_new();
     if (!pcb) {
         printf("UDP setup failed\n");
         return -1;
@@ -174,7 +175,7 @@ int mqtt_client_network_init(void **mqtt_ctx_out, void **pcb_out, void *gateway_
     printf("UDP client ready...\n");
 
     // Setup MQTT-SN Gateway address
-    ip_addr_t *gateway_addr = (ip_addr_t *)gateway_addr_out;
+    ip_addr_t* gateway_addr = (ip_addr_t*)gateway_addr_out;
     IP4_ADDR(gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3);
 
     sleep_ms(MQTT_CONNECT_DELAY_MS);

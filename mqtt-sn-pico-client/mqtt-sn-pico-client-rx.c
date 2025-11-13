@@ -19,6 +19,9 @@
  * - Topic: pico/status - Status messages (QoS 1)
  * - Topic: file/meta   - File metadata (QoS 2, if SD available)
  * - Topic: file/data   - File chunks (QoS 1, if SD available)
+ *
+ * MQTT-SN Topics (Receiver publishes to):
+ * - Topic: file/control - Flow control messages for Go-Back-N (QoS 1)
  */
 
 #include <string.h>
@@ -54,13 +57,13 @@ static uint32_t s_last_pingreq = 0U;
 /*!
  * @brief Forward declaration for subscribe_receiver_topics
  */
-static void subscribe_receiver_topics(struct udp_pcb *pcb, ip_addr_t *gateway_addr,
+static void subscribe_receiver_topics(struct udp_pcb* pcb, ip_addr_t* gateway_addr,
                                       bool fs_initialized);
 
 /*!
  * @brief Handle MQTT-SN ping and reconnection logic for RX client
  */
-static void handle_mqtt_ping_and_reconnect(struct udp_pcb *pcb, ip_addr_t *gateway_addr,
+static void handle_mqtt_ping_and_reconnect(struct udp_pcb* pcb, ip_addr_t* gateway_addr,
                                            uint32_t now, bool fs_initialized) {
     if (g_ping_ack_received) {
         // Previous ping acknowledged, send new PINGREQ periodically
@@ -93,8 +96,8 @@ static void handle_mqtt_ping_and_reconnect(struct udp_pcb *pcb, ip_addr_t *gatew
 /*!
  * @brief Handle microSD card hot-plug detection for RX client
  */
-static void handle_microsd_hotplug_rx(uint32_t *last_check, uint32_t now, bool *fs_initialized,
-                                      bool *sd_was_initialized, mqtt_sn_context_t *mqtt_ctx) {
+static void handle_microsd_hotplug_rx(uint32_t* last_check, uint32_t now, bool* fs_initialized,
+                                      bool* sd_was_initialized, mqtt_sn_context_t* mqtt_ctx) {
     if (now - *last_check >= SD_CHECK_INTERVAL_MS) {
         *last_check = now;
 
@@ -147,7 +150,7 @@ static void handle_wifi_reconnection_rx(void) {
  * @param gateway_addr Gateway IP address
  * @param fs_initialized Whether filesystem is initialized
  */
-static void subscribe_receiver_topics(struct udp_pcb *pcb, ip_addr_t *gateway_addr,
+static void subscribe_receiver_topics(struct udp_pcb* pcb, ip_addr_t* gateway_addr,
                                       bool fs_initialized) {
     // Subscribe to topic ID 1 (predefined topic "pico/cmd") default QoS 2 subscription
     printf("Subscribing to 'pico/cmd'...\n");
@@ -174,12 +177,12 @@ int main() {
     printf("===========================================\n");
 
     // Initialize network stack (Wi-Fi, UDP, MQTT-SN connection)
-    mqtt_sn_context_t *mqtt_ctx;
-    struct udp_pcb *pcb;
+    mqtt_sn_context_t* mqtt_ctx;
+    struct udp_pcb* pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
-    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
+    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr,
                                  &fs_initialized) != 0) {
         printf("Network initialization failed\n");
         return -1;
@@ -199,6 +202,13 @@ int main() {
     if (fs_initialized) {
         printf("  - file/meta (QoS 2)\n");
         printf("  - file/data (QoS 1)\n");
+    }
+
+    // Register topics that RX will publish to (for Go-Back-N control messages)
+    if (fs_initialized) {
+        printf(">>> Registering topics for publishing...\n");
+        mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/control");
+        printf("  - file/control (for flow control)\n");
     }
 
     // Subscribe to topics before main loop to prevent multiple subscriptions
