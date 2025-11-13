@@ -48,71 +48,131 @@ project(mqtt-sn-pico-client C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+# Add FatFS library subdirectory
+add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src)
+
 # Add subdirectories for drivers and fs
 add_subdirectory(drivers)
 add_subdirectory(fs)
 
-# MQTT-SN Pico Client executable
-add_executable(mqtt-sn-pico-client
-    mqtt-sn-pico-client.c
-    mqtt/mqtt-sn-udp.c
+# Create mqtt-client library for shared functionality
+add_library(mqtt_client STATIC
+    mqtt-client.c
 )
 
-pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
-pico_set_program_version(mqtt-sn-pico-client "0.1")
+target_link_libraries(mqtt_client
+    microsd_driver
+    pico_stdlib
+    pico_cyw43_arch_lwip_poll
+    fs_lib
+)
+
+target_include_directories(mqtt_client PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+
+# MQTT-SN Pico Client executable (commented out - using split TX/RX versions)
+# add_executable(mqtt-sn-pico-client
+#     #main.c
+#     mqtt-sn-pico-client.c
+#     mqtt/mqtt-sn-udp.c
+#     hw_config.c
+# )
+
+add_executable(mqtt-sn-pico-client-rx
+    #main.c
+    mqtt-sn-pico-client-rx.c
+    mqtt/mqtt-sn-udp.c
+    hw_config.c
+)
+
+add_executable(mqtt-sn-pico-client-tx
+    #main.c
+    mqtt-sn-pico-client-tx.c
+    mqtt/mqtt-sn-udp.c
+    hw_config.c
+)
+
+# pico_set_program_name(mqtt-sn-pico-client "mqtt-sn-pico-client")
+# pico_set_program_version(mqtt-sn-pico-client "0.1")
+
+pico_set_program_name(mqtt-sn-pico-client-rx "mqtt-sn-pico-client-rx")
+pico_set_program_version(mqtt-sn-pico-client-rx "0.1")
+
+pico_set_program_name(mqtt-sn-pico-client-tx "mqtt-sn-pico-client-tx")
+pico_set_program_version(mqtt-sn-pico-client-tx "0.1")
 
 # Add the standard include files to the build
-target_include_directories(mqtt-sn-pico-client PRIVATE
+# target_include_directories(mqtt-sn-pico-client PRIVATE
+#         ${CMAKE_CURRENT_LIST_DIR}
+#         ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/ff15/source
+#         ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/sd_driver
+#         ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include
+# )
+
+target_include_directories(mqtt-sn-pico-client-rx PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/ff15/source
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/sd_driver
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include
 )
+
+target_include_directories(mqtt-sn-pico-client-tx PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/ff15/source
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/sd_driver
+        ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include
+)
+
+# Define BUILD_TX_CLIENT for the TX client to use correct client ID
+target_compile_definitions(mqtt-sn-pico-client-tx PRIVATE BUILD_TX_CLIENT)
 
 # include in driver and fs directories
 
-target_link_libraries(mqtt-sn-pico-client
+# target_link_libraries(mqtt-sn-pico-client
+#     pico_stdlib
+#     hardware_spi
+#     hardware_gpio
+#     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+#     fs_lib
+#     pico_cyw43_arch_lwip_poll
+#     hardware_timer
+# )
+
+target_link_libraries(mqtt-sn-pico-client-rx
     pico_stdlib
     hardware_spi
     hardware_gpio
+    no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     microsd_driver
+    mqtt_client
+    fs_lib
+    pico_cyw43_arch_lwip_poll
+    hardware_timer
+)
+
+target_link_libraries(mqtt-sn-pico-client-tx
+    pico_stdlib
+    hardware_spi
+    hardware_gpio
+    no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+    microsd_driver
+    mqtt_client
     fs_lib
     pico_cyw43_arch_lwip_poll
     hardware_timer
 )
 
 # Enable USB output, disable UART output
-pico_enable_stdio_usb(mqtt-sn-pico-client 1)
-pico_enable_stdio_uart(mqtt-sn-pico-client 0)
+# pico_enable_stdio_usb(mqtt-sn-pico-client 1)
+# pico_enable_stdio_uart(mqtt-sn-pico-client 0)
+
+pico_enable_stdio_usb(mqtt-sn-pico-client-rx 1)
+pico_enable_stdio_uart(mqtt-sn-pico-client-rx 0)
+pico_enable_stdio_usb(mqtt-sn-pico-client-tx 1)
+pico_enable_stdio_uart(mqtt-sn-pico-client-tx 0)
 
 # Create map/bin/hex/uf2 files
-pico_add_extra_outputs(mqtt-sn-pico-client)
-
-
-
-## <---------------- Test Client CMAKELISTS.txt ------------------>
-
-# # MQTT-SN Pico test Client executable
-# add_executable(mqtt_sn_test
-#     mqtt/tests/mqtt_sn_test.c
-#     mqtt/mqtt-sn-udp.c
-# )
-
-# pico_set_program_name(mqtt_sn_test "mqtt_sn_test")
-# pico_set_program_version(mqtt_sn_test "0.1")
-
-# target_include_directories(mqtt_sn_test PRIVATE
-#         ${CMAKE_CURRENT_LIST_DIR}
-# )
-
-# target_link_libraries(mqtt_sn_test
-#     pico_stdlib
-#     hardware_spi
-#     hardware_gpio
-#     microsd_driver
-#     fs_lib
-#     pico_cyw43_arch_lwip_poll
-#     hardware_timer
-# )
-
-# pico_enable_stdio_usb(mqtt_sn_test 1)
-# pico_enable_stdio_uart(mqtt_sn_test 0)
-
-# pico_add_extra_outputs(mqtt_sn_test)
+# pico_add_extra_outputs(mqtt-sn-pico-client)
+pico_add_extra_outputs(mqtt-sn-pico-client-rx)
+pico_add_extra_outputs(mqtt-sn-pico-client-tx)
