@@ -593,12 +593,10 @@ static void test_stream_xlarge_file(void) {
                 all_chunks_ok = false;
                 break;
             }
-
             if (verify_chunk(&chunk) != 1) {
                 all_chunks_ok = false;
                 break;
             }
-
             chunks_verified++;
         }
 
