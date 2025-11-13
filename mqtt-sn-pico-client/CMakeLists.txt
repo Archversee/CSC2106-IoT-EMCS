@@ -169,7 +169,6 @@ target_link_libraries(mqtt-sn-pico-client-tx
 
 pico_enable_stdio_usb(mqtt-sn-pico-client-rx 1)
 pico_enable_stdio_uart(mqtt-sn-pico-client-rx 0)
-
 pico_enable_stdio_usb(mqtt-sn-pico-client-tx 1)
 pico_enable_stdio_uart(mqtt-sn-pico-client-tx 0)
 
