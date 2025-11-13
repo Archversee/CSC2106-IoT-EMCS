@@ -61,9 +61,8 @@ static void handle_message_button(bool *last_state, struct udp_pcb *pcb, ip_addr
     if (*last_state && !current) {
         printf("Button pressed! Publishing message...\n");
 
-        uint16_t id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, gateway_addr, UDP_PORT, TOPIC_ID_PICO_STATUS, payload,
-                                 payload_size, (int)qos_level, id, false);
+        mqtt_sn_publish_topic_id_auto(pcb, gateway_addr, UDP_PORT, TOPIC_ID_PICO_STATUS, payload,
+                                      payload_size, (int)qos_level);
         sleep_ms(200);
     }
     *last_state = current;

@@ -215,6 +215,10 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                               uint16_t topic_id, const uint8_t *payload, size_t payload_len,
                               int qos, uint16_t msg_id, bool is_retransmit);
+// Auto-publish helper: generates msg_id internally for initial sends (not retransmissions)
+void mqtt_sn_publish_topic_id_auto(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                                   u16_t topic_id, const uint8_t *payload, size_t payload_len,
+                                   int qos);
 void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                          uint16_t msg_id);
 void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
