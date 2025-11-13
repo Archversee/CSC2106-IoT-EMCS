@@ -223,7 +223,8 @@ void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16
     }
 
     // QOS Flags
-    uint8_t flags = MQTTSN_FLAG_TOPIC_PREDEFINED; // TopicIdType = Predefined
+    // uint8_t flags = MQTTSN_FLAG_TOPIC_PREDEFINED; // TopicIdType = Predefined
+    uint8_t flags = MQTTSN_FLAG_TOPIC_NORMAL; // TopicIdType = Dynamic
 
     if (qos == QOS_LEVEL_1) {
         flags |= MQTTSN_FLAG_QOS1; // QoS 1 (bit 5 = 1)
