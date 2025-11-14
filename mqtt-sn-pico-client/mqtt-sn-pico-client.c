@@ -34,6 +34,12 @@
 #include "mqtt/mqtt-sn-udp.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "mqttsn_bridge.h"
+
+#ifndef DEVICE_ID
+#define DEVICE_ID "pico-001" 
+#endif
+
 
 /*! Application constants */
 #define WIFI_CONNECT_TIMEOUT_MS (10000U)

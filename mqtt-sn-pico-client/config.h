@@ -2,16 +2,17 @@
 #define CONFIG_H
 
 // Wi-Fi Credentials
-#define WIFI_SSID "hoshiyomi"
-#define WIFI_PASS "kiseki033171"
+#define WIFI_SSID "Bruce"
+#define WIFI_PASS "cocomax100%"
 
 // MQTT-SN Gateway
-#define GATEWAY_IP0 10
-#define GATEWAY_IP1 56
-#define GATEWAY_IP2 86
-#define GATEWAY_IP3 90
+#define GATEWAY_IP0 192
+#define GATEWAY_IP1 168
+#define GATEWAY_IP2 50
+#define GATEWAY_IP3 193
 #define UDP_PORT 10000
-#define MQTT_SN_CLIENT_ID "pico_w_tx"
+#define MQTT_SN_CLIENT_ID "pico_me"
+#define IS_RECEIVER true
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
