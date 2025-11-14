@@ -5,65 +5,55 @@ const path = require('path');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const mqtt = require('mqtt');
-const { publishWithRetry } = require('./qos');
 
 const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
 
 const PORT = process.env.PORT || 3000;
 const MQTT_BROKER = process.env.MQTT_URL || 'mqtt://localhost:1883';
 
+// This is the logical device id shown on the dashboard's left list
+// (Topics don't carry an id; your firmware client id is "pico_me".)
+const PICO_DEVICE_ID = process.env.PICO_DEVICE_ID || 'pico_me';
+
 const app = express();
 app.use(cors());
-
-// serve static frontend
 app.use(express.static(FRONTEND_DIR));
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
-// in-memory state
-const devices = {};           // devices[deviceId] = { status: { ts, payload }, telemetry: [...], lastSeen }
-const recentMessages = [];    // array of { ts, deviceId, topic, payload }
-const fileTransfers = new Map(); // key: deviceId, value: transfer state
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+const devices = {};           // devices[deviceId] = { status: { ts, payload }, telemetry: [], lastSeen }
+const recentMessages = [];    // [{ ts, deviceId, topic, payload }]
+const MAX_RECENT = 50;
 
 function addRecent(msg) {
   recentMessages.unshift(msg);
-  if (recentMessages.length > 50) recentMessages.pop();
+  if (recentMessages.length > MAX_RECENT) recentMessages.pop();
 }
 
-// -------- MQTT SETUP --------
+// ─────────────────────────────────────────────────────────────────────────────
+// MQTT
+// ─────────────────────────────────────────────────────────────────────────────
 const mqttClient = mqtt.connect(MQTT_BROKER);
 
 mqttClient.on('connect', () => {
   console.log('[MQTT] connected to', MQTT_BROKER);
 
-  // original dashboard topics
-  mqttClient.subscribe('devices/+/telemetry/#', { qos: 0 }, (err) => {
-    if (err) console.error('[MQTT] subscribe error', err);
-    else console.log('[MQTT] subscribed', [{ topic: 'devices/+/telemetry/#', qos: 0 }]);
-  });
-
-  mqttClient.subscribe('devices/+/status', { qos: 0 }, (err) => {
-    if (err) console.error('[MQTT] subscribe error', err);
-    else console.log('[MQTT] subscribed', [{ topic: 'devices/+/status', qos: 0 }]);
-  });
-
-  mqttClient.subscribe('devices/+/file-transfer/#', { qos: 0 }, (err) => {
-    if (err) console.error('[MQTT] subscribe error', err);
-    else console.log('[MQTT] subscribed to file-transfer topics');
-  });
-
-  // NEW: Pico / gateway topics
+  // Match your predefined topics from config.h / gateway:
+  // 1 -> pico/cmd
+  // 2 -> pico/status
+  // 3 -> file/meta
+  // 4 -> file/data
   mqttClient.subscribe('pico/#', { qos: 0 }, (err) => {
     if (err) console.error('[MQTT] subscribe pico/# error', err);
-    else console.log('[MQTT] subscribed to pico/#');
+    else console.log('[MQTT] subscribed: pico/#');
   });
-
   mqttClient.subscribe('file/#', { qos: 0 }, (err) => {
     if (err) console.error('[MQTT] subscribe file/# error', err);
-    else console.log('[MQTT] subscribed to file/#');
+    else console.log('[MQTT] subscribed: file/#');
   });
 });
 
@@ -71,174 +61,115 @@ mqttClient.on('error', (err) => {
   console.error('[MQTT] client error', err.message);
 });
 
-// unified message handler for devices/... and pico/... topics
+function extractNumeric(valueLike) {
+  // Returns a Number or null
+  if (valueLike == null) return null;
+
+  // JSON object cases: { value: 12.3 } or { temp: 27.1 }
+  if (typeof valueLike === 'object') {
+    if (typeof valueLike.value === 'number') return valueLike.value;
+    if (typeof valueLike.temp === 'number') return valueLike.temp;
+  }
+
+  // String cases: "value=12.3", "temp: 27.1", etc.
+  if (typeof valueLike === 'string') {
+    const m = valueLike.match(/(?:value|temp)\s*[:=]\s*(-?\d+(?:\.\d+)?)/i);
+    if (m) return Number(m[1]);
+    // try a bare number string
+    if (!isNaN(Number(valueLike.trim()))) return Number(valueLike.trim());
+  }
+
+  return null;
+}
+
 mqttClient.on('message', (topic, payloadBuf) => {
   let payload = null;
   const str = payloadBuf.toString('utf8');
-  try { payload = JSON.parse(str); } catch (e) { payload = str; }
+  try { payload = JSON.parse(str); } catch { payload = str; }
 
-  const parts = topic.split('/');
+  const nowIso = new Date().toISOString();
+  const deviceId = PICO_DEVICE_ID;
 
-  let deviceId = 'unknown';
-  let category = '';
-
-  // 1) Dashboard-style topics: devices/<id>/status, devices/<id>/telemetry/...
-  if (topic.startsWith('devices/')) {
-    deviceId = parts[1] || 'unknown';
-    category = parts[2] || '';
-
-  // 2) Gateway/Pico topics: pico/status, pico/cmd, etc.
-  } else if (topic.startsWith('pico/')) {
-    const sub = parts[1] || '';
-    deviceId = 'pico-001';   // single device in this project
-    category = sub;          // 'status', 'cmd', etc.
-
-  // 3) Raw file topics: file/meta, file/data, etc. (just log under 'file')
-  } else if (topic.startsWith('file/')) {
-    deviceId = 'pico-001';
-    category = 'file';
-
-  } else {
-    deviceId = parts[1] || 'unknown';
-    category = parts[2] || '';
-  }
-
-  // ---- File transfer messages via devices/.../file-transfer/... ----
-  if (category === 'file-transfer') {
-    const transferAction = parts[3];
-
-    if (!fileTransfers.has(deviceId)) {
-      fileTransfers.set(deviceId, {});
-    }
-
-    const transfer = fileTransfers.get(deviceId);
-
-    if (transferAction === 'progress') {
-      transfer.currentChunk = payload.chunk;
-      transfer.totalChunks = payload.total;
-      transfer.sequenceNum = payload.seq;
-      transfer.checksum = payload.checksum;
-      transfer.progress = Math.round((payload.chunk / payload.total) * 100);
-      transfer.lastUpdate = new Date().toISOString();
-    } else if (transferAction === 'status') {
-      transfer.status = payload.status;
-      transfer.fileName = payload.fileName;
-      transfer.reason = payload.reason || '';
-      transfer.lastUpdate = new Date().toISOString();
-
-      if (payload.status === 'active') {
-        transfer.currentChunk = 0;
-        transfer.totalChunks = 0;
-        transfer.progress = 0;
-      }
-    } else if (transferAction === 'validation') {
-      transfer.validationResult = payload.result;
-      transfer.expectedChecksum = payload.expected;
-      transfer.actualChecksum = payload.actual;
-      transfer.lastUpdate = new Date().toISOString();
-    }
-
-    io.emit('file-transfer-update', {
-      deviceId,
-      type: transferAction,
-      data: payload,
-      transfer: transfer
-    });
-
-    console.log(`[File Transfer] ${deviceId} - ${transferAction}:`, payload);
-    return; // don't treat as normal telemetry/status
-  }
-
-  const ts = (payload && payload.ts) ? payload.ts : new Date().toISOString();
-
-  // update devices map
+  // Initialize device slot
   devices[deviceId] = devices[deviceId] || { telemetry: [], status: null, lastSeen: null };
-  devices[deviceId].lastSeen = ts;
+  devices[deviceId].lastSeen = nowIso;
 
-  if (category === 'status') {
-    // works for both devices/<id>/status and pico/status
-    devices[deviceId].status = { ts, payload };
-  } else if (category === 'telemetry') {
-    devices[deviceId].telemetry.push({ topic, ts, payload });
-    if (devices[deviceId].telemetry.length > 100) devices[deviceId].telemetry.shift();
+  // Categorize topic
+  // pico/cmd      -> commands to device (we may log if echoed back)
+  // pico/status   -> device status/heartbeats/log lines (& we'll mine telemetry)
+  // file/meta|data -> file transfer (we only log now)
+  const parts = topic.split('/');
+  const root = parts[0];      // 'pico' or 'file'
+  const leaf = parts[1] || ''; // 'cmd' | 'status' | 'meta' | 'data'
+
+  if (root === 'pico' && leaf === 'status') {
+    devices[deviceId].status = { ts: nowIso, payload };
   }
 
-  const msg = { ts, deviceId, topic, payload };
+  // Add recent log entry
+  const msg = { ts: nowIso, deviceId, topic, payload };
   addRecent(msg);
-
   io.emit('mqtt-message', msg);
 
-  if (category === 'telemetry' && payload && (typeof payload.value === 'number')) {
-    io.emit('telemetry', { deviceId, topic, ts, value: payload.value });
+  // Telemetry for chart: try to extract a numeric datapoint from pico/status
+  if (root === 'pico' && leaf === 'status') {
+    const numeric = extractNumeric(payload);
+    if (numeric !== null) {
+      devices[deviceId].telemetry.push({ topic, ts: nowIso, payload: numeric });
+      if (devices[deviceId].telemetry.length > 100) devices[deviceId].telemetry.shift();
+
+      io.emit('telemetry', { deviceId, topic, ts: nowIso, value: numeric });
+    }
   }
+
+  // file/*: only log; UI progress bar was removed
 });
 
-// -------- SOCKET.IO SETUP --------
 io.on('connection', (socket) => {
   console.log('[SOCKET] client connected', socket.id);
 
-  // client wants list of devices
+  // Initial snapshot
+  const summary = {};
+  Object.keys(devices).forEach(id => {
+    summary[id] = { lastSeen: devices[id].lastSeen, status: devices[id].status };
+  });
+  socket.emit('devices-list', summary);
+  socket.emit('recent-messages', recentMessages.slice(0, 12));
+
+  // Allow the client to refresh device list
   socket.on('list-devices', () => {
-    const deviceSummary = {};
+    const s = {};
     Object.keys(devices).forEach(id => {
-      deviceSummary[id] = {
-        lastSeen: devices[id].lastSeen,
-        status: devices[id].status
-      };
+      s[id] = { lastSeen: devices[id].lastSeen, status: devices[id].status };
     });
-    socket.emit('devices-list', deviceSummary);
+    socket.emit('devices-list', s);
     socket.emit('recent-messages', recentMessages.slice(0, 12));
   });
 
-  // client requests to send a command / publish
-  // payload: { topic, payload, qos }
-    // client requests to send a command / publish
-  // payload: { topic, payload, qos }
-  socket.on('send-cmd', async (req) => {
+  // Publish command (dashboard → broker)
+  // req: { topic: "pico/cmd", payload: "led on", qos?: 0|1 }
+  socket.on('send-cmd', (req) => {
     try {
-      let topic = req.topic;           // <-- make this "let" so we can rewrite it
-      const payload = req.payload || {};
+      const topic = String(req.topic || '').trim();
       const qos = Number(req.qos) || 0;
 
-      // --- NEW: translate dashboard-style topic to Pico-style topic ---
-      // Dashboard builds:  devices/<deviceId>/<suffix>
-      // Pico expects:      <deviceId>/<suffix>   (e.g. pico/cmd)
-      if (topic && topic.startsWith('devices/')) {
-        const parts = topic.split('/');
-        if (parts.length >= 3) {
-          // drop the leading "devices"
-          topic = parts.slice(1).join('/');   // e.g. "devices/pico/cmd" -> "pico/cmd"
-        }
-      }
+      // For your setup, we send *plain strings* to pico/cmd.
+      // If payload is an object, we JSON-stringify; if it's already string,
+      // we send it raw.
+      let body = req.payload;
+      if (typeof body === 'object') body = JSON.stringify(body);
+      if (typeof body !== 'string') body = String(body ?? '');
 
-      console.log('[SOCKET] send-cmd', { original: req.topic, mappedTopic: topic, qos });
-
-      if (qos === 1) {
-        // use helper that retries until PUBACK or fail
-        try {
-          await publishWithRetry(mqttClient, topic, payload, 1, { maxRetries: 4, ackTimeoutMs: 2000 });
-          socket.emit('publish-status', { topic, success: true });
-        } catch (err) {
-          console.error('[PUBLISH] qos1 failed', err);
+      console.log('[PUBLISH]', { topic, qos, body });
+      mqttClient.publish(topic, body, { qos }, (err) => {
+        if (err) {
           socket.emit('publish-status', { topic, success: false, error: err.message });
+        } else {
+          socket.emit('publish-status', { topic, success: true });
         }
-      } else {
-        // qos 0: normal fire-and-forget
-        mqttClient.publish(
-          topic,
-          (typeof payload === 'string' ? payload : JSON.stringify(payload)),
-          { qos: 0 },
-          (err) => {
-            if (err) {
-              socket.emit('publish-status', { topic, success: false, error: err.message });
-            } else {
-              socket.emit('publish-status', { topic, success: true });
-            }
-          }
-        );
-      }
+      });
     } catch (err) {
-      console.error('[SOCKET] send-cmd handler error', err);
+      console.error('[send-cmd] error', err);
       socket.emit('publish-status', { topic: req && req.topic, success: false, error: err.message });
     }
   });
@@ -246,20 +177,8 @@ io.on('connection', (socket) => {
   socket.on('disconnect', (reason) => {
     console.log('[SOCKET] client disconnected', socket.id, reason);
   });
-
-  // emit initial device list + recent messages
-  const initialDeviceSummary = {};
-  Object.keys(devices).forEach(id => {
-    initialDeviceSummary[id] = {
-      lastSeen: devices[id].lastSeen,
-      status: devices[id].status
-    };
-  });
-  socket.emit('devices-list', initialDeviceSummary);
-  socket.emit('recent-messages', recentMessages.slice(0, 12));
 });
 
-// -------- START SERVER --------
 server.listen(PORT, () => {
   console.log(`HTTP+Socket server listening on http://localhost:${PORT}`);
   console.log('Serving static from', FRONTEND_DIR);

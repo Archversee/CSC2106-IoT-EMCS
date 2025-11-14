@@ -8,141 +8,165 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    /* ===== Base / Theme ===== */
+    :root{
+      --bg:#f6f7fb;
+      --card:#fff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#eceef3;
+      --accent:#7c3aed;
+      --accent-600:#6d28d9;
+      --shadow:0 6px 18px rgba(17,24,39,.06);
     }
-    :root { 
-      --bg: #f5f7fa;
-      --card-bg: #ffffff;
-      --text-primary: #1a1d1f;
-      --text-secondary: #6f767e;
-      --accent: #6c5dd3;
-      --success: #4caf50;
-      --warning: #ff9800;
-      --error: #f44336;
-      --border: #efefef;
-      --shadow: 0 2px 12px rgba(0,0,0,0.08);
-      --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-    }
-
-    html,body{
-      height:100%;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
       margin:0;
-      font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+      font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
       background:var(--bg);
-      color:var(--text-primary);
     }
 
-    .dashboard-header {background: var(--card-bg);padding: 24px 32px;border-bottom: 1px solid var(--border);display: flex;justify-content: space-between;align-items: center;}
-    .dashboard-header h1 {font-size: 28px;font-weight: 700;color: var(--text-primary);}
-    .header-actions {display: flex;gap: 12px;}
-    .container {display: grid;grid-template-columns: 280px 1fr;gap: 24px;padding: 24px 32px;max-width: 1600px;margin: 0 auto;}
+    /* ===== Header ===== */
+    .dashboard-header{
+      position:sticky; top:0; z-index:5;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:20px 28px;
+      background:var(--card);
+      border-bottom:1px solid var(--border);
+    }
+    .dashboard-header h1{margin:0; font-size:22px; font-weight:800; letter-spacing:.1px}
+    .btn{
+      appearance:none; border:0; cursor:pointer; font:600 14px/1 'Poppins',sans-serif;
+      padding:10px 14px; border-radius:12px; transition:filter .15s ease, transform .15s ease;
+    }
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .btn:hover{filter:brightness(1.02)}
+    .btn-secondary{background:#f3f4f6; color:#111827; border:1px solid var(--border)}
+    .header-actions{display:flex; gap:10px}
 
-    /* sidebar */
-    .sidebar {display: flex;flex-direction: column;gap: 16px;}
-    .card {background: var(--card-bg);border-radius: 16px;padding: 24px;box-shadow: var(--shadow);border: 1px solid var(--border);}
-    .card h2 {font-size: 18px;font-weight: 600;margin-bottom: 16px;color: var(--text-primary);}
-    .devices-list {list-style: none; display: flex; flex-direction: column; gap: 8px;}
-    .devices-list li {padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s;font-size: 14px; font-weight: 500; color: var(--text-secondary);background: var(--bg);}
-    .devices-list li:hover {background: var(--accent);color: white;transform: translateX(4px);}
-    .devices-list li.active {background: var(--accent);color: white;font-weight: 600;}
-
-    /* form controls */
-    .form-control {width: 100%;padding: 12px 16px;border-radius: 12px;border: 1px solid var(--border);margin-bottom: 12px;font-family: inherit;font-size: 14px;background: var(--bg);transition: all 0.2s;}
-    .form-control:focus {outline: none;border-color: var(--accent);box-shadow: 0 0 0 3px rgba(108, 93, 211, 0.1);}
-    button {padding: 12px 24px;border-radius: 12px;border: none;background: var(--accent);color: white;font-weight: 600;font-size: 14px;cursor: pointer;transition: all 0.2s;font-family: inherit;}
-    button:hover {background: #5a4bc4;transform: translateY(-2px);box-shadow: var(--shadow-lg);}
-    button:disabled {opacity: 0.5;cursor: not-allowed;transform: none;}
-    .btn-secondary {background: var(--bg);color: var(--text-primary);border: 1px solid var(--border);}
-    .btn-secondary:hover {background: white;}
-
-    /* main content */
-    .main-content {display: flex;flex-direction: column;gap: 24px;}
-    .stats-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));gap: 16px;}
-    .stat-card {background: linear-gradient(135deg, var(--accent) 0%, #8b7dd8 100%);color: white;padding: 24px;border-radius: 16px;box-shadow: var(--shadow);}
-    .stat-card h3 {font-size: 14px;font-weight: 500;opacity: 0.9;margin-bottom: 8px;}
-    .stat-card .value {font-size: 32px;font-weight: 700;}
-    .chart-card {background: var(--card-bg);border-radius: 16px;padding: 24px;box-shadow: var(--shadow);border: 1px solid var(--border);}
-    .chart-wrap {width: 100%;height: 300px;}
-
-    /* file transfer progress bar*/
-    .transfer-card {background: var(--card-bg);border: 1px solid var(--border);padding: 20px;margin: 12px 0;border-radius: 16px;box-shadow: var(--shadow);}
-    .transfer-card h3 {font-size: 16px;font-weight: 600;margin-bottom: 16px;color: var(--text-primary);}
-    .transfer-progress {width: 100%;height: 8px;background: var(--bg);border-radius: 8px;overflow: hidden;margin: 12px 0;    }
-    .transfer-progress-bar {height: 100%;background: linear-gradient(90deg, var(--accent) 0%, #8b7dd8 100%);transition: width 0.3s ease;border-radius: 8px;}
-    .status-active { color: var(--accent); font-weight: 600; }
-    .status-completed { color: var(--success); font-weight: 600; }
-    .status-failed { color: var(--error); font-weight: 600; }
-    .chunk-info, .checksum-info, .validation-info {font-size: 13px;margin: 8px 0;color: var(--text-secondary);}
-    .validation-info {padding: 12px;background: var(--bg);border-radius: 12px;margin-top: 12px;}
-
-    /* messages */
-    .recent-item {padding: 16px;background: var(--card-bg);border: 1px solid var(--border);border-radius: 12px;margin-bottom: 12px;font-size: 13px;font-family: 'Monaco', monospace;}
-    .toast {position: fixed;right: 24px;bottom: 24px;padding: 16px 24px;border-radius: 12px;color: white;z-index: 2000;box-shadow: var(--shadow-lg);font-weight: 500;}
-    .muted {color: var(--text-secondary);font-size: 13px;}
-
-    /* responsive */
-    @media (max-width: 1024px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
+    /* ===== Layout ===== */
+    .container{
+      max-width:1200px; margin:0 auto; padding:22px;
+      display:grid; grid-template-columns: 320px 1fr; gap:22px;
+    }
+    @media (max-width: 980px){
+      .container{grid-template-columns:1fr; gap:18px; padding:16px}
     }
 
+    /* ===== Cards ===== */
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .card h2{margin:0 0 12px; font-size:16px; font-weight:700}
+
+    /* ===== Devices ===== */
+    .devices-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px}
+    .devices-list li{
+      background:#f8fafc; border:1px solid var(--border);
+      padding:12px 14px; border-radius:12px; cursor:pointer;
+      display:flex; flex-direction:column; gap:4px;
+      transition:transform .12s ease, background .12s ease;
+    }
+    .devices-list li:hover{transform:translateX(3px)}
+    .devices-list li strong{font-weight:700}
+    .muted{color:var(--muted); font-size:12px}
+
+    /* ===== Send Command (single-field) ===== */
+    #send-card .form{display:grid; gap:12px}
+    #send-card label{font-weight:700; font-size:13px}
+    #payload{
+      width:100%; min-height:64px; resize:vertical;
+      padding:10px 12px; border-radius:12px; border:1px solid var(--border);
+      background:#f8fafc; outline:none;
+      transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+      font-family:inherit; font-size:14px;
+    }
+    #payload:focus{
+      background:#fff; border-color:var(--accent);
+      box-shadow:0 0 0 3px rgba(124,58,237,.15);
+    }
+    .hint{color:var(--muted); font-size:12.5px}
+
+    .actions{display:flex; justify-content:flex-end}
+    .btn-primary{
+      background:var(--accent); color:#fff; border-radius:12px; padding:10px 16px;
+    }
+    .btn-primary:hover{transform:translateY(-1px); background:var(--accent-600)}
+
+    /* ===== Chart ===== */
+    .chart-wrap{width:100%; height:300px}
+    canvas{display:block; width:100%; height:100%}
+
+    /* ===== Recent Messages ===== */
+    .recent-item{
+      padding:12px 14px; border:1px solid var(--border); border-radius:12px;
+      background:#fff; margin-bottom:10px; font-size:12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    /* Toast used by client.js */
+    .toast{
+      position:fixed; right:20px; bottom:20px; background:#111827; color:#fff;
+      padding:12px 14px; border-radius:12px; z-index:1000; box-shadow:var(--shadow);
+    }
   </style>
-  </head>
-  <body>
-    <div class="dashboard-header">
-      <h1>MQTT Subscriber Dashboard (MVP)</h1>
-      <div class="header-actions">
-        <button id="refresh-devices" class="btn-secondary">Refresh Devices</button>
-      </div>
+</head>
+<body>
+  <div class="dashboard-header">
+    <h1>MQTT Subscriber Dashboard (MVP)</h1>
+    <div class="header-actions">
+      <button id="refresh-devices" class="btn btn-secondary">Refresh Devices</button>
     </div>
-
+  </div>
 
   <div class="container">
-    <div class="sidebar">
-      <div class="card">
+    <!-- Left: Devices + Command -->
+    <aside class="sidebar">
+      <section class="card">
         <h2>Devices</h2>
         <ul class="devices-list" id="devices-ul"></ul>
-      </div>
+      </section>
 
-      <div class="card">
+      <!-- Send Command -->
+      <section id="send-card" class="card">
         <h2>Send Command</h2>
-        <input id="device-id" class="form-control" placeholder="Device ID (e.g. pico-001)" />
-        <input id="topic-suffix" class="form-control" placeholder="Topic suffix" />
-        <textarea id="payload" class="form-control" rows="4" placeholder='{}'>{}</textarea>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-          <label style="color:var(--text-secondary);font-size:14px">
-            <input id="qos1" type="checkbox" /> QoS1
-          </label>
+        <div class="form">
+          <div class="field">
+            <label for="payload">Command</label>
+            <textarea id="payload" placeholder='Type a command (e.g., "led on")'></textarea>
+            <p class="hint">Publishes to <code>pico/cmd</code> as a plain string.</p>
+          </div>
+          <div class="actions">
+            <button id="send-btn" class="btn btn-primary" type="button">Send Command</button>
+          </div>
         </div>
-        <button id="send-btn">Send Command</button>
-      </div>
-    </div>
+      </section>
+    </aside>
 
-    <div class="main-content">
-      <div class="chart-card">
+    <!-- Right: Chart + Recent -->
+    <main class="main-content" style="display:flex; flex-direction:column; gap:22px;">
+      <section class="card">
         <h2>Live Telemetry</h2>
         <div class="chart-wrap">
           <canvas id="telemetry-chart"></canvas>
         </div>
-      </div>
+      </section>
 
-      <div class="card" id="file-transfers-section" style="display:none">
-        <h2>File Transfers</h2>
-        <div id="file-transfers-container"></div>
-      </div>
-
-      <div class="card">
+      <section class="card">
         <h2>Recent Messages</h2>
         <div id="recent-messages"></div>
-      </div>
-    </div>
+      </section>
+    </main>
   </div>
 
-  <!-- Socket.io client served by server -->
+  
+
+  <!-- Socket.io client -->
   <script src="/socket.io/socket.io.js"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

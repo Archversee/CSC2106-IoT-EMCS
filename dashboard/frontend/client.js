@@ -4,19 +4,29 @@
 
   const socket = io();
 
-  // DOM refs
-  const devicesUl = document.getElementById('devices-ul');
-  const refreshBtn = document.getElementById('refresh-devices');
-  const deviceIdInput = document.getElementById('device-id');
-  const topicSuffixInput = document.getElementById('topic-suffix');
-  const payloadInput = document.getElementById('payload');
-  const sendBtn = document.getElementById('send-btn');
-  const qos1Checkbox = document.getElementById('qos1');
-  const recentEl = document.getElementById('recent-messages');
+  // DOM refs that remain
+  const devicesUl   = document.getElementById('devices-ul');
+  const refreshBtn  = document.getElementById('refresh-devices');
+  const payloadInput= document.getElementById('payload');
+  const sendBtn     = document.getElementById('send-btn');
+  const recentEl    = document.getElementById('recent-messages');
 
-  // Chart
+  // Clear any leftover value the HTML might have injected
+  if (payloadInput) payloadInput.value = "";
+
+  // Chart (unchanged)
   const ctx = document.getElementById('telemetry-chart').getContext('2d');
-  const chartData = { labels: [], datasets: [{ label: 'value', data: [], tension: 0.3, pointRadius: 5, backgroundColor: '#4da6ff', borderColor: '#4da6ff' }] };
+  const chartData = {
+    labels: [],
+    datasets: [{
+      label: 'value',
+      data: [],
+      tension: 0.3,
+      pointRadius: 5,
+      backgroundColor: '#4da6ff',
+      borderColor: '#4da6ff'
+    }]
+  };
   const chart = new Chart(ctx, {
     type: 'line',
     data: chartData,
@@ -26,13 +36,16 @@
     }
   });
 
+  // We still show devices, but command sending no longer depends on device selection
   let selectedDevice = null;
   const MAX_POINTS = 40;
 
   function showToast(text, type = 'info') {
     const t = document.createElement('div');
     t.className = 'toast';
-    t.style.background = (type === 'success') ? '#2ecc71' : (type === 'error') ? '#e74c3c' : '#333';
+    t.style.background =
+      type === 'success' ? '#2ecc71' :
+      type === 'error'   ? '#e74c3c' : '#333';
     t.textContent = text;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
@@ -43,7 +56,8 @@
     p.className = 'recent-item';
     const ts = rec.ts || new Date().toISOString();
     const dev = rec.deviceId || '-';
-    p.textContent = `${ts} | ${dev} | ${rec.topic} ⇒ ${typeof rec.payload === 'string' ? rec.payload : JSON.stringify(rec.payload)}`;
+    const payloadText = (typeof rec.payload === 'string') ? rec.payload : JSON.stringify(rec.payload);
+    p.textContent = `${ts} | ${dev} | ${rec.topic} ⇒ ${payloadText}`;
     recentEl.prepend(p);
     while (recentEl.children.length > 12) recentEl.removeChild(recentEl.lastChild);
   }
@@ -57,7 +71,6 @@
       li.style.fontWeight = (deviceId === selectedDevice) ? '800' : '600';
       li.addEventListener('click', () => {
         selectedDevice = deviceId;
-        deviceIdInput.value = deviceId;
         Array.from(devicesUl.children).forEach(c => c.style.fontWeight = '600');
         li.style.fontWeight = '800';
       });
@@ -70,12 +83,7 @@
       devicesUl.appendChild(li);
     });
 
-    if (!selectedDevice && ids.length > 0) {
-      selectedDevice = ids[0];
-      deviceIdInput.value = selectedDevice;
-      const firstLi = devicesUl.querySelector('li');
-      if (firstLi) firstLi.style.fontWeight = '800';
-    }
+    // No auto-select; we only highlight when the user clicks
   }
 
   function onTelemetry({ deviceId, ts, value }) {
@@ -90,6 +98,7 @@
     chart.update();
   }
 
+  // --- Socket wiring ---
   socket.on('connect', () => {
     console.log('[SOCKET] connected', socket.id);
     socket.emit('list-devices');
@@ -115,9 +124,7 @@
     addRecentMessage(msg);
   });
 
-  socket.on('telemetry', (d) => {
-    onTelemetry(d);
-  });
+  socket.on('telemetry', (d) => onTelemetry(d));
 
   socket.on('publish-status', (info) => {
     console.log('[SOCKET] publish-status', info);
@@ -126,131 +133,37 @@
     else showToast(`Publish failed: ${info.error}`, 'error');
   });
 
-  socket.on('file-transfer-update', (data) => {
-    console.log('[File Transfer Update] RECEIVED:', data);
-    console.log('Device ID:', data.deviceId);
-    console.log('Type:', data.type);
-    console.log('Transfer data:', data.transfer);
-    
-    updateFileTransferUI(data);
-    
-
-    if (data.type === 'status' && data.data.status === 'failed') {
-      showToast(`Transfer failed on ${data.deviceId}: ${data.data.reason || 'Unknown error'}`, 'error');
-    }
-    
-    if (data.type === 'validation' && data.data.result === 'failed') {
-      showToast(`Checksum validation failed on ${data.deviceId}`, 'error');
-    }
-  });
-  
-    
-
-  function updateFileTransferUI(data) {
-    console.log('[updateFileTransferUI] Called with:', data);
-    const { deviceId, type, transfer } = data;
-    let card = document.getElementById(`transfer-${deviceId}`);
-    console.log('[updateFileTransferUI] Existing card:', card);
-  
-    if (!card) {
-      console.log('[updateFileTransferUI] Creating new card for', deviceId);
-      card = createTransferCard(deviceId);
-    }
-
-    // Update progress bar
-    if (type === 'progress') {
-      const percent = transfer.progress || 0;
-      card.querySelector('.transfer-progress-bar').style.width = `${percent}%`;
-      card.querySelector('.chunk-info').textContent = 
-        `Chunk ${transfer.currentChunk}/${transfer.totalChunks} (Seq: ${transfer.sequenceNum})`;
-      card.querySelector('.checksum-info').textContent = `Checksum: ${transfer.checksum || '-'}`;
-    }
-    
-    // Update status
-    if (type === 'status') {
-      card.querySelector('.status').textContent = transfer.status || '-';
-      card.querySelector('.status').className = `status status-${transfer.status}`;
-      card.querySelector('.file-name').textContent = transfer.fileName || 'Unknown';
-    }
-    
-    // Update validation
-    if (type === 'validation') {
-      const validationDiv = card.querySelector('.validation-info');
-      validationDiv.innerHTML = `
-        <strong>Validation:</strong> ${transfer.validationResult}<br>
-        Expected: ${transfer.expectedChecksum}<br>
-        Actual: ${transfer.actualChecksum}
-      `;
-      validationDiv.className = `validation-info ${transfer.validationResult === 'success' ? 'status-completed' : 'status-failed'}`;
-    }
+  // --- UI actions ---
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      console.log('Refresh button clicked — requesting devices-list');
+      refreshBtn.disabled = true;
+      socket.emit('list-devices');
+      setTimeout(() => { refreshBtn.disabled = false; }, 600);
+    });
   }
 
-  function createTransferCard(deviceId) {
-    console.log('[createTransferCard] Creating card for:', deviceId);
-  
-    // Always show the section first
-    const section = document.getElementById('file-transfers-section');
-    if (section) {
-      console.log('[createTransferCard] Making section visible');
-      section.style.display = 'block';
-    }
-  
-    let container = document.getElementById('file-transfers-container');
-    console.log('[createTransferCard] Container found:', container);
-  
-    if (!container) {
-      console.log('[createTransferCard] ERROR: Container not found even after showing section!');
-      return null;
-    }
-    
-    const card = document.createElement('div');
-    card.id = `transfer-${deviceId}`;
-    card.className = 'transfer-card';
-    card.innerHTML = `
-      <h3>Device: ${deviceId}</h3>
-      <div><strong>File:</strong> <span class="file-name">-</span></div>
-      <div><strong>Status:</strong> <span class="status">-</span></div>
-      <div class="transfer-progress">
-        <div class="transfer-progress-bar" style="width: 0%"></div>
-      </div>
-      <div class="chunk-info">Waiting...</div>
-      <div class="checksum-info"></div>
-      <div class="validation-info"></div>
-    `;
-    
-    console.log('[createTransferCard] Appending card to container');
-    container.appendChild(card);
-    console.log('[createTransferCard] Card created and appended successfully');
-    
-    return card;
-  }
-
-  refreshBtn.addEventListener('click', () => {
-    console.log('Refresh button clicked — requesting devices-list');
-    refreshBtn.disabled = true;
-    socket.emit('list-devices');
-    setTimeout(() => { refreshBtn.disabled = false; }, 600);
-  });
-
+  // Publish plain-string commands to fixed topic pico/cmd; QoS0
   sendBtn.addEventListener('click', () => {
-    const device = deviceIdInput.value.trim();
-    const suffix = topicSuffixInput.value.trim();
-    const body = payloadInput.value.trim();
+    const payload = (payloadInput.value || '').trim();
+    const topic   = 'pico/cmd';
+    const qos     = 0; // checkbox removed; using QoS0 for commands
 
-    if (!device || !suffix) { showToast('Device and topic suffix required', 'error'); return; }
+    if (!payload) {
+      showToast('Enter a command (e.g., "led on")', 'error');
+      return;
+    }
 
-    let payload;
-    try { payload = body ? JSON.parse(body) : {}; }
-    catch (e) { showToast('Payload must be valid JSON', 'error'); return; }
-
-    const topic = `devices/${device}/${suffix}`;
-    const qos = qos1Checkbox && qos1Checkbox.checked ? 1 : 0;
-
-    addRecentMessage({ ts: new Date().toISOString(), deviceId: device, topic, payload: '(sending) ' + JSON.stringify(payload) });
+    addRecentMessage({
+      ts: new Date().toISOString(),
+      deviceId: 'pico',
+      topic,
+      payload: `(sending) ${payload}`
+    });
 
     sendBtn.disabled = true;
     console.log('[SOCKET] send-cmd', { topic, payload, qos });
     socket.emit('send-cmd', { topic, payload, qos });
   });
-
+  
 })();
