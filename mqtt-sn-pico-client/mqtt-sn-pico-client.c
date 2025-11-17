@@ -285,10 +285,9 @@ int main() {
         if (last_button_state && !current_button) {
             // GP 20 Button pressed (falling edge)
             printf("Button pressed! Publishing message...\n");
-            uint16_t id = get_next_msg_id();
             // Publish to topic ID 1 (predefined topic "pico/status") with selected QoS
-            mqtt_sn_publish_topic_id(pcb, &gateway_addr, UDP_PORT, 1U, payload, PAYLOAD_SIZE,
-                                     (int)qos_level, id, false);
+            mqtt_sn_publish_topic_id_auto(pcb, &gateway_addr, UDP_PORT, 1U, payload, PAYLOAD_SIZE,
+                                          (int)qos_level);
             sleep_ms(200); // Debounce
         }
         last_button_state = current_button;

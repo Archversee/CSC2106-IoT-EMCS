@@ -1,6 +1,22 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// UART/Serial Configuration
+/**
+ * Common Baud Rate for UART communication on Pico W
+ * Used across multiple modules for consistency.
+ *
+ * 9600
+ * 19200
+ * 38400
+ * 57600
+ * 115200 (default, most common)
+ * 230400
+ * 460800
+ * 921600
+ */
+#define UART_BAUD_RATE 115200 // Standard baud rate for Pico W serial communication
+
 // Wi-Fi Credentials
 #define WIFI_SSID "Bruce"
 #define WIFI_PASS "cocomax100%"
@@ -11,8 +27,13 @@
 #define GATEWAY_IP2 50
 #define GATEWAY_IP3 193
 #define UDP_PORT 10000
-#define MQTT_SN_CLIENT_ID "pico_me"
-#define IS_RECEIVER true
+
+// MQTT-SN Client ID (conditional based on build type)
+#ifdef PICO_TX_BUILD
+#define MQTT_SN_CLIENT_ID "pico_w_tx"
+#else
+#define MQTT_SN_CLIENT_ID "pico_w_rx"
+#endif
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
@@ -42,10 +63,9 @@
 #define FILE_TRANSFER_BUTTON_PIN 22
 
 // MQTT-SN Topic IDs
-#define TOPIC_ID_PICO_CMD 1    // pico/cmd - command topic
-#define TOPIC_ID_PICO_STATUS 2 // pico/status - status topic
-#define TOPIC_ID_FILE_META 3   // file/meta - file metadata
-#define TOPIC_ID_FILE_DATA 4   // file/data - file chunks
+#define TOPIC_ID_PICO_CMD 1    // pico/cmd - control commands
+#define TOPIC_ID_PICO_STATUS 2 // pico/status - status updates
+#define TOPIC_ID_FILE_DATA 4   // file/data - file chunks (metadata + data)
 
 #define PAYLOAD_SIZE 247
 

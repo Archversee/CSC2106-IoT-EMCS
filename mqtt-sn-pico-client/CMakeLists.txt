@@ -136,8 +136,8 @@ target_include_directories(mqtt-sn-pico-client-tx PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include
 )
 
-# Define BUILD_TX_CLIENT for the TX client to use correct client ID
-target_compile_definitions(mqtt-sn-pico-client-tx PRIVATE BUILD_TX_CLIENT)
+# Define PICO_TX_BUILD for the TX client to use correct client ID
+target_compile_definitions(mqtt-sn-pico-client-tx PRIVATE PICO_TX_BUILD)
 
 # include in driver and fs directories
 
