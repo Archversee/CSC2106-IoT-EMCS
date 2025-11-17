@@ -182,6 +182,9 @@ bool chunk_transfer_init_session(const struct Metadata* metadata, transfer_sessi
     session->chunk_meta.chunks_received = 1;
 
     session->active = true;
+
+    //Publish file transfer status
+
     printf("✓ Transfer session initialized:\n");
     printf("  Session ID: %s\n", session->session_id);
     if (use_new_filename) {
@@ -348,7 +351,8 @@ bool chunk_transfer_finalize(transfer_session_t* session) {
         printf("ERROR: Cannot finalize - not all chunks received\n");
         printf("  Received: %lu/%lu chunks\n", (unsigned long)session->chunk_meta.chunks_received,
                (unsigned long)session->chunk_meta.total_chunks);
-        return false;
+        
+               return false;
     }
 
     /* Close the temporary file handle before renaming */

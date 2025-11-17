@@ -1,11 +1,17 @@
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Global include paths for all targets
+include_directories(${CMAKE_CURRENT_LIST_DIR})
+include_directories(${CMAKE_CURRENT_LIST_DIR}/fs)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/drivers)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
@@ -35,7 +41,13 @@ if(NOT DEFINED PICO_SDK_PATH)
     endif()
 endif()
 
+set(PICO_NO_PICOTOOL 1)
+
+
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+
+
 
 # Prevent CMake from adding macOS-specific flags to cross-compiler
 set(CMAKE_SYSTEM_NAME Generic)

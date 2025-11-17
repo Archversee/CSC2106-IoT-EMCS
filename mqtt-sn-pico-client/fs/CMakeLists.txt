@@ -4,7 +4,7 @@ add_library(fs_lib
     chunk_transfer.c
 )
 
-target_include_directories(fs_lib PUBLIC
+include_directories(fs_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/ff15/source
     ${CMAKE_CURRENT_SOURCE_DIR}/../no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/sd_driver

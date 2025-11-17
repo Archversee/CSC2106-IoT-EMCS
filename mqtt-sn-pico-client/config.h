@@ -15,17 +15,17 @@
  * 460800
  * 921600
  */
-#define UART_BAUD_RATE 115200  // Standard baud rate for Pico W serial communication
+#define UART_BAUD_RATE 115200 // Standard baud rate for Pico W serial communication
 
 // Wi-Fi Credentials
-#define WIFI_SSID "hoshiyomi"
-#define WIFI_PASS "kiseki033171"
+#define WIFI_SSID "Bruce"
+#define WIFI_PASS "cocomax100%"
 
 // MQTT-SN Gateway
-#define GATEWAY_IP0 10
-#define GATEWAY_IP1 56
-#define GATEWAY_IP2 86
-#define GATEWAY_IP3 90
+#define GATEWAY_IP0 192
+#define GATEWAY_IP1 168
+#define GATEWAY_IP2 50
+#define GATEWAY_IP3 193
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)
@@ -63,9 +63,9 @@
 #define FILE_TRANSFER_BUTTON_PIN 22
 
 // MQTT-SN Topic IDs
-#define TOPIC_ID_PICO_CMD 1     // pico/cmd - control commands
-#define TOPIC_ID_PICO_STATUS 2  // pico/status - status updates
-#define TOPIC_ID_FILE_DATA 4    // file/data - file chunks (metadata + data)
+#define TOPIC_ID_PICO_CMD 1    // pico/cmd - control commands
+#define TOPIC_ID_PICO_STATUS 2 // pico/status - status updates
+#define TOPIC_ID_FILE_DATA 4   // file/data - file chunks (metadata + data)
 
 #define PAYLOAD_SIZE 247
 
