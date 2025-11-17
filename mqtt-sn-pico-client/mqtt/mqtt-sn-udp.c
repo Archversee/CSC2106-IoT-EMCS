@@ -199,6 +199,15 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
     pbuf_free(p);
 }
 
+// Auto-generates msg_id for initial publishes (QoS > 0)
+void mqtt_sn_publish_topic_id_auto(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                                   u16_t topic_id, const uint8_t *payload, size_t payload_len,
+                                   int qos) {
+    uint16_t msg_id = (qos > QOS_LEVEL_0) ? get_next_msg_id() : 0;
+    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, topic_id, payload, payload_len, qos, msg_id,
+                             false);
+}
+
 // PUBLISH to Predefined Topic ID with qos, binary payload support
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                               u16_t topic_id, const uint8_t *payload, size_t payload_len, int qos,
@@ -690,7 +699,6 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
                 (data[MQTTSN_OFFSET_FLAGS] << BITS_PER_BYTE) | data[MQTTSN_OFFSET_PROTOCOL_ID];
             printf("PUBREL received for Msg ID: %d. Sending PUBCOMP...\n", msg_id);
             mqtt_sn_send_pubcomp(pcb, addr, port, msg_id);
-            remove_pending_qos_msg(msg_id);
         }
         pbuf_free(p);
     } else {
@@ -767,12 +775,10 @@ void send_control_message(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t g
     if (!ctrl_msg)
         return;
 
-    uint16_t msg_id = get_next_msg_id();
-
     // Publish control message to topic ID 5 (file/control) with QoS 1
-    mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, FILE_TRANSFER_TOPIC_CONTROL,
-                             (const uint8_t *)ctrl_msg, sizeof(control_message_t), QOS_LEVEL_1,
-                             msg_id, false);
+    mqtt_sn_publish_topic_id_auto(pcb, gw_addr, gw_port, FILE_TRANSFER_TOPIC_CONTROL,
+                                  (const uint8_t *)ctrl_msg, sizeof(control_message_t),
+                                  QOS_LEVEL_1);
 
     // Log control message
     switch (ctrl_msg->type) {
@@ -1370,9 +1376,8 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         // Send error message back to sender
         const char *error_msg =
             "ERROR: SD card not initialized. Cannot receive file. Please insert SD card.";
-        uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
-                                 strlen(error_msg), QOS_LEVEL_1, msg_id, false);
+        mqtt_sn_publish_topic_id_auto(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                      (const uint8_t *)error_msg, strlen(error_msg), QOS_LEVEL_1);
         printf("✓ Error notification sent to sender\n");
         return;
     }
@@ -1383,9 +1388,8 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
 
         // Send error message back to sender
         const char *error_msg = "ERROR: Session buffer not allocated. Cannot receive file.";
-        uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
-                                 strlen(error_msg), QOS_LEVEL_1, msg_id, false);
+        mqtt_sn_publish_topic_id_auto(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                      (const uint8_t *)error_msg, strlen(error_msg), QOS_LEVEL_1);
         printf("✓ Error notification sent to sender\n");
         return;
     }
@@ -1397,9 +1401,8 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         // Send error message back to sender
         const char *error_msg =
             "ERROR: Failed to initialize transfer session. SD card may be full or corrupted.";
-        uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(pcb, addr, port, TOPIC_ID_PICO_STATUS, (const uint8_t *)error_msg,
-                                 strlen(error_msg), QOS_LEVEL_1, msg_id, false);
+        mqtt_sn_publish_topic_id_auto(pcb, addr, port, TOPIC_ID_PICO_STATUS,
+                                      (const uint8_t *)error_msg, strlen(error_msg), QOS_LEVEL_1);
         printf("✓ Error notification sent to sender\n");
         return;
     }
@@ -1864,6 +1867,22 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb 
             // Receiver: Subscribe to topic
             mqtt_sn_subscribe_topic_name(pcb, gw_addr, gw_port, ctx->custom_topics[i].topic_name,
                                          msg_id, ctx->custom_topics[i].qos);
+        }
+    }
+}
+
+/**
+ * @brief Invalidate all registered/subscribed topics in the MQTT-SN context
+ * @param[in] ctx Pointer to the MQTT-SN client context
+ */
+void mqtt_sn_invalidate_all_topics(mqtt_sn_context_t *ctx) {
+    if (!ctx)
+        return;
+    for (size_t i = 0; i < MAX_CUSTOM_TOPICS; i++) {
+        if (ctx->custom_topics[i].in_use) {
+            ctx->custom_topics[i].is_registered = false;
+            ctx->custom_topics[i].topic_id = 0;
+            ctx->custom_topics[i].last_attempt = nil_time;
         }
     }
 }

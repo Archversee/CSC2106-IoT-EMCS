@@ -215,6 +215,10 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                               uint16_t topic_id, const uint8_t *payload, size_t payload_len,
                               int qos, uint16_t msg_id, bool is_retransmit);
+// Auto-publish helper: generates msg_id internally for initial sends (not retransmissions)
+void mqtt_sn_publish_topic_id_auto(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
+                                   u16_t topic_id, const uint8_t *payload, size_t payload_len,
+                                   int qos);
 void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                          uint16_t msg_id);
 void mqtt_sn_send_puback(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
@@ -255,6 +259,7 @@ bool mqtt_sn_add_topic_for_subscription(mqtt_sn_context_t *ctx, const char *topi
                                         uint8_t qos);
 void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
                                          const ip_addr_t *gw_addr, u16_t gw_port);
+void mqtt_sn_invalidate_all_topics(mqtt_sn_context_t *ctx);
 uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name);
 
 #endif // MQTT_SN_UDP_H
