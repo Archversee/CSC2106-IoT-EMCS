@@ -17,8 +17,7 @@
  * MQTT-SN Topics (Receiver subscribes to):
  * - Topic: pico/cmd    - Command topic (QoS 2)
  * - Topic: pico/status - Status messages (QoS 1)
- * - Topic: file/meta   - File metadata (QoS 2, if SD available)
- * - Topic: file/data   - File chunks (QoS 1, if SD available)
+ * - Topic: file/data   - File data (metadata + chunks) (QoS 1, if SD available)
  *
  * MQTT-SN Topics (Receiver publishes to):
  * - Topic: file/control - Flow control messages for Go-Back-N (QoS 1)
@@ -62,7 +61,6 @@ static void rebuild_topic_subscriptions(mqtt_sn_context_t* ctx, bool fs_initiali
     mqtt_sn_add_topic_for_subscription(ctx, "pico/cmd", QOS_LEVEL_2);
     mqtt_sn_add_topic_for_subscription(ctx, "pico/status", QOS_LEVEL_1);
     if (fs_initialized) {
-        mqtt_sn_add_topic_for_subscription(ctx, "file/meta", QOS_LEVEL_2);
         mqtt_sn_add_topic_for_subscription(ctx, "file/data", QOS_LEVEL_1);
     }
 }
@@ -138,7 +136,6 @@ static void handle_microsd_hotplug_rx(uint32_t* last_check, uint32_t now, bool* 
                 *sd_was_initialized = true;
 
                 // Re-add file transfer topics to subscription list
-                mqtt_sn_add_topic_for_subscription(mqtt_ctx, "file/meta", QOS_LEVEL_2);
                 mqtt_sn_add_topic_for_subscription(mqtt_ctx, "file/data", QOS_LEVEL_1);
                 printf("File transfer topics added to subscription queue\n");
                 printf("Topics will be subscribed on next registration cycle\n");
@@ -183,14 +180,12 @@ int main() {
     mqtt_sn_add_topic_for_subscription(mqtt_ctx, "pico/cmd", QOS_LEVEL_2);
     mqtt_sn_add_topic_for_subscription(mqtt_ctx, "pico/status", QOS_LEVEL_1);
     if (fs_initialized) {
-        mqtt_sn_add_topic_for_subscription(mqtt_ctx, "file/meta", QOS_LEVEL_2);
         mqtt_sn_add_topic_for_subscription(mqtt_ctx, "file/data", QOS_LEVEL_1);
     }
     printf("Topics queued for subscription:\n");
     printf("  - pico/cmd (QoS 2)\n");
     printf("  - pico/status (QoS 1)\n");
     if (fs_initialized) {
-        printf("  - file/meta (QoS 2)\n");
         printf("  - file/data (QoS 1)\n");
     }
 

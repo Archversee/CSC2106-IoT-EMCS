@@ -16,13 +16,13 @@
  *
  * Button Configuration:
  * - GP20: Send test message (uses current QoS level)
- * - GP21: Toggle QoS level (0 -> 1 -> 2 -> 0)
- * - GP22: Initiate file transfer (sends test.txt via MQTT-SN)
+ * - GP21: Send test_1.txt file transfer
+ * - GP22: Send test.jpg file transfer
  * - GP19: Toggle ACK dropping (for testing retransmissions)
  *
  * MQTT-SN Topics (Sender publishes to):
  * - Topic ID 2 (pico/status): Status topic (publish)
- * - Topic ID 3 (file/meta):   File metadata (publish)
+ * - Topic ID 3 (file/data):   File data (metadata + chunks) (publish)
  * - Topic ID 4 (file/data):   File chunks (publish)
  */
 
@@ -44,6 +44,7 @@
 
 /*! Application constants */
 #define FILE_TRANSFER_NAME "test.jpg"
+#define FILE_TRANSFER_TXT_NAME "test_1.txt"
 
 /*! Static variables for ping tracking */
 static uint32_t s_last_pingreq = 0U;
@@ -69,16 +70,34 @@ static void handle_message_button(bool* last_state, struct udp_pcb* pcb, ip_addr
 }
 
 /*!
- * @brief Handle QoS button press - cycles through QoS levels
+ * @brief Handle text file transfer button press - sends test_1.txt via MQTT
  */
-static void handle_qos_button(bool* last_state, uint8_t* qos_level) {
+static void handle_txt_file_transfer_button(bool* last_state, struct udp_pcb* pcb,
+                                            ip_addr_t* gateway_addr, bool* fs_initialized,
+                                            bool* sd_was_initialized, mqtt_sn_context_t* mqtt_ctx) {
     bool current = gpio_get(QOSBUTTON_PIN);
     if (*last_state && !current) {
-        (*qos_level)++;
-        if (*qos_level > 2U) {
-            *qos_level = 0U;
+        printf("\n>>> Text File Transfer Button Pressed <<<\n");
+
+        if (*fs_initialized) {
+            send_file_via_mqtt_auto(pcb, gateway_addr, UDP_PORT, FILE_TRANSFER_TXT_NAME, mqtt_ctx);
+        } else {
+            printf("⚠ MicroSD card not initialized. Attempting to initialize...\n");
+
+            if (mqtt_client_initialize_microsd(MICROSD_INIT_MAX_ATTEMPTS, true)) {
+                printf("✓ MicroSD card successfully initialized!\n");
+                *fs_initialized = true;
+                *sd_was_initialized = true;
+                printf("\nProceeding with text file transfer...\n");
+                send_file_via_mqtt_auto(pcb, gateway_addr, UDP_PORT, FILE_TRANSFER_TXT_NAME, mqtt_ctx);
+            } else {
+                printf("✗ Failed to initialize MicroSD card\n");
+                printf("┌─────────────────────────────────────────────────────┐\n");
+                printf("│  Please insert or reconnect the MicroSD card and    │\n");
+                printf("│  press the text file transfer button again.         │\n");
+                printf("└─────────────────────────────────────────────────────┘\n");
+            }
         }
-        printf("QoS level changed to: %u\n", *qos_level);
         sleep_ms(200);
     }
     *last_state = current;
@@ -225,12 +244,12 @@ int main() {
     gpio_set_dir(MESSAGEBUTTON_PIN, GPIO_IN);
     gpio_pull_up(MESSAGEBUTTON_PIN);
 
-    // Initialize QoS toggle button GP21
+    // Initialize Text file transfer button GP21
     gpio_init(QOSBUTTON_PIN);
     gpio_set_dir(QOSBUTTON_PIN, GPIO_IN);
     gpio_pull_up(QOSBUTTON_PIN);
 
-    // Initialize File Transfer button GP22
+    // Initialize Image file transfer button GP22
     gpio_init(FILE_TRANSFER_BUTTON_PIN);
     gpio_set_dir(FILE_TRANSFER_BUTTON_PIN, GPIO_IN);
     gpio_pull_up(FILE_TRANSFER_BUTTON_PIN);
@@ -248,15 +267,12 @@ int main() {
     printf("\n>>> Registering topics dynamically...\n");
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "pico/cmd");
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "pico/status");
-    mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/meta");
     mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/data");
-    mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/control");  // For Go-Back-N flow control
+    // Note: file/control is subscribed to, not registered (RX publishes it)
     printf("Topics queued for registration:\n");
     printf("  - pico/cmd\n");
     printf("  - pico/status\n");
-    printf("  - file/meta\n");
     printf("  - file/data\n");
-    printf("  - file/control (for Go-Back-N)\n");
 
     uint32_t last_ping = to_ms_since_boot(get_absolute_time());
     // Register topics before main loop to prevent multiple registrations
@@ -284,7 +300,7 @@ int main() {
 
     // Track button states
     bool last_button_state = gpio_get(MESSAGEBUTTON_PIN);
-    bool last_qos_button = gpio_get(QOSBUTTON_PIN);
+    bool last_txt_file_button = gpio_get(QOSBUTTON_PIN);
     bool last_file_button = gpio_get(FILE_TRANSFER_BUTTON_PIN);
     bool last_drop_button = gpio_get(DROP_ACK_BUTTON_PIN);
 
@@ -302,8 +318,8 @@ int main() {
     printf("\n===========================================\n");
     printf("  SENDER MODE: Ready to send messages\n");
     printf("  - GP20: Send test message (pico/status)\n");
-    printf("  - GP21: Toggle QoS (current: %u)\n", qos_level);
-    printf("  - GP22: Send file transfer\n");
+    printf("  - GP21: Send text file (test_1.txt)\n");
+    printf("  - GP22: Send image file (test.jpg)\n");
     printf("  - GP19: Toggle ACK dropping (testing)\n");
     printf("\n");
     printf("  USAGE: To publish to custom topics:\n");
@@ -319,7 +335,8 @@ int main() {
         // Handle all button inputs
         handle_message_button(&last_button_state, pcb, &gateway_addr, qos_level, payload,
                               PAYLOAD_SIZE, mqtt_ctx);
-        handle_qos_button(&last_qos_button, &qos_level);
+        handle_txt_file_transfer_button(&last_txt_file_button, pcb, &gateway_addr, &fs_initialized,
+                                        &sd_was_initialized, mqtt_ctx);
         handle_file_transfer_button(&last_file_button, pcb, &gateway_addr, &fs_initialized,
                                     &sd_was_initialized, mqtt_ctx);
         handle_drop_ack_button(&last_drop_button, mqtt_ctx);

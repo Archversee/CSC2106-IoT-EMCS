@@ -27,7 +27,13 @@
 #define GATEWAY_IP2 86
 #define GATEWAY_IP3 90
 #define UDP_PORT 10000
+
+// MQTT-SN Client ID (conditional based on build type)
+#ifdef PICO_TX_BUILD
 #define MQTT_SN_CLIENT_ID "pico_w_tx"
+#else
+#define MQTT_SN_CLIENT_ID "pico_w_rx"
+#endif
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
@@ -57,10 +63,9 @@
 #define FILE_TRANSFER_BUTTON_PIN 22
 
 // MQTT-SN Topic IDs
-#define TOPIC_ID_PICO_CMD 1     // pico/cmd - command topic
-#define TOPIC_ID_PICO_STATUS 2  // pico/status - status topic
-#define TOPIC_ID_FILE_META 3    // file/meta - file metadata
-#define TOPIC_ID_FILE_DATA 4    // file/data - file chunks
+#define TOPIC_ID_PICO_CMD 1     // pico/cmd - control commands
+#define TOPIC_ID_PICO_STATUS 2  // pico/status - status updates
+#define TOPIC_ID_FILE_DATA 4    // file/data - file chunks (metadata + data)
 
 #define PAYLOAD_SIZE 247
 

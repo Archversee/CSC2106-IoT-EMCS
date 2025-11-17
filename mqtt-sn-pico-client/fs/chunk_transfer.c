@@ -252,7 +252,7 @@ bool chunk_transfer_write_payload(transfer_session_t* session, const struct Payl
 
     /* Calculate actual chunk size (last chunk may be smaller) */
     uint32_t chunk_size = PAYLOAD_DATA_SIZE;
-    if (payload->sequence == session->metadata.chunk_count - 1) {
+    if (payload->sequence == session->metadata.chunk_count) {
         /* Last chunk - calculate remaining bytes */
         uint32_t remaining = session->metadata.total_size % PAYLOAD_DATA_SIZE;
         if (remaining > 0) {
