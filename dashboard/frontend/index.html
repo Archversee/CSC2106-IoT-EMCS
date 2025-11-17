@@ -99,10 +99,6 @@
     }
     .btn-primary:hover{transform:translateY(-1px); background:var(--accent-600)}
 
-    /* ===== Chart ===== */
-    .chart-wrap{width:100%; height:300px}
-    canvas{display:block; width:100%; height:100%}
-
     /* ===== Recent Messages ===== */
     .recent-item{
       padding:12px 14px; border:1px solid var(--border); border-radius:12px;
@@ -148,15 +144,8 @@
       </section>
     </aside>
 
-    <!-- Right: Chart + Recent -->
+    <!-- Right: Recent Messages only (graph removed) -->
     <main class="main-content" style="display:flex; flex-direction:column; gap:22px;">
-      <section class="card">
-        <h2>Live Telemetry</h2>
-        <div class="chart-wrap">
-          <canvas id="telemetry-chart"></canvas>
-        </div>
-      </section>
-
       <section class="card">
         <h2>Recent Messages</h2>
         <div id="recent-messages"></div>
@@ -164,12 +153,8 @@
     </main>
   </div>
 
-  
-
   <!-- Socket.io client -->
   <script src="/socket.io/socket.io.js"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- App client -->
   <script src="client.js"></script>
 </body>
