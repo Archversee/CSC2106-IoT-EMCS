@@ -14,31 +14,8 @@
   // Clear any leftover value the HTML might have injected
   if (payloadInput) payloadInput.value = "";
 
-  // Chart (unchanged)
-  const ctx = document.getElementById('telemetry-chart').getContext('2d');
-  const chartData = {
-    labels: [],
-    datasets: [{
-      label: 'value',
-      data: [],
-      tension: 0.3,
-      pointRadius: 5,
-      backgroundColor: '#4da6ff',
-      borderColor: '#4da6ff'
-    }]
-  };
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
-      scales: { x: { type: 'category' }, y: { beginAtZero: true } },
-      plugins: { legend: { display: false } }
-    }
-  });
-
   // We still show devices, but command sending no longer depends on device selection
   let selectedDevice = null;
-  const MAX_POINTS = 40;
 
   function showToast(text, type = 'info') {
     const t = document.createElement('div');
@@ -82,20 +59,6 @@
       li.appendChild(sub);
       devicesUl.appendChild(li);
     });
-
-    // No auto-select; we only highlight when the user clicks
-  }
-
-  function onTelemetry({ deviceId, ts, value }) {
-    if (selectedDevice && deviceId !== selectedDevice) return;
-    const label = new Date(ts).toLocaleTimeString();
-    chartData.labels.push(label);
-    chartData.datasets[0].data.push(value);
-    if (chartData.labels.length > MAX_POINTS) {
-      chartData.labels.shift();
-      chartData.datasets[0].data.shift();
-    }
-    chart.update();
   }
 
   // --- Socket wiring ---
@@ -124,14 +87,8 @@
     addRecentMessage(msg);
   });
 
-  socket.on('telemetry', (d) => onTelemetry(d));
-
-  socket.on('publish-status', (info) => {
-    console.log('[SOCKET] publish-status', info);
-    sendBtn.disabled = false;
-    if (info.success) showToast(`Publish acknowledged: ${info.topic}`, 'success');
-    else showToast(`Publish failed: ${info.error}`, 'error');
-  });
+  // NOTE: telemetry events are still emitted by backend; we just ignore them now
+  socket.on('telemetry', () => { /* no-op (graph removed) */ });
 
   // --- UI actions ---
   if (refreshBtn) {
@@ -147,7 +104,7 @@
   sendBtn.addEventListener('click', () => {
     const payload = (payloadInput.value || '').trim();
     const topic   = 'pico/cmd';
-    const qos     = 0; // checkbox removed; using QoS0 for commands
+    const qos     = 0; // using QoS0 for commands
 
     if (!payload) {
       showToast('Enter a command (e.g., "led on")', 'error');
@@ -165,5 +122,4 @@
     console.log('[SOCKET] send-cmd', { topic, payload, qos });
     socket.emit('send-cmd', { topic, payload, qos });
   });
-  
 })();
