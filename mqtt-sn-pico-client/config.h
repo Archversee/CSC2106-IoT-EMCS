@@ -18,14 +18,14 @@
 #define UART_BAUD_RATE 115200 // Standard baud rate for Pico W serial communication
 
 // Wi-Fi Credentials
-#define WIFI_SSID "Bruce"
-#define WIFI_PASS "cocomax100%"
+#define WIFI_SSID "hoshiyomi"
+#define WIFI_PASS "hoshi171"
 
 // MQTT-SN Gateway
-#define GATEWAY_IP0 192
-#define GATEWAY_IP1 168
-#define GATEWAY_IP2 50
-#define GATEWAY_IP3 193
+#define GATEWAY_IP0 10
+#define GATEWAY_IP1 200
+#define GATEWAY_IP2 133
+#define GATEWAY_IP3 90
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)
@@ -39,7 +39,13 @@
 #define KEEPALIVE_INTERVAL_SEC 60
 #define PING_INTERVAL_MS 30000
 #define PINGRESP_TIMEOUT_MS (PING_INTERVAL_MS * 3)
-#define MAX_PENDING_QOS_MSGS 32
+
+// QoS Message Tracking
+// CRITICAL: Must be >= WINDOW_SIZE_CHUNKS (138) for Go-Back-N file transfer
+// Window size = 32KB / 237 bytes = 138 chunks
+// Increased to 160 to provide headroom for concurrent operations
+#define MAX_PENDING_QOS_MSGS 160
+
 #define QOS_RETRY_INTERVAL_US 2000000
 #define QOS_MAX_RETRIES 3
 

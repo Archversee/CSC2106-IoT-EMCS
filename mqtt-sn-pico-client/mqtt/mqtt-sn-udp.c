@@ -608,7 +608,10 @@ bool init_sliding_window(sliding_window_t *window, uint32_t total_chunks, const 
     window->next_seq = 1;
     window->window_size = WINDOW_SIZE_CHUNKS;
     window->total_chunks = total_chunks;
+    window->current_window_end = 0; // Will be calculated on first transmission
     window->retries = 0;
+    window->stuck_nack_count = 0;
+    window->last_nack_chunk = 0;
     window->active = true;
     strncpy(window->session_id, session_id, sizeof(window->session_id) - 1);
     window->session_id[sizeof(window->session_id) - 1] = '\0';
@@ -1018,9 +1021,18 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
     printf("\nStarting Go-Back-N transmission...\n");
 
     while (ctx->tx_window.base <= metadata.chunk_count) {
-        uint32_t window_end = ctx->tx_window.base + ctx->tx_window.window_size;
-        if (window_end > metadata.chunk_count + 1) {
-            window_end = metadata.chunk_count + 1;
+        // Calculate window end - respect original boundary if retransmitting
+        uint32_t window_end;
+        if (ctx->tx_window.current_window_end == 0) {
+            // First transmission of this window - calculate normal end
+            window_end = ctx->tx_window.base + ctx->tx_window.window_size;
+            if (window_end > metadata.chunk_count + 1) {
+                window_end = metadata.chunk_count + 1;
+            }
+            ctx->tx_window.current_window_end = window_end;
+        } else {
+            // Retransmission - use saved window end
+            window_end = ctx->tx_window.current_window_end;
         }
 
         printf("\n--- Window [%u-%u] ---\n", ctx->tx_window.base, window_end - 1);
@@ -1103,9 +1115,13 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
                    window_start_base, window_end - 1);
         }
 
-        // If NACK was received, immediately restart transmission from new base
+        // If NACK was received, wait briefly before retransmitting
+        // This allows receiver to process its packet backlog and prevents
+        // retransmitted packets from being lost due to buffer overflow
         if (nack_received) {
-            continue; // Skip waiting, go back to start of while loop with new base
+            sleep_ms(50);      // 50ms pause to let receiver catch up
+            cyw43_arch_poll(); // Process any pending packets
+            continue;          // Go back to start of while loop with new base
         }
 
         // Wait for control message from receiver (REQUEST_NEXT or COMPLETE)
@@ -1459,8 +1475,11 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     chunks_since_check = 0;
 
     // Calculate current window boundary
-    uint32_t current_window_end =
-        ((ctx->last_acked_seq / WINDOW_SIZE_CHUNKS) + 1) * WINDOW_SIZE_CHUNKS;
+    // Window boundaries are fixed: [1-138], [139-276], [277-414], etc.
+    // Find which window we're currently in based on last received chunk
+    uint32_t window_index = (ctx->last_acked_seq - 1) / WINDOW_SIZE_CHUNKS; // 0-based window index
+    uint32_t window_start = window_index * WINDOW_SIZE_CHUNKS + 1;
+    uint32_t current_window_end = (window_index + 1) * WINDOW_SIZE_CHUNKS;
     if (current_window_end > total) {
         current_window_end = total;
     }
@@ -1468,10 +1487,6 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     // Check if we've completed a window or the entire transfer
     bool window_complete = false;
     bool all_chunks_in_window = true;
-
-    uint32_t window_start = (ctx->last_acked_seq / WINDOW_SIZE_CHUNKS) * WINDOW_SIZE_CHUNKS + 1;
-    if (window_start == 0)
-        window_start = 1; // Skip metadata chunk (0)
 
     // Check if all chunks in current window have been received
     // Must check ENTIRE window, not just up to last_acked_seq
@@ -1525,14 +1540,14 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
         }
 
         // Send NACK if:
-        // - We've received at least 8 chunks after the gap (reduced from 20), OR
+        // - We've received at least 3 chunks after the gap (faster response), OR
         // - We've received chunks at/near the end of the window (indicating sender finished)
         if (first_missing > 0) {
             uint32_t chunks_past_gap =
                 (last_received > first_missing) ? (last_received - first_missing) : 0;
-            bool near_window_end = (last_received >= current_window_end - 10);
+            bool near_window_end = (last_received >= current_window_end - 5);
 
-            if (chunks_past_gap >= 8 || near_window_end) {
+            if (chunks_past_gap >= 3 || near_window_end) {
                 should_send_control = true;
             }
         }
@@ -1576,6 +1591,10 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
 
                 send_control_message(pcb, addr, port, &ctrl_msg, ctx);
 
+                // Clean up the completed session to prepare for next transfer
+                ctx->file_session = NULL;
+                ctx->rx_session_id[0] = '\0';
+
             } else {
                 printf("ERROR: Failed to finalize transfer\n");
             }
@@ -1601,7 +1620,7 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
             send_control_message(pcb, addr, port, &ctrl_msg, ctx);
         }
     } else if (!all_chunks_in_window) {
-        // Missing chunks detected - send NACK
+        // Missing chunks detected - send NACK (with rate limiting)
         printf("  [RECEIVER] Window incomplete - waiting for missing chunks\n");
 
         // Find first missing chunk
@@ -1620,14 +1639,33 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
         }
 
         if (first_missing > 0) {
-            control_message_t ctrl_msg = {0};
-            ctrl_msg.type = CTRL_NACK;
-            ctrl_msg.seq_num = first_missing - 1; // Last successfully received before gap
-            ctrl_msg.window_start = window_start;
-            ctrl_msg.window_end = current_window_end;
-            strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+            // Rate limiting: Only send NACK if we haven't sent one for this chunk recently
+            static uint32_t last_nack_chunk = 0;
+            static absolute_time_t last_nack_time = {0};
+            absolute_time_t now = get_absolute_time();
 
-            send_control_message(pcb, addr, port, &ctrl_msg, ctx);
+            bool should_send_nack = false;
+            if (first_missing != last_nack_chunk) {
+                // Different chunk - send NACK
+                should_send_nack = true;
+            } else if (absolute_time_diff_us(last_nack_time, now) > 500000) {
+                // Same chunk but 500ms passed - send another NACK
+                should_send_nack = true;
+            }
+
+            if (should_send_nack) {
+                control_message_t ctrl_msg = {0};
+                ctrl_msg.type = CTRL_NACK;
+                ctrl_msg.seq_num = first_missing - 1; // Last successfully received before gap
+                ctrl_msg.window_start = window_start;
+                ctrl_msg.window_end = current_window_end;
+                strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+
+                send_control_message(pcb, addr, port, &ctrl_msg, ctx);
+
+                last_nack_chunk = first_missing;
+                last_nack_time = now;
+            }
         }
     }
 }
@@ -1684,6 +1722,9 @@ void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size
     switch (ctrl_msg.type) {
     case CTRL_ACK:
         printf("  [CONTROL] Received ACK up to chunk %u\n", ctrl_msg.seq_num);
+        // Reset stuck NACK counter on successful ACK
+        ctx->tx_window.stuck_nack_count = 0;
+        ctx->tx_window.last_nack_chunk = 0;
         // Mark chunks as ACKed and slide window
         for (uint32_t seq = ctx->tx_window.base; seq <= ctrl_msg.seq_num; seq++) {
             process_ack(&ctx->tx_window, seq);
@@ -1692,16 +1733,40 @@ void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size
 
     case CTRL_NACK:
         printf("  [CONTROL] Received NACK - retransmit from chunk %u\n", ctrl_msg.seq_num + 1);
+
+        // Detect stuck NACK loop (same chunk NACKed repeatedly)
+        if (ctrl_msg.seq_num == ctx->tx_window.last_nack_chunk) {
+            ctx->tx_window.stuck_nack_count++;
+            if (ctx->tx_window.stuck_nack_count <= 15) {
+                printf("  WARNING: Stuck NACK detected (count=%u) for chunk %u\n",
+                       ctx->tx_window.stuck_nack_count, ctrl_msg.seq_num + 1);
+            }
+
+            // If we get the same NACK 20+ times, log error but keep trying
+            // Don't force advance - that corrupts the file
+            if (ctx->tx_window.stuck_nack_count == 20) {
+                printf("  ERROR: Persistent NACK loop for chunk %u - check network/receiver\n",
+                       ctrl_msg.seq_num + 1);
+            }
+        } else {
+            // Different chunk, reset counter
+            ctx->tx_window.stuck_nack_count = 1;
+            ctx->tx_window.last_nack_chunk = ctrl_msg.seq_num;
+        }
+
         // Reset window to retransmit from seq_num + 1
         // Mark all chunks up to seq_num as ACKed
         for (uint32_t seq = ctx->tx_window.base; seq <= ctrl_msg.seq_num; seq++) {
             process_ack(&ctx->tx_window, seq);
         }
         break;
-
     case CTRL_REQUEST_NEXT:
         printf("  [CONTROL] Received REQUEST_NEXT for window [%u-%u]\n", ctrl_msg.window_start,
                ctrl_msg.window_end);
+        // Reset stuck NACK counter on successful window advance
+        ctx->tx_window.stuck_nack_count = 0;
+        ctx->tx_window.last_nack_chunk = 0;
+        ctx->tx_window.current_window_end = 0; // Reset for next window calculation
         // Mark all chunks in current window as ACKed and slide to next window
         for (uint32_t seq = ctx->tx_window.base; seq < ctrl_msg.window_start; seq++) {
             process_ack(&ctx->tx_window, seq);

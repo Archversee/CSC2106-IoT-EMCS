@@ -41,7 +41,7 @@ if(NOT DEFINED PICO_SDK_PATH)
     endif()
 endif()
 
-set(PICO_NO_PICOTOOL 1)
+# set(PICO_NO_PICOTOOL 1)
 
 
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
