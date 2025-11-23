@@ -188,3 +188,34 @@ pico_enable_stdio_uart(mqtt-sn-pico-client-tx 0)
 # pico_add_extra_outputs(mqtt-sn-pico-client)
 pico_add_extra_outputs(mqtt-sn-pico-client-rx)
 pico_add_extra_outputs(mqtt-sn-pico-client-tx)
+
+
+# MQTT-SN Test Executable (commented out)
+
+# add_executable(mqtt_sn_test
+#     mqtt/tests/mqtt_sn_test.c
+#     mqtt/mqtt-sn-udp.c
+#     hw_config.c
+# )
+
+# pico_set_program_name(mqtt_sn_test "mqtt_sn_test")
+# pico_set_program_version(mqtt_sn_test "0.1")
+
+# target_link_libraries(mqtt_sn_test
+#     pico_stdlib
+#     hardware_spi
+#     hardware_gpio
+#     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+#     microsd_driver
+#     mqtt_client
+#     fs_lib
+#     pico_cyw43_arch_lwip_poll
+#     hardware_timer
+# )
+
+# # Enable USB output for test
+# pico_enable_stdio_usb(mqtt_sn_test 1)
+# pico_enable_stdio_uart(mqtt_sn_test 0)
+
+# # Create map/bin/hex/uf2 files
+# pico_add_extra_outputs(mqtt_sn_test)
