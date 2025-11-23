@@ -34,6 +34,13 @@
 #define WINDOW_SIZE_CHUNKS (WINDOW_SIZE_BYTES / CHUNK_SIZE) // ~138 chunks per window
 #define MAX_RETRIES 3                                       // Maximum retransmission attempts
 
+/*! Test Iteration Configuration (based on file size) */
+#define SMALL_FILE_THRESHOLD (100 * 1024)  // 100KB - small files
+#define MEDIUM_FILE_THRESHOLD (500 * 1024) // 500KB - medium files
+#define ITERATIONS_SMALL 100               // 100 iterations for small files
+#define ITERATIONS_MEDIUM 50               // 50 iterations for medium files
+#define ITERATIONS_LARGE 20                // 20 iterations for large files
+
 /*! MQTT Topic Simulation */
 typedef enum {
     TOPIC_FILE_DATA,   // For transmitting metadata and data chunks
@@ -67,6 +74,24 @@ typedef struct {
     uint32_t retries;      // Retry counter
     absolute_time_t last_send_time;
 } sliding_window_t;
+
+/*!
+ * @brief Determine number of test iterations based on file size
+ * @param file_size File size in bytes
+ * @return uint32_t Number of iterations to run
+ */
+static uint32_t get_test_iterations(uint32_t file_size) {
+    if (file_size < SMALL_FILE_THRESHOLD) {
+        printf("  Small file detected (< 100KB): %u iterations\n", ITERATIONS_SMALL);
+        return ITERATIONS_SMALL;
+    } else if (file_size < MEDIUM_FILE_THRESHOLD) {
+        printf("  Medium file detected (100KB-500KB): %u iterations\n", ITERATIONS_MEDIUM);
+        return ITERATIONS_MEDIUM;
+    } else {
+        printf("  Large file detected (> 500KB): %u iterations\n", ITERATIONS_LARGE);
+        return ITERATIONS_LARGE;
+    }
+}
 
 /*!
  * @brief Get file size from filesystem using microsd_driver
@@ -740,6 +765,10 @@ static bool run_streaming_test(void) {
  */
 int main(void) {
     int test_count = 1;
+    uint32_t total_tests = 0;
+    uint32_t passed_tests = 0;
+    uint32_t failed_tests = 0;
+    uint64_t total_time_ms = 0;
 
     stdio_init_all();
 
@@ -752,8 +781,7 @@ int main(void) {
     printf("║  File: %-47s ║\n", SOURCE_FILENAME);
     printf("║  Testing: Deconstruct → Stream → Reconstruct         ║\n");
     printf("╚═══════════════════════════════════════════════════════╝\n");
-    printf("\nRunning streaming test every 30 seconds...\n");
-    printf("Initializing...\n");
+    printf("\nInitializing...\n");
 
     // Initial delay to allow USB serial to enumerate
     for (int i = 0; i < 5; i++) {
@@ -761,26 +789,41 @@ int main(void) {
         sleep_ms(1000);
     }
 
-    printf("\nStarting test loop...\n");
+    // Initialize microSD card driver
+    printf("\nInitializing microSD card driver and FatFS filesystem...\n");
+    if (!microsd_driver_init()) {
+        printf("✗ ERROR: Failed to initialize microSD driver\n");
+        printf("Please check the microSD card connection and try again.\n");
+        return -1;
+    }
+    printf("✓ MicroSD driver and FatFS filesystem initialized successfully\n");
 
-    while (true) {
+    // Check if source file exists and determine iteration count
+    printf("\nChecking for source file: %s\n", SOURCE_FILENAME);
+    uint32_t file_size = get_file_size(SOURCE_FILENAME);
+    if (file_size == 0) {
+        printf("\n✗ ERROR: Source file '%s' not found!\n", SOURCE_FILENAME);
+        printf("Please ensure the file exists on the SD card.\n");
+        return -1;
+    }
+
+    printf("✓ Found source file: %s (%u bytes)\n", SOURCE_FILENAME, file_size);
+
+    // Determine number of iterations based on file size
+    uint32_t max_iterations = get_test_iterations(file_size);
+
+    printf("\n");
+    printf("╔═══════════════════════════════════════════════════════╗\n");
+    printf("║  Starting %3u test iterations                         ║\n", max_iterations);
+    printf("╚═══════════════════════════════════════════════════════╝\n");
+
+    // Run tests for specified iterations
+    while (test_count <= max_iterations) {
         printf("\n\n");
         printf("╔═══════════════════════════════════════════════════════╗\n");
-        printf("║                  Test Run #%-3d                        ║\n", test_count);
+        printf("║              Test Run #%-3d / %-3d                      ║\n", test_count,
+               max_iterations);
         printf("╚═══════════════════════════════════════════════════════╝\n");
-
-        // Initialize FatFS filesystem using microsd_driver
-        printf("\nInitializing microSD card driver and FatFS filesystem...\n");
-
-        if (!microsd_driver_init()) {
-            printf("✗ ERROR: Failed to initialize microSD driver\n");
-            printf("Please check the microSD card connection and try again.\n");
-            printf("\n--- Waiting 30 seconds before retry ---\n");
-            sleep_ms(30000);
-            test_count++;
-            continue;
-        }
-        printf("✓ MicroSD driver and FatFS filesystem initialized successfully\n");
 
         uint32_t start_time = to_ms_since_boot(get_absolute_time());
 
@@ -790,40 +833,67 @@ int main(void) {
         uint32_t end_time = to_ms_since_boot(get_absolute_time());
         uint32_t elapsed_ms = end_time - start_time;
 
-        // Final summary
+        total_time_ms += elapsed_ms;
+        total_tests++;
+
+        if (test_passed) {
+            passed_tests++;
+        } else {
+            failed_tests++;
+        }
+
+        // Final summary for this iteration
         printf("\n");
         printf("╔═══════════════════════════════════════════════════════╗\n");
         printf("║              Final Summary - Run #%-3d                 ║\n", test_count);
         printf("╚═══════════════════════════════════════════════════════╝\n");
 
         if (test_passed) {
-            printf("\n  🎯 ALL TESTS PASSED!\n");
+            printf("\n  🎯 TEST PASSED!\n");
             printf("\n  The Go-Back-N streaming method successfully:\n");
             printf("    ✓ Step 1: Initialized streaming read\n");
             printf("    ✓ Step 2: Streamed chunks with sliding window flow control\n");
             printf("    ✓ Step 3: Reconstructed file with integrity verification\n");
-            printf("\n  Key Features:\n");
-            printf("    • Protocol: Go-Back-N with %u-chunk sliding window\n", WINDOW_SIZE_CHUNKS);
-            printf("    • Window size: %u bytes (%u KB)\n", WINDOW_SIZE_BYTES,
-                   WINDOW_SIZE_BYTES / 1024);
-            printf("    • Memory usage: ~33 KB (32KB read buffer + chunk buffer)\n");
-            printf("    • MQTT Topics: file/data (tx), file/control (rx)\n");
-            printf("    • Flow control: ACK/NACK/REQUEST_NEXT messages\n");
-            printf("    • Packet loss recovery with retransmission\n");
-            printf("    • No file size limitations\n");
-            printf("    • Ready for MQTT-SN integration!\n");
         } else {
             printf("\n  ⚠️  TEST FAILED!\n");
             printf("  Please check the error messages above.\n");
         }
 
-        printf("\n  Execution time: %lu ms\n", (unsigned long)elapsed_ms);
+        printf("\n  Iteration time: %lu ms\n", (unsigned long)elapsed_ms);
+        printf("  Progress: %u/%u passed, %u failed\n", passed_tests, total_tests, failed_tests);
         printf("\n═══════════════════════════════════════════════════════\n");
 
-        printf("\n--- Waiting 30 seconds for next test run ---\n");
-        sleep_ms(30000);
         test_count++;
+
+        // Brief delay between iterations (except for last one)
+        if (test_count <= max_iterations) {
+            printf("\n--- Brief delay before next iteration (2s) ---\n");
+            sleep_ms(2000);
+        }
     }
 
-    return 0;
+    // Overall statistics
+    printf("\n\n");
+    printf("╔═══════════════════════════════════════════════════════╗\n");
+    printf("║            OVERALL TEST STATISTICS                    ║\n");
+    printf("╚═══════════════════════════════════════════════════════╝\n");
+    printf("\n  Total iterations: %u\n", total_tests);
+    printf("  Passed: %u (%.1f%%)\n", passed_tests, (float)passed_tests * 100.0 / total_tests);
+    printf("  Failed: %u (%.1f%%)\n", failed_tests, (float)failed_tests * 100.0 / total_tests);
+    printf("  Total time: %llu ms (%.2f seconds)\n", total_time_ms, (float)total_time_ms / 1000.0);
+    printf("  Average time per iteration: %llu ms\n", total_time_ms / total_tests);
+    printf("\n  File: %s (%u bytes)\n", SOURCE_FILENAME, file_size);
+    printf("  Window size: %u bytes (%u KB)\n", WINDOW_SIZE_BYTES, WINDOW_SIZE_BYTES / 1024);
+    printf("  Memory usage: ~33 KB (32KB read buffer + chunk buffer)\n");
+
+    if (failed_tests == 0) {
+        printf("\n  🎉 ALL TESTS PASSED! System is stable.\n");
+    } else {
+        printf("\n  ⚠️  Some tests failed. Review logs above.\n");
+    }
+
+    printf("\n═══════════════════════════════════════════════════════\n");
+    printf("\nTest suite complete!\n");
+
+    return (failed_tests == 0) ? 0 : -1;
 }

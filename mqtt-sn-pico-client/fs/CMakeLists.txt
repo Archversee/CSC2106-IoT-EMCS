@@ -21,22 +21,6 @@ target_link_libraries(fs_lib
     microsd_driver
 )
 
-# Serialize/Deserialize Test Executable
-add_executable(serialize_test
-    tests/serialize_test.c
-)
-
-target_link_libraries(serialize_test
-    pico_stdlib
-    fs_lib
-)
-
-# Enable USB output for test
-pico_enable_stdio_usb(serialize_test 1)
-pico_enable_stdio_uart(serialize_test 0)
-
-# Create map/bin/hex/uf2 files
-pico_add_extra_outputs(serialize_test)
 
 add_executable(streaming_test
     tests/streaming_test.c

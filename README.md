@@ -10,6 +10,7 @@ This project implements a comprehensive MQTT-SN client on Raspberry Pi Pico W wi
 - **Wi-Fi Connectivity**: CYW43 wireless interface with automatic reconnection
 - **GPIO Controls**: Buttons for message publishing, QoS selection, and file transfer
 - **MQTT-SN Gateway**: Eclipse Paho gateway for MQTT-SN ↔ MQTT translation
+- **Web Dashboard**: Real-time monitoring and control interface with file transfer visualization
 
 ## Components
 
@@ -26,39 +27,394 @@ This project implements a comprehensive MQTT-SN client on Raspberry Pi Pico W wi
 - **Gateway Discovery**: SEARCHGW and GWINFO messages
 - **Configurable**: Gateway, client, and topic configuration files
 
-## Quick Start
+### Web Dashboard (`dashboard/`)
+- **Real-time Monitoring**: Live device status and telemetry visualization
+- **File Transfer Tracking**: Progress bars, chunk counters, checksum validation
+- **Command Interface**: Send MQTT messages to devices with QoS support
+- **Message Feed**: View recent MQTT messages with timestamps
+- **Chart Visualization**: Live telemetry charts using Chart.js
 
-### 1. Setup Environment
+## Complete Project Setup
+
+This guide walks you through setting up all components: Pico W firmware, MQTT-SN Gateway, Mosquitto broker, and the web dashboard.
+
+### Prerequisites
+
+Before starting, ensure you have:
+
+#### For Pico W Development
+- **Pico SDK** (v2.2.0+) installed with `PICO_SDK_PATH` environment variable set
+- **CMake** 3.13 or higher
+- **ARM GCC Toolchain** (`arm-none-eabi-gcc`)
+- **Make** or Ninja build system
+- **USB cable** for flashing and serial communication
+
+#### For MQTT Infrastructure
+- **GCC compiler** (for building the gateway)
+- **Make**
+- **Mosquitto MQTT broker**
+  - macOS: `brew install mosquitto`
+  - Ubuntu/Debian: `sudo apt-get install mosquitto mosquitto-clients`
+- **Node.js** v16+ (for dashboard, tested with v24)
+- **npm** (comes with Node.js)
+
+#### Hardware
+- Raspberry Pi Pico W
+- Cytron Maker Pi Pico kit (or compatible SD card reader)
+- MicroSD card (exFAT formatted, Class 4+)
+- USB cable (micro-USB or USB-C depending on your board)
+
+---
+
+## Step-by-Step Setup
+
+### Step 1: Build the Pico W Firmware
+
 ```bash
-./build.sh setup
+# Navigate to the Pico client directory
+cd mqtt-sn-pico-client
+
+# Build the firmware
+./build.sh
+
+# Output files will be in mqtt-sn-pico-client/build/
+# - mqtt-sn-pico-client-rx.uf2
+# - mqtt-sn-pico-client-tx.uf2
 ```
 
-### 2. Build Pico W Firmware
+**Alternative manual build:**
 ```bash
-./build.sh build
+cd mqtt-sn-pico-client
+mkdir -p build
+cd build
+cmake ..
+make -j 8
 ```
 
-### 3. Build MQTT-SN Gateway (Laptop)
-```bash
-./build.sh gateway
+### Step 2: Configure Wi-Fi and Gateway Settings
+
+Edit `mqtt-sn-pico-client/config.h` with your network details:
+
+```c
+// Wi-Fi credentials
+#define WIFI_SSID "YourNetworkName"
+#define WIFI_PASS "YourPassword"
+
+// MQTT-SN Gateway IP address (your laptop's IP)
+#define GATEWAY_IP0 192
+#define GATEWAY_IP1 168
+#define GATEWAY_IP2 1
+#define GATEWAY_IP3 100  // Change to your laptop's IP
+#define UDP_PORT 10000
 ```
 
-### 4. Flash Pico W
+**To find your laptop's IP:**
+- macOS: `ifconfig | grep "inet " | grep -v 127.0.0.1`
+- Linux: `ip addr show | grep "inet " | grep -v 127.0.0.1`
+
+After editing, rebuild the firmware:
 ```bash
-./build.sh flash
+cd mqtt-sn-pico-client
+./build.sh
 ```
 
-## Build Commands
+### Step 3: Flash the Pico W
 
-| Command              | Description                                     |
-| -------------------- | ----------------------------------------------- |
-| `./build.sh build`   | Build Pico W firmware (auto-detects Ninja/Make) |
-| `./build.sh gateway` | Build MQTT-SN Gateway for laptop                |
-| `./build.sh all`     | Build both components                           |
-| `./build.sh clean`   | Clean all build artifacts                       |
-| `./build.sh flash`   | Instructions for flashing Pico W                |
-| `./build.sh monitor` | Serial monitoring instructions                  |
-| `./build.sh setup`   | Check development environment                   |
+1. **Prepare the Pico W for flashing:**
+   - Hold the **BOOTSEL** button on the Pico W
+   - While holding, connect USB cable to your computer
+   - Release BOOTSEL - the Pico W appears as a USB drive
+
+2. **Copy the firmware:**
+   ```bash
+   # For RX device (receiver)
+   cp mqtt-sn-pico-client/build/mqtt-sn-pico-client-rx.uf2 /Volumes/RPI-RP2/
+   
+   # For TX device (transmitter)
+   cp mqtt-sn-pico-client/build/mqtt-sn-pico-client-tx.uf2 /Volumes/RPI-RP2/
+   ```
+   
+   The Pico W will automatically reboot and run the firmware.
+
+3. **Verify flashing:**
+   ```bash
+   # Monitor serial output (macOS)
+   screen /dev/tty.usbmodem* 115200
+   
+   # Linux
+   screen /dev/ttyACM0 115200
+   
+   # Or use minicom
+   minicom -D /dev/ttyACM0 -b 115200
+   ```
+
+   You should see Wi-Fi connection attempts and status messages.
+
+### Step 4: Prepare MicroSD Card
+
+1. **Format the microSD card as exFAT**
+2. **Create a test file** (optional, for file transfer testing):
+   ```bash
+   echo "Hello from Pico W!" > /Volumes/YOUR_SD_CARD/test.txt
+   ```
+3. **Insert the card** into the Cytron Pico W kit's SD card slot
+
+### Step 5: Build and Configure MQTT-SN Gateway
+
+```bash
+# Build the gateway
+cd paho.mqtt-sn.embedded-c-master/MQTTSNGateway
+mkdir -p build.gateway
+cd build.gateway
+cmake ..
+make
+```
+
+**Configure predefined topics** in `paho.mqtt-sn.embedded-c-master/MQTTSNGateway/predefinedTopic.conf`:
+```
+# Format: TopicId,TopicName
+1,pico/cmd
+2,pico/status
+3,file/meta
+4,file/data
+```
+
+**Verify gateway configuration** in `gateway.conf`:
+```
+GatewayUDP.Port=10000
+BrokerName=localhost
+BrokerPortNo=1883
+```
+
+### Step 6: Start Mosquitto Broker
+
+Open a **new terminal window** and start Mosquitto:
+
+```bash
+# Start with verbose logging to see all messages
+mosquitto -v
+
+# Or run as background service (macOS)
+brew services start mosquitto
+
+# Linux systemd
+sudo systemctl start mosquitto
+```
+
+Verify it's running:
+```bash
+# Check if Mosquitto is listening on port 1883
+netstat -an | grep 1883
+
+# Or on macOS
+lsof -i :1883
+```
+
+### Step 7: Start MQTT-SN Gateway
+
+Open **another terminal window**:
+
+```bash
+cd paho.mqtt-sn.embedded-c-master/MQTTSNGateway
+./MQTT-SNGateway
+```
+
+You should see:
+```
+MQTT-SN Gateway starting...
+Gateway started on UDP port 10000
+Connected to MQTT broker at localhost:1883
+```
+
+### Step 8: Start the Dashboard
+
+The dashboard provides a web interface to monitor devices and file transfers.
+
+#### Install Dependencies
+
+```bash
+cd dashboard/backend
+npm install
+```
+
+#### Start the Backend Server
+
+```bash
+cd dashboard/backend
+npm start
+
+# Or directly:
+node server.js
+```
+
+You should see:
+```
+MQTT Dashboard Backend starting...
+Socket.IO server listening on http://localhost:3000
+Connected to MQTT broker at mqtt://localhost:1883
+Subscribed to: devices/+/telemetry/#
+Subscribed to: devices/+/status
+Subscribed to: devices/+/file-transfer/#
+```
+
+#### Access the Dashboard
+
+Open your web browser and navigate to:
+```
+http://localhost:3000
+```
+
+The dashboard will display:
+- Connected devices and their last-seen timestamps
+- Real-time telemetry data with charts
+- Recent MQTT messages
+- File transfer progress with chunk tracking
+- Command interface to send messages to devices
+
+---
+
+## Running the Complete System
+
+With everything set up, here's the startup sequence:
+
+### Terminal 1: Mosquitto Broker
+```bash
+mosquitto -v
+```
+
+### Terminal 2: MQTT-SN Gateway
+```bash
+cd paho.mqtt-sn.embedded-c-master/MQTTSNGateway
+./MQTT-SNGateway
+```
+
+### Terminal 3: Dashboard Backend
+```bash
+cd dashboard/backend
+node server.js
+```
+
+### Terminal 4: Monitor Pico W Serial Output
+```bash
+screen /dev/tty.usbmodem* 115200
+```
+
+### Browser: Dashboard UI
+```
+http://localhost:3000
+```
+
+### Terminal 5 (Optional): Monitor MQTT Traffic
+```bash
+# Subscribe to all topics
+mosquitto_sub -t "#" -v
+
+# Or specific topics
+mosquitto_sub -t "pico/#" -v
+mosquitto_sub -t "file/#" -v
+mosquitto_sub -t "devices/#" -v
+```
+
+---
+
+## Testing the System
+
+### Test 1: Basic Connectivity
+
+1. Power on the Pico W (should auto-connect to Wi-Fi and gateway)
+2. Watch the serial output for connection confirmation
+3. In the dashboard, you should see your device appear
+4. Check the gateway terminal for CONNECT messages
+
+### Test 2: Send a Test Message
+
+Press **GP20** button on the Pico W to send a 247-byte test message.
+
+Watch for the message in:
+- Serial output
+- Gateway logs
+- Dashboard message feed
+- Terminal 5 (if monitoring MQTT)
+
+### Test 3: File Transfer
+
+1. Ensure `test.txt` exists on the microSD card
+2. Press **GP19** button on the Pico W to start file transfer
+3. Watch the dashboard for:
+   - File transfer status (active)
+   - Progress bar updating
+   - Chunk counter incrementing
+   - Checksum validation
+   - Completion status
+
+### Test 4: Send Commands from Dashboard
+
+1. In the dashboard UI, fill in the command form:
+   - **Device ID**: `pico-w` (or your device's client ID)
+   - **Topic Suffix**: `cmd/led`
+   - **Payload**: `{"action":"toggle"}`
+   - **QoS**: Check the box for QoS 1
+2. Click **Send Command**
+3. Watch for confirmation in the dashboard and serial output
+
+### Test 5: QoS Levels
+
+1. Press **GP21** on Pico W to cycle through QoS 0 → 1 → 2
+2. Press **GP20** to send test message with current QoS
+3. Press **GP22** to toggle ACK dropping (simulates packet loss)
+4. Observe retransmission behavior in serial output
+
+---
+
+## Quick Reference Commands
+
+### Build Commands
+| Command                                                               | Description         |
+| --------------------------------------------------------------------- | ------------------- |
+| `cd mqtt-sn-pico-client && ./build.sh`                                | Build Pico firmware |
+| `cd paho.mqtt-sn.embedded-c-master/MQTTSNGateway && cmake .. && make` | Build gateway       |
+
+### Run Commands
+| Component       | Command                                                               |
+| --------------- | --------------------------------------------------------------------- |
+| Mosquitto       | `mosquitto -v`                                                        |
+| MQTT-SN Gateway | `cd paho.mqtt-sn.embedded-c-master/MQTTSNGateway && ./MQTT-SNGateway` |
+| Dashboard       | `cd dashboard/backend && node server.js`                              |
+| Serial Monitor  | `screen /dev/tty.usbmodem* 115200`                                    |
+
+### Test Commands
+```bash
+# Publish test message to device
+mosquitto_pub -t "pico/cmd" -m '{"action":"test"}'
+
+# Subscribe to all device messages
+mosquitto_sub -t "devices/#" -v
+
+# Test file transfer status
+mosquitto_pub -t "devices/pico-001/file-transfer/status" \
+  -m '{"status":"active","fileName":"test.txt"}'
+
+# Test file transfer progress
+mosquitto_pub -t "devices/pico-001/file-transfer/progress" \
+  -m '{"chunk":5,"total":10,"seq":5,"checksum":"abc123"}'
+```
+
+## Dashboard Topics
+
+The dashboard subscribes to these MQTT topics to monitor your devices:
+
+### Device Topics
+- `devices/+/telemetry/#` - All telemetry data (temperature, sensors, etc.)
+- `devices/+/status` - Device status updates (online, offline, etc.)
+
+### File Transfer Topics
+- `devices/+/file-transfer/progress` - Chunk-by-chunk progress updates
+- `devices/+/file-transfer/status` - Transfer status (active, completed, failed)
+- `devices/+/file-transfer/validation` - Checksum validation results
+
+### Command Topics
+Send commands to devices via the dashboard UI, which publishes to:
+- `devices/<deviceId>/<topic-suffix>` - Custom command topics
 
 ## Hardware Setup
 
@@ -189,30 +545,41 @@ mosquitto_sub -t "file/#" -v
 
 ```
 mqtt-sn-pico-client/
-├── mqtt-sn-pico-client.c      # Main application
-├── config.h                    # Wi-Fi and gateway configuration
-├── CMakeLists.txt             # Build configuration
-├── drivers/                    # MicroSD card driver
-│   ├── microsd_driver.c/h     # SD card SPI interface
-│   ├── microsd_spi.c/h        # Low-level SPI operations
-│   └── tests/                 # Driver test programs
-├── fs/                        # File system utilities
-│   ├── chunk_transfer.c/h     # Transfer session management
-│   ├── data_frame.c/h         # Serialization and CRC
-│   └── tests/                 # FS test programs
-├── mqtt/                      # MQTT-SN protocol
-│   └── mqtt-sn-udp.c/h        # UDP transport layer
-└── docs/                      # Documentation
-    ├── chunk_based_write_flow.md
-    ├── directory_expansion_implementation.md
-    └── microsd_read_write_sequence.md
+├── mqtt-sn-pico-client-rx.c   # Receiver firmware
+├── mqtt-sn-pico-client-tx.c   # Transmitter firmware
+├── mqtt-client.c/h            # Shared MQTT client library
+├── config.h                   # Wi-Fi and gateway configuration
+├── build.sh                   # Build script for firmware
+├── CMakeLists.txt            # Build configuration
+├── drivers/                   # MicroSD card driver
+│   ├── microsd_driver.c/h    # SD card SPI interface
+│   ├── microsd_chunk.c       # Chunk-based operations
+│   ├── microsd_file.c        # File operations
+│   └── tests/                # Driver test programs
+├── fs/                       # File system utilities
+│   ├── chunk_transfer.c/h    # Transfer session management
+│   ├── data_frame.c/h        # Serialization and CRC
+│   └── tests/                # FS test programs
+└── mqtt/                     # MQTT-SN protocol
+    └── mqtt-sn-udp.c/h       # UDP transport layer
 
 paho.mqtt-sn.embedded-c-master/
-└── MQTTSNGateway/             # Eclipse Paho MQTT-SN Gateway
-    ├── gateway.conf           # Gateway configuration
-    ├── predefinedTopic.conf   # Topic ID mappings
-    ├── clients.conf           # Client authentication
-    └── src/                   # Gateway source code
+└── MQTTSNGateway/            # Eclipse Paho MQTT-SN Gateway
+    ├── gateway.conf          # Gateway configuration
+    ├── predefinedTopic.conf  # Topic ID mappings
+    ├── clients.conf          # Client authentication
+    ├── MQTT-SNGateway        # Gateway executable (after build)
+    └── src/                  # Gateway source code
+
+dashboard/
+├── backend/                  # Node.js backend server
+│   ├── server.js            # Express + Socket.IO + MQTT client
+│   ├── qos.js               # QoS message handling
+│   └── package.json         # Dependencies
+└── frontend/                 # Web UI
+    ├── index.html           # Dashboard HTML
+    ├── client.js            # Browser-side logic
+    └── (served at http://localhost:3000)
 ```
 
 ## File Transfer Protocol
