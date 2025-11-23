@@ -1591,16 +1591,19 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
 
                 send_control_message(pcb, addr, port, &ctrl_msg, ctx);
 
-                // Clean up the completed session to prepare for next transfer
-                ctx->file_session = NULL;
-                ctx->rx_session_id[0] = '\0';
-
+                // Clean up session to prepare for next transfer
+                // chunk_transfer_finalize already freed bitmap and set active=false
+                // Just zero out the session structure to reset everything
+                memset(ctx->file_session, 0, sizeof(transfer_session_t));
             } else {
                 printf("ERROR: Failed to finalize transfer\n");
+                // Clean up even on failure to allow retry
+                memset(ctx->file_session, 0, sizeof(transfer_session_t));
             }
 
             ctx->transfer_in_progress = false;
             ctx->last_acked_seq = 0;
+            memset(ctx->rx_session_id, 0, sizeof(ctx->rx_session_id));
             printf("==============================\n\n");
         } else {
             // Request next window
