@@ -240,16 +240,48 @@ static bool test_ut_msgid(test_context_t *ctx) {
  * @brief UT-REG: Topic Registration
  */
 static bool test_ut_reg(test_context_t *ctx) {
-    const uint32_t iterations = 1;
+    const uint32_t iterations = 5;
     TEST_START("UT-REG", "Topic Registration", iterations);
 
-    g_test_stats.iteration_count++;
+    for (uint32_t i = 0; i < iterations; i++) {
+        g_test_stats.iteration_count++;
 
-    const char *test_topic = "test/topic";
-    uint16_t msg_id = get_next_msg_id();
+        char test_topic[32];
+        snprintf(test_topic, sizeof(test_topic), "test/topic_%lu", (unsigned long)i);
 
-    mqtt_sn_register_topic(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, test_topic, msg_id);
-    test_poll_network(TEST_LONG_DELAY_MS);
+        // STEP 1: Add to context
+        bool added = mqtt_sn_add_topic_for_registration(ctx->mqtt_ctx, test_topic);
+        TEST_ASSERT(added, "Failed to add topic for registration");
+
+        // STEP 2: Set last_attempt to NOW so ACK handler will accept REGACK
+        for (size_t idx = 0; idx < MAX_CUSTOM_TOPICS; idx++) {
+            if (ctx->mqtt_ctx->custom_topics[idx].in_use &&
+                strcmp(ctx->mqtt_ctx->custom_topics[idx].topic_name, test_topic) == 0) {
+                ctx->mqtt_ctx->custom_topics[idx].last_attempt = get_absolute_time();
+                break;
+            }
+        }
+
+        // STEP 3: Send REGISTER
+        uint16_t msg_id = get_next_msg_id();
+        mqtt_sn_register_topic(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, test_topic, msg_id);
+
+        // STEP 4: Wait for registration
+        absolute_time_t start = get_absolute_time();
+        uint16_t topic_id = 0;
+        while (absolute_time_diff_us(start, get_absolute_time()) < (TEST_TIMEOUT_MS * 1000)) {
+            topic_id = mqtt_sn_get_topic_id(ctx->mqtt_ctx, test_topic);
+            if (topic_id != 0)
+                break;
+            cyw43_arch_poll();
+            sleep_ms(10);
+        }
+
+        TEST_ASSERT(topic_id != 0, "Registered topic ID should not be 0");
+
+        printf("[UT-REG] Iteration %lu/%lu (Topic: %s, ID: %u)\n", (unsigned long)(i + 1),
+               (unsigned long)iterations, test_topic, topic_id);
+    }
 
     TEST_END("UT-REG");
     return !ctx->test_failed;
@@ -259,17 +291,49 @@ static bool test_ut_reg(test_context_t *ctx) {
  * @brief UT-SUB: Subscribe Operations
  */
 static bool test_ut_sub(test_context_t *ctx) {
-    const uint32_t iterations = 1;
+    const uint32_t iterations = 5;
     TEST_START("UT-SUB", "Subscribe Operations", iterations);
 
-    // Test 1: Subscribe by topic name
-    g_test_stats.iteration_count++;
-    const char *test_topic = "sensor/temperature";
-    uint16_t msg_id = get_next_msg_id();
+    for (uint32_t i = 0; i < iterations; i++) {
+        g_test_stats.iteration_count++;
 
-    mqtt_sn_subscribe_topic_name(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, test_topic,
-                                 msg_id, QOS_LEVEL_1);
-    test_poll_network(TEST_LONG_DELAY_MS);
+        char test_topic[32];
+        snprintf(test_topic, sizeof(test_topic), "test/subscribe_%lu", (unsigned long)i);
+
+        // STEP 1: Add to context
+        bool added = mqtt_sn_add_topic_for_subscription(ctx->mqtt_ctx, test_topic, QOS_LEVEL_1);
+        TEST_ASSERT(added, "Failed to add topic for subscription");
+
+        // STEP 2: Set last_attempt to NOW so SUBACK handler will accept it
+        for (size_t idx = 0; idx < MAX_CUSTOM_TOPICS; idx++) {
+            if (ctx->mqtt_ctx->custom_topics[idx].in_use &&
+                strcmp(ctx->mqtt_ctx->custom_topics[idx].topic_name, test_topic) == 0) {
+                ctx->mqtt_ctx->custom_topics[idx].last_attempt = get_absolute_time();
+                break;
+            }
+        }
+
+        // STEP 3: Send SUBSCRIBE
+        uint16_t msg_id = get_next_msg_id();
+        mqtt_sn_subscribe_topic_name(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, test_topic,
+                                     msg_id, QOS_LEVEL_1);
+
+        // STEP 4: Wait for subscription
+        absolute_time_t start = get_absolute_time();
+        uint16_t topic_id = 0;
+        while (absolute_time_diff_us(start, get_absolute_time()) < (TEST_TIMEOUT_MS * 1000)) {
+            topic_id = mqtt_sn_get_topic_id(ctx->mqtt_ctx, test_topic);
+            if (topic_id != 0)
+                break;
+            cyw43_arch_poll();
+            sleep_ms(10);
+        }
+
+        TEST_ASSERT(topic_id != 0, "Subscribed topic ID should not be 0");
+
+        printf("[UT-SUB] Iteration %lu/%lu (Topic: %s, ID: %u)\n", (unsigned long)(i + 1),
+               (unsigned long)iterations, test_topic, topic_id);
+    }
 
     TEST_END("UT-SUB");
     return !ctx->test_failed;
@@ -288,7 +352,7 @@ static bool test_ut_qos0(test_context_t *ctx) {
         uint8_t payload[] = "QoS0 Test";
         uint16_t msg_id = get_next_msg_id();
 
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_0, msg_id, false);
 
         test_poll_network(TEST_SHORT_DELAY_MS);
@@ -320,7 +384,7 @@ static bool test_ut_qos1(test_context_t *ctx) {
         uint8_t payload[] = "QoS1 Test";
         uint16_t msg_id = get_next_msg_id();
 
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_1, msg_id, false);
 
         uint32_t pending = count_pending_messages();
@@ -356,7 +420,7 @@ static bool test_ut_qos2(test_context_t *ctx) {
         uint8_t payload[] = "QoS2 Test";
         uint16_t msg_id = get_next_msg_id();
 
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_2, msg_id, false);
 
         uint32_t pending = count_pending_messages();
@@ -422,7 +486,7 @@ static bool test_ut_binary(test_context_t *ctx) {
 
         uint16_t msg_id = get_next_msg_id();
 
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_1, msg_id, false);
 
         // Wait for ACK with longer timeout for large payloads
@@ -455,7 +519,7 @@ static bool test_ut_retry(test_context_t *ctx) {
         uint8_t payload[] = "Retry Test";
         uint16_t msg_id = get_next_msg_id();
 
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_1, msg_id, false);
 
         test_poll_network(TEST_SHORT_DELAY_MS);
@@ -503,7 +567,7 @@ static bool test_ut_maxrt(test_context_t *ctx) {
     uint8_t payload[] = "Max Retry Test";
     uint16_t msg_id = get_next_msg_id();
 
-    mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+    mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                              sizeof(payload), QOS_LEVEL_1, msg_id, false);
 
     test_poll_network(TEST_SHORT_DELAY_MS);
@@ -543,7 +607,7 @@ static bool test_ut_burst(test_context_t *ctx) {
     // Send all messages
     for (uint32_t i = 0; i < iterations; i++) {
         msg_ids[i] = get_next_msg_id();
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_1, msg_ids[i], false);
         sleep_ms(5); // minimal spacing
     }
@@ -580,7 +644,7 @@ static bool test_ut_queue(test_context_t *ctx) {
 
     for (uint32_t i = 0; i < MAX_PENDING_QOS_MSGS + 2; i++) {
         uint16_t msg_id = get_next_msg_id();
-        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 2, payload,
+        mqtt_sn_publish_topic_id(ctx->pcb, &ctx->gateway_addr, ctx->gateway_port, 1, payload,
                                  sizeof(payload), QOS_LEVEL_1, msg_id, false);
         test_poll_network(50);
     }
@@ -720,8 +784,8 @@ int main(void) {
     printf("Test Breakdown:\n");
     printf("  UT-CONN (Connection):         1 execution\n");
     printf("  UT-MSGID (Message ID):        50 executions\n");
-    printf("  UT-REG (Registration):        1 execution\n");
-    printf("  UT-SUB (Subscribe):           1 executions\n");
+    printf("  UT-REG (Registration):        5 executions\n");
+    printf("  UT-SUB (Subscribe):           5 executions\n");
     printf("  UT-QOS0 (QoS 0 publish):      20 executions\n");
     printf("  UT-QOS1 (QoS 1 publish):      25 executions\n");
     printf("  UT-QOS2 (QoS 2 publish):      15 executions\n");
