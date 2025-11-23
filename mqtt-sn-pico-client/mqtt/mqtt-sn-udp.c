@@ -1315,6 +1315,22 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         return;
     }
 
+    // Check if this is a new session (different from current active session)
+    if (ctx->transfer_in_progress &&
+        strncmp(ctx->rx_session_id, metadata.session_id, sizeof(ctx->rx_session_id)) != 0) {
+        printf("⚠ WARNING: New session detected while previous session active\n");
+        printf("  Old session: %s\n", ctx->rx_session_id);
+        printf("  New session: %s\n", metadata.session_id);
+        printf("  Cleaning up old session and starting new one...\n");
+
+        // Clean up the old session
+        if (ctx->file_session) {
+            chunk_transfer_finalize(ctx->file_session);
+        }
+        ctx->transfer_in_progress = false;
+        memset(ctx->rx_session_id, 0, sizeof(ctx->rx_session_id));
+    }
+
     // Initialize transfer session
     if (!ctx->file_session) {
         printf("✗ ERROR: No session buffer allocated\n");
@@ -1476,8 +1492,10 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
 
     // Calculate current window boundary
     // Window boundaries are fixed: [1-138], [139-276], [277-414], etc.
-    // Find which window we're currently in based on last received chunk
-    uint32_t window_index = (ctx->last_acked_seq - 1) / WINDOW_SIZE_CHUNKS; // 0-based window index
+    // Use the CURRENT chunk sequence to determine which window we're in
+    // (not last_acked_seq which may be stuck at an early gap)
+    uint32_t current_seq = chunk.sequence > 0 ? chunk.sequence : ctx->last_acked_seq;
+    uint32_t window_index = (current_seq - 1) / WINDOW_SIZE_CHUNKS; // 0-based window index
     uint32_t window_start = window_index * WINDOW_SIZE_CHUNKS + 1;
     uint32_t current_window_end = (window_index + 1) * WINDOW_SIZE_CHUNKS;
     if (current_window_end > total) {

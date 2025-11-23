@@ -194,7 +194,8 @@ static void register_mqtt_topics(mqtt_sn_context_t *mqtt_ctx, struct udp_pcb *pc
 /*!
  * @brief Handle MQTT-SN ping and reconnection logic
  */
-static void handle_mqtt_ping(struct udp_pcb *pcb, ip_addr_t *gateway_addr, uint32_t now) {
+static void handle_mqtt_ping(struct udp_pcb *pcb, ip_addr_t *gateway_addr, uint32_t now,
+                             mqtt_sn_context_t *mqtt_ctx) {
     if (g_ping_ack_received) {
         // Previous ping acknowledged, send new PINGREQ periodically
         if (now - s_last_pingreq >= PING_INTERVAL_MS) {
