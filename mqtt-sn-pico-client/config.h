@@ -18,14 +18,14 @@
 #define UART_BAUD_RATE 115200 // Standard baud rate for Pico W serial communication
 
 // Wi-Fi Credentials
-#define WIFI_SSID "hoshiyomi"
-#define WIFI_PASS "hoshi171"
+#define WIFI_SSID "Denny"
+#define WIFI_PASS "rieo8jebs"
 
 // MQTT-SN Gateway
-#define GATEWAY_IP0 10
-#define GATEWAY_IP1 200
-#define GATEWAY_IP2 133
-#define GATEWAY_IP3 90
+#define GATEWAY_IP0 172
+#define GATEWAY_IP1 20
+#define GATEWAY_IP2 10
+#define GATEWAY_IP3 10
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)

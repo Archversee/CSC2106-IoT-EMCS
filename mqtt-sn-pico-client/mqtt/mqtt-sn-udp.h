@@ -131,7 +131,7 @@ typedef struct {
 #define QOS2_HANDSHAKE_DELAY_MS 150U /*!< Delay for QoS 2 handshake completion */
 #define INTER_CHUNK_DELAY_US 50000U  /*!< Inter-chunk delay (microseconds) */
 #define POLL_YIELD_DELAY_US                                                                        \
-    5000U /*!< Inter-packet delay (5ms = ~200 packets/sec, prevents network buffer overflow) */
+    5000U /*!< Inter-packet delay (10ms = ~200 packets/sec, prevents network buffer overflow) */
 #define PROGRESS_UPDATE_INTERVAL 10U  /*!< Report progress every N chunks */
 #define TOPIC_RETRY_INTERVAL_MS 5000U /*!< Retry topic registration/subscription every 5s */
 #define MAX_CUSTOM_TOPICS 10U         /*!< Maximum number of custom topics to track */
@@ -196,6 +196,12 @@ typedef struct {
     uint32_t last_acked_seq;                        /*!< Last acknowledged sequence number (RX) */
     char rx_session_id[32];                         /*!< Current receiver session ID */
     absolute_time_t last_window_check;              /*!< Last time we checked window completion */
+
+    /* RX-side window tracking (prevents control message spam) */
+    uint32_t rx_last_request_next_window; /*!< Last window we sent REQUEST_NEXT for */
+    uint32_t rx_highest_chunk_received;   /*!< Highest chunk seq received in current transfer */
+    uint32_t rx_last_nack_chunk;          /*!< Last chunk we sent NACK for */
+    absolute_time_t rx_last_nack_time;    /*!< Time of last NACK sent */
 
     /* UDP connection parameters (for sending control messages) */
     struct udp_pcb *pcb; /*!< UDP PCB pointer */
