@@ -56,7 +56,7 @@ static uint32_t s_last_pingreq = 0U;
 /*!
  * @brief Rebuild topic subscription list by name after reconnection
  */
-static void rebuild_topic_subscriptions(mqtt_sn_context_t* ctx, bool fs_initialized) {
+static void rebuild_topic_subscriptions(mqtt_sn_context_t *ctx, bool fs_initialized) {
     // Re-add topics by name (same as in main())
     mqtt_sn_add_topic_for_subscription(ctx, "pico/cmd", QOS_LEVEL_2);
     mqtt_sn_add_topic_for_subscription(ctx, "pico/status", QOS_LEVEL_1);
@@ -68,9 +68,9 @@ static void rebuild_topic_subscriptions(mqtt_sn_context_t* ctx, bool fs_initiali
 /*!
  * @brief Handle MQTT-SN ping and reconnection logic for RX client
  */
-static void handle_mqtt_ping_and_reconnect(struct udp_pcb* pcb, ip_addr_t* gateway_addr,
+static void handle_mqtt_ping_and_reconnect(struct udp_pcb *pcb, ip_addr_t *gateway_addr,
                                            uint32_t now, bool fs_initialized,
-                                           mqtt_sn_context_t* mqtt_ctx) {
+                                           mqtt_sn_context_t *mqtt_ctx) {
     if (g_ping_ack_received) {
         // Previous ping acknowledged, send new PINGREQ periodically
         if (now - s_last_pingreq >= PING_INTERVAL_MS) {
@@ -112,8 +112,8 @@ static void handle_mqtt_ping_and_reconnect(struct udp_pcb* pcb, ip_addr_t* gatew
 /*!
  * @brief Handle microSD card hot-plug detection for RX client
  */
-static void handle_microsd_hotplug_rx(uint32_t* last_check, uint32_t now, bool* fs_initialized,
-                                      bool* sd_was_initialized, mqtt_sn_context_t* mqtt_ctx) {
+static void handle_microsd_hotplug_rx(uint32_t *last_check, uint32_t now, bool *fs_initialized,
+                                      bool *sd_was_initialized, mqtt_sn_context_t *mqtt_ctx) {
     if (now - *last_check >= SD_CHECK_INTERVAL_MS) {
         *last_check = now;
 
@@ -164,12 +164,12 @@ int main() {
     printf("===========================================\n");
 
     // Initialize network stack (Wi-Fi, UDP, MQTT-SN connection)
-    mqtt_sn_context_t* mqtt_ctx;
-    struct udp_pcb* pcb;
+    mqtt_sn_context_t *mqtt_ctx;
+    struct udp_pcb *pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
-    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr,
+    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
                                  &fs_initialized) != 0) {
         printf("Network initialization failed\n");
         return -1;

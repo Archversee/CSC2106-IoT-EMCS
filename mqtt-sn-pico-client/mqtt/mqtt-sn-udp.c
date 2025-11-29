@@ -1,6 +1,7 @@
 // mqtt-sn-udp.c
 #include "mqtt-sn-udp.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -681,7 +682,7 @@ void send_control_message(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t g
         break;
     case CTRL_REQUEST_NEXT:
         printf("  [CONTROL] Sent REQUEST_NEXT window [%u-%u]\n", ctrl_msg->window_start,
-               ctrl_msg->window_end - 1);
+               ctrl_msg->window_end);
         break;
     case CTRL_COMPLETE:
         printf("  [CONTROL] Sent TRANSFER_COMPLETE\n");
@@ -1124,42 +1125,39 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
             continue;          // Go back to start of while loop with new base
         }
 
-        // Wait for control message from receiver (REQUEST_NEXT or COMPLETE)
+        // Wait for control message from receiver (REQUEST_NEXT, NACK, or COMPLETE)
         // The control message handler will update ctx->tx_window accordingly
+        // DO NOT retransmit on timeout - only retransmit when NACK is received
         printf("  Waiting for receiver response on file/control...\n");
 
-        absolute_time_t wait_for_control = get_absolute_time();
-        bool control_received = false;
         uint32_t saved_base = ctx->tx_window.base;
+        bool control_received = false;
 
-        while (absolute_time_diff_us(wait_for_control, get_absolute_time()) <
-               (QOS_RETRY_INTERVAL_US * 2)) {
+        // Keep polling until we receive a control message - no automatic retransmit
+        // The RX will send NACK if it needs retransmission, or REQUEST_NEXT when ready
+        while (!control_received) {
             cyw43_arch_poll(); // Process incoming control messages
 
-            // Check if window slid forward (ACK received)
+            // Check if window slid forward (control message received and processed)
             if (ctx->tx_window.base != saved_base) {
                 control_received = true;
                 printf("  ✓ Window slid to base=%u\n", ctx->tx_window.base);
                 break;
             }
 
+            // Small delay to prevent busy-waiting
             sleep_ms(10);
-        }
 
-        if (!control_received) {
-            printf("  WARNING: No control message received, retrying window...\n");
-            total_retransmissions += (window_end - ctx->tx_window.base);
-            ctx->tx_window.retries++;
-
-            if (ctx->tx_window.retries >= MAX_RETRIES_GBN) {
-                printf("ERROR: Max retries exceeded\n");
-                cleanup_sliding_window(&ctx->tx_window);
-                cleanup_streaming_read();
-                return;
+            // Periodic ping to keep connection alive during long waits
+            static absolute_time_t last_ping = {0};
+            if (absolute_time_diff_us(last_ping, get_absolute_time()) > 30000000) { // 30 seconds
+                mqtt_sn_pingreq(pcb, &ctx->gw_addr, ctx->gw_port);
+                last_ping = get_absolute_time();
             }
-        } else {
-            ctx->tx_window.retries = 0; // Reset retry counter on success
         }
+
+        // Reset retry counter on successful control message
+        ctx->tx_window.retries = 0;
     }
 
     absolute_time_t end_time = get_absolute_time();
@@ -1329,6 +1327,12 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
         }
         ctx->transfer_in_progress = false;
         memset(ctx->rx_session_id, 0, sizeof(ctx->rx_session_id));
+        // CRITICAL: Reset all window tracking state for new session!
+        ctx->rx_last_request_next_window = 0;
+        ctx->rx_highest_chunk_received = 0;
+        ctx->rx_last_nack_chunk = UINT32_MAX;
+        ctx->rx_last_nack_time = nil_time;
+        ctx->last_acked_seq = 0;
     }
 
     // Initialize transfer session
@@ -1358,6 +1362,11 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
 
     ctx->transfer_in_progress = true;
     ctx->last_acked_seq = 0; // Reset for new transfer
+    ctx->rx_last_request_next_window =
+        0;                              // Reset REQUEST_NEXT tracking (0 = no window completed yet)
+    ctx->rx_highest_chunk_received = 0; // Reset highest chunk tracking
+    ctx->rx_last_nack_chunk = UINT32_MAX; // Reset NACK tracking
+    ctx->rx_last_nack_time = nil_time;    // Reset NACK time
     strncpy(ctx->rx_session_id, metadata.session_id, sizeof(ctx->rx_session_id) - 1);
     ctx->rx_session_id[sizeof(ctx->rx_session_id) - 1] = '\0';
 
@@ -1408,6 +1417,10 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
  */
 void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
                          struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port) {
+    // Debug: Log every payload receipt
+    static uint32_t payload_count = 0;
+    payload_count++;
+
     if (!ctx || !payload) {
         printf("ERROR: NULL parameter in handle_file_payload\n");
         return;
@@ -1436,9 +1449,41 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
         return;
     }
 
+    // EARLY SKIP: Check if this chunk belongs to an already-completed window
+    // This MUST happen BEFORE writing to avoid processing stale retransmissions
+    // rx_last_request_next_window stores the START of the window we're expecting
+    // So any chunk whose window starts BEFORE that value is from a completed window
+    uint32_t chunk_window_index = (chunk.sequence - 1) / WINDOW_SIZE_CHUNKS;
+    uint32_t chunk_window_start = chunk_window_index * WINDOW_SIZE_CHUNKS + 1;
+
+    if (ctx->rx_last_request_next_window > 0 &&
+        chunk_window_start < ctx->rx_last_request_next_window) {
+        // This chunk belongs to a window we've already completed - silently drop
+        printf("  [SKIP] Chunk %lu dropped (window_start=%lu < last_req=%lu)\n",
+               (unsigned long)chunk.sequence, (unsigned long)chunk_window_start,
+               (unsigned long)ctx->rx_last_request_next_window);
+        return;
+    }
+
+    // Check if this is a duplicate BEFORE writing (for early skip)
+    // Use bitmap to detect duplicates
+    uint32_t dup_byte_idx = chunk.sequence / 8;
+    uint32_t dup_bit_idx = chunk.sequence % 8;
+    bool is_duplicate = false;
+    if (dup_byte_idx < ctx->file_session->chunk_meta.bitmap_size &&
+        (ctx->file_session->chunk_meta.chunk_bitmap[dup_byte_idx] & (1 << dup_bit_idx))) {
+        is_duplicate = true;
+    }
+
     // Write chunk to microSD (buffered)
     if (!chunk_transfer_write_payload(ctx->file_session, &chunk)) {
         printf("ERROR: Failed to write chunk %lu\n", (unsigned long)chunk.sequence);
+        return;
+    }
+
+    // Skip ALL further processing for duplicates - they've been logged already
+    // This prevents duplicates from triggering NACK/control logic for old windows
+    if (is_duplicate) {
         return;
     }
 
@@ -1468,46 +1513,108 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
                (unsigned long)total, (received * 100.0f) / total);
     }
 
+    // Check if transfer is complete - bypass window logic for completed transfers
+    if (chunk_transfer_is_complete(ctx->file_session)) {
+        // IMMEDIATE COMPLETION HANDLING
+        printf("\n=== File Transfer Complete ===\n");
+        printf("All chunks received! Finalizing...\n");
+
+        if (chunk_transfer_finalize(ctx->file_session)) {
+            printf("✓ File saved: %s\n", ctx->file_session->filename);
+            printf("  Size: %lu bytes\n", (unsigned long)ctx->file_session->metadata.total_size);
+            printf("✓ File is ready on SD card\n");
+
+            // Send COMPLETE control message
+            control_message_t ctrl_msg = {0};
+            ctrl_msg.type = CTRL_COMPLETE;
+            ctrl_msg.seq_num = total;
+            strncpy(ctrl_msg.session_id, ctx->rx_session_id, sizeof(ctrl_msg.session_id) - 1);
+
+            send_control_message(pcb, addr, port, &ctrl_msg, ctx);
+            printf("  [RECEIVER] ✓ Sent CTRL_COMPLETE to sender\n");
+
+            // Clean up
+            memset(ctx->file_session, 0, sizeof(transfer_session_t));
+        } else {
+            printf("ERROR: Failed to finalize transfer\n");
+            memset(ctx->file_session, 0, sizeof(transfer_session_t));
+        }
+
+        // Reset all tracking state
+        ctx->transfer_in_progress = false;
+        ctx->last_acked_seq = 0;
+        ctx->rx_last_request_next_window = 0;
+        ctx->rx_highest_chunk_received = 0;
+        ctx->rx_last_nack_chunk = 0;
+        memset(ctx->rx_session_id, 0, sizeof(ctx->rx_session_id));
+        printf("==============================\n\n");
+        return; // Done - don't continue with window logic
+    }
+
+    // Track the highest chunk sequence we've ever received (not just contiguous)
+    // This MUST be updated BEFORE any window calculations
+    if (chunk.sequence > ctx->rx_highest_chunk_received) {
+        ctx->rx_highest_chunk_received = chunk.sequence;
+    }
+
+    // NOTE: Window skip check already done earlier (before write) - no need to repeat here
+
+    // Calculate current active window based on highest chunk received
+    uint32_t highest_seq = ctx->rx_highest_chunk_received > 0 ? ctx->rx_highest_chunk_received : 1;
+    uint32_t active_window_index = (highest_seq - 1) / WINDOW_SIZE_CHUNKS;
+    uint32_t active_window_start = active_window_index * WINDOW_SIZE_CHUNKS + 1;
+
+    // Calculate the end of the current window
+    // IMPORTANT: total includes metadata chunk (0), so data chunks are 1 to (total-1)
+    // The last data chunk sequence number is (total - 1), not total!
+    uint32_t last_data_chunk = total - 1; // e.g., if total=11, last data chunk is 10
+    uint32_t active_window_end = (active_window_index + 1) * WINDOW_SIZE_CHUNKS;
+    if (active_window_end > last_data_chunk) {
+        active_window_end = last_data_chunk;
+    }
+
     // Check window completion when:
-    // 1. Every 200ms (reduced from 500ms for faster gap detection)
-    // 2. When we receive a duplicate (indicates retransmission)
-    // 3. Every 10 chunks to catch gaps early
+    // 1. We receive the LAST chunk of the window (immediate check!)
+    // 2. Every 100ms for faster response
+    // 3. When we receive a duplicate (chunk we've seen before - uses bitmap, not contiguous seq)
+    // 4. Every 5 chunks to catch gaps early
+    // 5. When we're filling gaps (chunk <= highest received but wasn't duplicate)
+    // 6. ALWAYS check if we're near window end or during retransmission
     absolute_time_t now = get_absolute_time();
-    bool is_duplicate = (chunk.sequence <= ctx->last_acked_seq);
+    bool is_last_chunk_of_window = (chunk.sequence == active_window_end);
+
+    // During retransmission (duplicates coming in), ALWAYS check window completion
+    // because gaps are being filled
+    bool is_during_retransmission = (chunk.sequence < ctx->rx_highest_chunk_received);
+
     int64_t time_since_last_check = absolute_time_diff_us(ctx->last_window_check, now) / 1000;
 
     static uint32_t chunks_since_check = 0;
     chunks_since_check++;
 
-    bool should_check =
-        is_duplicate || (time_since_last_check >= 200) || (chunks_since_check >= 10);
-
-    if (!should_check) {
-        // Don't check yet - chunks arriving normally
-        return;
-    }
+    // ALWAYS check window completion - the overhead is minimal and we need to
+    // catch window completion immediately, especially after gap-filling during retransmission
+    (void)is_last_chunk_of_window;  // suppress unused warning
+    (void)is_during_retransmission; // suppress unused warning
+    (void)time_since_last_check;    // suppress unused warning
+    (void)chunks_since_check;       // suppress unused warning
 
     ctx->last_window_check = now;
     chunks_since_check = 0;
 
-    // Calculate current window boundary
-    // Window boundaries are fixed: [1-138], [139-276], [277-414], etc.
-    // Use the CURRENT chunk sequence to determine which window we're in
-    // (not last_acked_seq which may be stuck at an early gap)
-    uint32_t current_seq = chunk.sequence > 0 ? chunk.sequence : ctx->last_acked_seq;
-    uint32_t window_index = (current_seq - 1) / WINDOW_SIZE_CHUNKS; // 0-based window index
-    uint32_t window_start = window_index * WINDOW_SIZE_CHUNKS + 1;
-    uint32_t current_window_end = (window_index + 1) * WINDOW_SIZE_CHUNKS;
-    if (current_window_end > total) {
-        current_window_end = total;
-    }
-
-    // Check if we've completed a window or the entire transfer
+    // Use active window calculated above for window boundaries
+    uint32_t window_start = active_window_start;
+    uint32_t current_window_end =
+        active_window_end; // Check if we've completed a window or the entire transfer
     bool window_complete = false;
     bool all_chunks_in_window = true;
 
     // Check if all chunks in current window have been received
     // Must check ENTIRE window, not just up to last_acked_seq
+    printf("  [DBG] Checking window [%u-%u] for seq=%u (highest=%u, is_retrans=%d)\n", window_start,
+           current_window_end, chunk.sequence, ctx->rx_highest_chunk_received,
+           is_during_retransmission);
+
     for (uint32_t i = window_start; i <= current_window_end; i++) {
         // Check bitmap to see if chunk i has been received
         uint32_t bitmap_index = i / 8;
@@ -1529,6 +1636,8 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     }
 
     window_complete = all_chunks_in_window;
+    printf("  [DBG] Window check result: all_in_window=%d, window_complete=%d\n",
+           all_chunks_in_window, window_complete);
 
     // Only send control messages when:
     // 1. Window is complete (send REQUEST_NEXT or COMPLETE)
@@ -1579,6 +1688,15 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
     if (window_complete || chunk_transfer_is_complete(ctx->file_session)) {
         printf("\n  [RECEIVER] Window [%u-%u] complete\n", window_start, current_window_end);
 
+        // Check if we've already sent REQUEST_NEXT for this window
+        // rx_last_request_next_window stores the NEXT window's start, so compare with that
+        uint32_t expected_next_start = current_window_end + 1;
+        if (expected_next_start == ctx->rx_last_request_next_window &&
+            !chunk_transfer_is_complete(ctx->file_session)) {
+            // Already sent REQUEST_NEXT for this window, skip to avoid spam
+            return;
+        }
+
         // Sync window to SD card
         printf("  [RECEIVER] Writing window to SD card...\n");
         if (!chunk_transfer_sync_window(ctx->file_session)) {
@@ -1589,6 +1707,11 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
 
         // Check if transfer complete
         if (chunk_transfer_is_complete(ctx->file_session)) {
+            // Reset tracking for next transfer
+            ctx->rx_last_request_next_window = 0;
+            ctx->rx_highest_chunk_received = 0;
+            ctx->rx_last_nack_chunk = 0;
+
             printf("\n=== File Transfer Complete ===\n");
             printf("All chunks received! Finalizing...\n");
 
@@ -1631,6 +1754,11 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
                 next_window_end = total;
             }
 
+            // Track the NEXT window we're requesting (not the completed one)
+            // This allows early skip to drop chunks from completed windows
+            // but still accept retransmissions from the window we're now expecting
+            ctx->rx_last_request_next_window = next_window_start;
+
             control_message_t ctrl_msg = {0};
             ctrl_msg.type = CTRL_REQUEST_NEXT;
             ctrl_msg.seq_num = ctx->last_acked_seq;
@@ -1660,16 +1788,29 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
         }
 
         if (first_missing > 0) {
+            // CRITICAL: Don't send NACK for windows we've already completed!
+            // This prevents stale NACKs when processing delayed chunks from old windows
+            uint32_t missing_window_index = (first_missing - 1) / WINDOW_SIZE_CHUNKS;
+            uint32_t missing_window_start = missing_window_index * WINDOW_SIZE_CHUNKS + 1;
+
+            // rx_last_request_next_window stores the START of the NEXT window we requested
+            // So we skip NACKs only for windows BEFORE that (strictly less than)
+            if (ctx->rx_last_request_next_window > 0 &&
+                missing_window_start < ctx->rx_last_request_next_window) {
+                // This missing chunk is from a window we already completed - don't NACK
+                printf("  [RECEIVER] Skipping stale NACK for chunk %u (window %u < current %lu)\n",
+                       first_missing, missing_window_start, ctx->rx_last_request_next_window);
+                return;
+            }
+
             // Rate limiting: Only send NACK if we haven't sent one for this chunk recently
-            static uint32_t last_nack_chunk = 0;
-            static absolute_time_t last_nack_time = {0};
-            absolute_time_t now = get_absolute_time();
+            absolute_time_t nack_now = get_absolute_time();
 
             bool should_send_nack = false;
-            if (first_missing != last_nack_chunk) {
+            if (first_missing != ctx->rx_last_nack_chunk) {
                 // Different chunk - send NACK
                 should_send_nack = true;
-            } else if (absolute_time_diff_us(last_nack_time, now) > 500000) {
+            } else if (absolute_time_diff_us(ctx->rx_last_nack_time, nack_now) > 500000) {
                 // Same chunk but 500ms passed - send another NACK
                 should_send_nack = true;
             }
@@ -1684,8 +1825,8 @@ void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t 
 
                 send_control_message(pcb, addr, port, &ctrl_msg, ctx);
 
-                last_nack_chunk = first_missing;
-                last_nack_time = now;
+                ctx->rx_last_nack_chunk = first_missing;
+                ctx->rx_last_nack_time = nack_now;
             }
         }
     }
@@ -1752,22 +1893,32 @@ void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size
         }
         break;
 
-    case CTRL_NACK:
-        printf("  [CONTROL] Received NACK - retransmit from chunk %u\n", ctrl_msg.seq_num + 1);
+    case CTRL_NACK: {
+        uint32_t nack_chunk = ctrl_msg.seq_num + 1; // First missing chunk
+        printf("  [CONTROL] Received NACK - retransmit from chunk %u\n", nack_chunk);
+
+        // CRITICAL: Ignore stale NACKs for chunks we've already moved past
+        // This happens when old NACKs arrive after we've received REQUEST_NEXT
+        // and advanced the window. Out-of-order MQTT messages cause this.
+        if (nack_chunk < ctx->tx_window.base) {
+            printf("  [CONTROL] Ignoring stale NACK for chunk %u (window base is %u)\n", nack_chunk,
+                   ctx->tx_window.base);
+            break; // Don't go backwards!
+        }
 
         // Detect stuck NACK loop (same chunk NACKed repeatedly)
         if (ctrl_msg.seq_num == ctx->tx_window.last_nack_chunk) {
             ctx->tx_window.stuck_nack_count++;
             if (ctx->tx_window.stuck_nack_count <= 15) {
                 printf("  WARNING: Stuck NACK detected (count=%u) for chunk %u\n",
-                       ctx->tx_window.stuck_nack_count, ctrl_msg.seq_num + 1);
+                       ctx->tx_window.stuck_nack_count, nack_chunk);
             }
 
             // If we get the same NACK 20+ times, log error but keep trying
             // Don't force advance - that corrupts the file
             if (ctx->tx_window.stuck_nack_count == 20) {
                 printf("  ERROR: Persistent NACK loop for chunk %u - check network/receiver\n",
-                       ctrl_msg.seq_num + 1);
+                       nack_chunk);
             }
         } else {
             // Different chunk, reset counter
@@ -1781,6 +1932,7 @@ void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size
             process_ack(&ctx->tx_window, seq);
         }
         break;
+    }
     case CTRL_REQUEST_NEXT:
         printf("  [CONTROL] Received REQUEST_NEXT for window [%u-%u]\n", ctrl_msg.window_start,
                ctrl_msg.window_end);
