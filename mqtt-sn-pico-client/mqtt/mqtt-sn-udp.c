@@ -7,6 +7,7 @@
 
 #include "../config.h"
 #include "../drivers/microsd_driver.h"
+#include "../mqtt-client.h"
 #include "config.h"
 #include "hardware/sync.h"
 #include "lwip/pbuf.h"
@@ -571,11 +572,27 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
 
         // Dispatch to appropriate handler using lookup table
         bool handled = false;
-        for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
-            if (msg_handlers[i].msg_type == msg_type) {
-                msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
-                handled = true;
-                break;
+        if (g_mqtt_mutex != NULL && xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
+            for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
+                if (msg_handlers[i].msg_type == msg_type) {
+                    msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
+                    handled = true;
+                    break;
+                }
+            }
+            xSemaphoreGive(g_mqtt_mutex);
+        } else {
+            // Fallback if mutex not initialized (e.g. unit tests) or timeout
+            // For now, just run it (unsafe) or skip?
+            // Better to run it if mutex is NULL (legacy mode support if any)
+            if (g_mqtt_mutex == NULL) {
+                for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
+                    if (msg_handlers[i].msg_type == msg_type) {
+                        msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
+                        handled = true;
+                        break;
+                    }
+                }
             }
         }
 
@@ -686,6 +703,9 @@ void send_control_message(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t g
         break;
     case CTRL_COMPLETE:
         printf("  [CONTROL] Sent TRANSFER_COMPLETE\n");
+        break;
+    case CTRL_METADATA_RECV:
+        printf("  [CONTROL] Sent METADATA_RECV\n");
         break;
     }
 }
@@ -800,32 +820,26 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
         return;
     }
 
-    // Publish metadata to file/data topic with QoS 2 for guaranteed delivery
+    // Publish metadata to file/data topic with QoS 1
     uint16_t metadata_msg_id = get_next_msg_id();
     mqtt_sn_publish_topic_id(pcb, gw_addr, gw_port, topic_id, meta_buffer, PAYLOAD_SIZE,
                              FILE_TRANSFER_METADATA_QOS, metadata_msg_id, false);
     printf("Sent metadata (QoS %d, msg_id=%u)\n", FILE_TRANSFER_METADATA_QOS, metadata_msg_id);
 
-    // Wait for QoS 2 completion (PUBCOMP) before sending data chunks
+    // Store session ID and reset confirmation flag
+    strncpy(ctx->tx_session_id, metadata.session_id, sizeof(ctx->tx_session_id) - 1);
+    ctx->tx_session_id[sizeof(ctx->tx_session_id) - 1] = '\0';
+    ctx->metadata_recv_confirmed = false;
+
+    // Wait for METADATA_RECV control message from receiver
     // This ensures receiver has initialized the transfer session
-    printf("Waiting for metadata confirmation (PUBCOMP)...\n");
+    printf("Waiting for METADATA_RECV confirmation...\n");
     absolute_time_t wait_start = get_absolute_time();
 
     while (absolute_time_diff_us(wait_start, get_absolute_time()) <
            (METADATA_CONFIRM_TIMEOUT_MS * 1000)) {
-        cyw43_arch_poll(); // Process incoming packets (PUBREC, PUBCOMP)
-
-        // Check if metadata message was acknowledged (removed from pending queue)
-        bool metadata_confirmed = true;
-        for (size_t i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
-            if (g_pending_msgs[i].in_use && g_pending_msgs[i].msg_id == metadata_msg_id) {
-                metadata_confirmed = false;
-                break;
-            }
-        }
-
-        if (metadata_confirmed) {
-            printf("✓ Metadata confirmed by receiver\n");
+        if (ctx->metadata_recv_confirmed) {
+            printf("✓ METADATA_RECV confirmed by receiver\n");
             break;
         }
 
@@ -833,16 +847,8 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
     }
 
     // Final check - did we timeout?
-    bool still_pending = false;
-    for (size_t i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
-        if (g_pending_msgs[i].in_use && g_pending_msgs[i].msg_id == metadata_msg_id) {
-            still_pending = true;
-            break;
-        }
-    }
-
-    if (still_pending) {
-        printf("ERROR: Metadata not confirmed after %u ms, aborting transfer\n",
+    if (!ctx->metadata_recv_confirmed) {
+        printf("ERROR: METADATA_RECV not received after %u ms, aborting transfer\n",
                METADATA_CONFIRM_TIMEOUT_MS);
         cleanup_streaming_read();
         return;
@@ -862,9 +868,6 @@ void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
             cleanup_streaming_read();
             return;
         }
-
-        // Poll network immediately after blocking SD read to process any pending PUBACKs
-        cyw43_arch_poll();
 
         // Verify chunk integrity before sending
         if (!verify_chunk(&chunk)) {
@@ -1060,8 +1063,6 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
                 return;
             }
 
-            cyw43_arch_poll(); // Poll network after SD read
-
             // Check if NACK was received (window base changed during transmission)
             if (ctx->tx_window.base != window_start_base) {
                 printf("  ! NACK received during transmission - restarting from base=%u\n",
@@ -1120,9 +1121,8 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
         // This allows receiver to process its packet backlog and prevents
         // retransmitted packets from being lost due to buffer overflow
         if (nack_received) {
-            sleep_ms(50);      // 50ms pause to let receiver catch up
-            cyw43_arch_poll(); // Process any pending packets
-            continue;          // Go back to start of while loop with new base
+            sleep_ms(50); // 50ms pause to let receiver catch up
+            continue;     // Go back to start of while loop with new base
         }
 
         // Wait for control message from receiver (REQUEST_NEXT, NACK, or COMPLETE)
@@ -1136,8 +1136,6 @@ void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t
         // Keep polling until we receive a control message - no automatic retransmit
         // The RX will send NACK if it needs retransmission, or REQUEST_NEXT when ready
         while (!control_received) {
-            cyw43_arch_poll(); // Process incoming control messages
-
             // Check if window slid forward (control message received and processed)
             if (ctx->tx_window.base != saved_base) {
                 control_received = true;
@@ -1376,6 +1374,25 @@ void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t
     printf("  Temp file handle: OPEN (persistent until complete)\n");
     printf("  Session ID: %s\n", ctx->rx_session_id);
     printf("=============================\n\n");
+
+    // Send METADATA_RECV control message to confirm metadata received
+    // This replaces the QoS2 PUBCOMP handshake for faster acknowledgment
+    control_message_t ctrl_msg = {0};
+    ctrl_msg.type = CTRL_METADATA_RECV;
+    ctrl_msg.seq_num = 0;
+    ctrl_msg.window_start = 0;
+    ctrl_msg.window_end = 0;
+    strncpy(ctrl_msg.session_id, metadata.session_id, sizeof(ctrl_msg.session_id) - 1);
+    ctrl_msg.session_id[sizeof(ctrl_msg.session_id) - 1] = '\0';
+
+    uint16_t control_topic_id = mqtt_sn_get_topic_id(ctx, "file/control");
+    if (control_topic_id != 0) {
+        mqtt_sn_publish_topic_id_auto(pcb, addr, port, control_topic_id, (const uint8_t *)&ctrl_msg,
+                                      sizeof(ctrl_msg), QOS_LEVEL_1);
+        printf("  [CONTROL] Sent METADATA_RECV confirmation\n");
+    } else {
+        printf("  WARNING: file/control topic not registered, cannot send METADATA_RECV\n");
+    }
 }
 
 /**
@@ -1953,6 +1970,17 @@ void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size
             process_ack(&ctx->tx_window, seq);
         }
         ctx->tx_window.active = false;
+        break;
+
+    case CTRL_METADATA_RECV:
+        printf("  [CONTROL] Received METADATA_RECV confirmation\n");
+        printf("  → Receiver has initialized transfer session\n");
+        printf("  → Ready to begin data chunk transmission\n");
+        // Set flag to indicate metadata was received by RX
+        // This unblocks the sender waiting for confirmation
+        if (strncmp(ctrl_msg.session_id, ctx->tx_session_id, sizeof(ctx->tx_session_id)) == 0) {
+            ctx->metadata_recv_confirmed = true;
+        }
         break;
 
     default:
