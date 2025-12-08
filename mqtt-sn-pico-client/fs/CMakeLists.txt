@@ -11,6 +11,12 @@ include_directories(fs_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src/include
 )
 
+target_include_directories(fs_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${freertos-kernel_SOURCE_DIR}/include
+    ${freertos-kernel_SOURCE_DIR}/portable/ThirdParty/GCC/RP2040/include
+)
+
 target_link_libraries(fs_lib
     pico_stdlib
     hardware_spi
@@ -19,13 +25,14 @@ target_link_libraries(fs_lib
     hardware_pio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     microsd_driver
-    FreeRTOS-Kernel-Heap4
+    freertos_kernel
 )
 
 
 add_executable(streaming_test
     tests/streaming_test.c
     ../hw_config.c
+    freertos_hooks.c
 )
 
 target_link_libraries(streaming_test
@@ -47,6 +54,7 @@ pico_add_extra_outputs(streaming_test)
 add_executable(automated_chunk_test
     tests/automated_chunk_test.c
     ../hw_config.c
+    freertos_hooks.c
 )
 
 target_link_libraries(automated_chunk_test
@@ -67,6 +75,7 @@ pico_add_extra_outputs(automated_chunk_test)
 add_executable(automated_streaming_test
     tests/automated_streaming_test.c
     ../hw_config.c
+    freertos_hooks.c
 )
 
 target_link_libraries(automated_streaming_test
