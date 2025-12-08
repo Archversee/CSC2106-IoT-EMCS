@@ -12,16 +12,19 @@
 
 #include <stdio.h>
 
+#include "FreeRTOS.h"
 #include "config.h"
 #include "drivers/microsd_driver.h"
 #include "fs/chunk_transfer.h"
 #include "mqtt/mqtt-sn-udp.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "task.h"
 
 /*! Global MQTT-SN ping tracking variables */
 uint32_t g_last_pingresp = 0U;
 bool g_ping_ack_received = true;
+SemaphoreHandle_t g_mqtt_mutex = NULL;
 
 /*! Static ping request tracking (internal to this module) */
 static uint32_t s_last_pingreq = 0U;
@@ -94,6 +97,10 @@ void mqtt_client_init(void) {
     g_last_pingresp = 0U;
     g_ping_ack_received = true;
     s_last_pingreq = 0U;
+
+    if (g_mqtt_mutex == NULL) {
+        g_mqtt_mutex = xSemaphoreCreateMutex();
+    }
 }
 
 /*!
@@ -154,7 +161,7 @@ int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_
     while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK,
                                               WIFI_CONNECT_TIMEOUT_MS)) {
         printf("Wi-Fi connect failed. Retrying in %u seconds...\n", WIFI_RETRY_DELAY_MS / 1000U);
-        sleep_ms(WIFI_RETRY_DELAY_MS);
+        vTaskDelay(pdMS_TO_TICKS(WIFI_RETRY_DELAY_MS));
     }
 
     printf("Wi-Fi connected. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_default)));
@@ -169,6 +176,14 @@ int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_
         printf("UDP bind failed\n");
         return -1;
     }
+
+    // Create Mutex
+    g_mqtt_mutex = xSemaphoreCreateMutex();
+    if (g_mqtt_mutex == NULL) {
+        printf("Failed to create MQTT mutex\n");
+        return -1;
+    }
+
     udp_recv(pcb, udp_recv_callback, &mqtt_ctx);
     *pcb_out = pcb;
 
@@ -178,23 +193,44 @@ int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_
     ip_addr_t* gateway_addr = (ip_addr_t*)gateway_addr_out;
     IP4_ADDR(gateway_addr, GATEWAY_IP0, GATEWAY_IP1, GATEWAY_IP2, GATEWAY_IP3);
 
-    sleep_ms(MQTT_CONNECT_DELAY_MS);
+    vTaskDelay(pdMS_TO_TICKS(MQTT_CONNECT_DELAY_MS));
 
     // Connect to MQTT-SN Gateway
     mqtt_sn_connect(pcb, gateway_addr, UDP_PORT);
-    for (uint8_t i = 0U; i < MQTT_POLL_SHORT_COUNT; i++) {
-        cyw43_arch_poll();
-        sleep_ms(MQTT_POLL_DELAY_MS);
-    }
+    // No polling needed with threadsafe background
+    vTaskDelay(pdMS_TO_TICKS(MQTT_POLL_DELAY_MS * MQTT_POLL_SHORT_COUNT));
+
     printf("Waiting for CONNACK...\n");
-    for (uint8_t i = 0U; i < MQTT_POLL_LONG_COUNT; i++) {
-        cyw43_arch_poll();
-        sleep_ms(MQTT_CONNACK_WAIT_MS);
-    }
-    sleep_ms(MQTT_CONNECT_DELAY_MS);
+    // No polling needed with threadsafe background
+    vTaskDelay(pdMS_TO_TICKS(MQTT_CONNACK_WAIT_MS * MQTT_POLL_LONG_COUNT));
+
+    vTaskDelay(pdMS_TO_TICKS(MQTT_CONNECT_DELAY_MS));
 
     // Print client ID
     printf("Client ID: %s\n", MQTT_SN_CLIENT_ID);
 
     return 0;
+}
+
+/*!
+ * @brief FreeRTOS stack overflow hook
+ * Called when a task stack overflow is detected
+ */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char* pcTaskName) {
+    (void)xTask;
+    printf("ERROR: Stack overflow in task: %s\n", pcTaskName);
+    while (1) {
+        // Halt on stack overflow
+    }
+}
+
+/*!
+ * @brief FreeRTOS malloc failed hook
+ * Called when pvPortMalloc fails to allocate memory
+ */
+void vApplicationMallocFailedHook(void) {
+    printf("ERROR: Memory allocation failed\n");
+    while (1) {
+        // Halt on malloc failure
+    }
 }
