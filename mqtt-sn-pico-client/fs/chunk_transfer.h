@@ -9,7 +9,8 @@
  * transfers with metadata tracking.
  *
  * TRANSFER POLICY:
- * - Metadata chunks use QoS 2 (exactly-once delivery)
+ * - Metadata is sent via QoS 1 on file/data topic
+ * - Receiver sends METADATA_RECV control message to confirm
  * - Data chunks use QoS 1 (at-least-once delivery)
  * - Data chunks are REFUSED if no metadata has been received
  * - Session must be active (metadata received) before data is accepted
@@ -79,9 +80,10 @@ bool chunk_transfer_init_mutex(void);
  * @brief Initialize a new chunk transfer session from metadata
  *
  * This function should be called when the metadata chunk (chunk 0) is received
- * via MQTT QoS 2. It establishes the session context and prepares for receiving
- * data chunks. Once initialized, the session becomes active and data chunks can
- * be accepted.
+ * via MQTT QoS 1 on the file/data topic. It establishes the session context and
+ * prepares for receiving data chunks. Once initialized, the session becomes active
+ * and data chunks can be accepted. After initialization, a METADATA_RECV control
+ * message is sent to confirm receipt.
  *
  * @param metadata Pointer to the received metadata structure
  * @param session Pointer to session structure to initialize
@@ -90,7 +92,7 @@ bool chunk_transfer_init_mutex(void);
  * @return true on success, false on failure
  *
  * @note Sets session->active to true on success
- * @note QoS 2 ensures this is called exactly once per transfer
+ * @note Caller should send METADATA_RECV control message after successful init
  * @note Thread-safe: Protected by internal mutex with timeout
  * @note On error, performs automatic cleanup
  */

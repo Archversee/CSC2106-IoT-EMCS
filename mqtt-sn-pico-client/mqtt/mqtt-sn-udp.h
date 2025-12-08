@@ -55,7 +55,8 @@ typedef enum {
     CTRL_ACK,          // Acknowledge chunks up to seq_num
     CTRL_NACK,         // Negative acknowledgment - request retransmission from seq_num
     CTRL_REQUEST_NEXT, // Request next batch of chunks (next window)
-    CTRL_COMPLETE      // Transfer complete confirmation
+    CTRL_COMPLETE,     // Transfer complete confirmation
+    CTRL_METADATA_RECV // Metadata received confirmation (replaces QoS2 PUBCOMP)
 } control_msg_type_t;
 
 /*! Control Message Structure for file/control topic */
@@ -202,6 +203,10 @@ typedef struct {
     uint32_t rx_highest_chunk_received;   /*!< Highest chunk seq received in current transfer */
     uint32_t rx_last_nack_chunk;          /*!< Last chunk we sent NACK for */
     absolute_time_t rx_last_nack_time;    /*!< Time of last NACK sent */
+
+    /* TX-side metadata confirmation tracking */
+    bool metadata_recv_confirmed; /*!< True when METADATA_RECV control msg received */
+    char tx_session_id[32];       /*!< Session ID for current TX transfer */
 
     /* UDP connection parameters (for sending control messages) */
     struct udp_pcb *pcb; /*!< UDP PCB pointer */
