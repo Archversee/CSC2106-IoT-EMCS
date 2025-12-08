@@ -1,27 +1,32 @@
-# INF2004 Project - MQTT-SN File Transfer System with Web Dashboard
+# MQTTSN-PicoW - FreeRTOS-based MQTT-SN Client for Raspberry Pi Pico W
 
-A complete IoT file transfer system featuring Raspberry Pi Pico W devices communicating via MQTT-SN protocol with a real-time web dashboard for monitoring and control.
+A complete IoT file transfer system featuring Raspberry Pi Pico W devices running FreeRTOS, communicating via MQTT-SN protocol with a real-time web dashboard for monitoring and control.
 
 ## Project Overview
 
 This project implements a robust file transfer system between Raspberry Pi Pico W devices using the MQTT-SN (MQTT for Sensor Networks) protocol over UDP. The system includes:
 
+- **FreeRTOS-based multithreaded architecture** with separate tasks for MQTT operations and button handling
 - **Sender (TX)** and **Receiver (RX)** Pico W clients with microSD card support
 - **Chunked file transfer** with Go-Back-N ARQ protocol for reliability
 - **QoS support** (Quality of Service levels 0, 1, and 2)
 - **Real-time web dashboard** for monitoring device status and file transfers
 - **Hot-plug microSD detection** and automatic reconnection handling
 - **MQTT-SN Gateway** for protocol translation to standard MQTT
+- **Threadsafe background Wi-Fi driver** for concurrent network operations
 
 ## Key Features
 
 ### Embedded System Features
+- **FreeRTOS Integration**: Preemptive multitasking with separate MQTT and button handler tasks
+- **Thread-Safe Design**: Mutex-protected shared resources and inter-task communication via queues
 - **MQTT-SN Protocol**: Lightweight messaging protocol optimized for constrained devices
 - **File Transfer**: Reliable chunked file transfer with 32KB sliding window (Go-Back-N)
 - **QoS Levels**: Support for QoS 0 (at-most-once), QoS 1 (at-least-once), QoS 2 (exactly-once)
 - **MicroSD Integration**: Read/write files with hot-plug detection and automatic recovery
 - **Retry Logic**: Automatic retransmission on timeout with configurable retry limits
 - **Dual Client Architecture**: Separate TX (sender) and RX (receiver) builds
+- **Background Wi-Fi Processing**: Automatic network stack servicing via threadsafe background mode
 
 ### Dashboard Features
 - **Real-time Monitoring**: Live device status and message feeds
@@ -47,21 +52,22 @@ Core MQTT-SN client implementation for Raspberry Pi Pico W with file transfer ca
 
 #### Main Application Files
 
-| File                       | Description                                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `mqtt-sn-pico-client-tx.c` | **Sender client** - Publishes messages and initiates file transfers. Uses GPIO buttons to send test messages and transfer files (test_1.txt, test.jpg) |
-| `mqtt-sn-pico-client-rx.c` | **Receiver client** - Subscribes to topics and receives file transfers. Automatically saves received files to microSD card                             |
-| `mqtt-sn-pico-client.c`    | Legacy unified client (deprecated - use TX/RX versions)                                                                                                |
-| `mqtt-client.h/c`          | Shared MQTT client library with network initialization and common functionality                                                                        |
-| `mqttsn_bridge.h/c`        | Bridge module for publishing file transfer status/progress to dashboard                                                                                |
+| File                | Description                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pico-client-pub.c` | **FreeRTOS Publisher client** - Creates MQTT and Button tasks. Uses event queue for inter-task communication. Publishes messages and initiates file transfers |
+| `pico-client-sub.c` | **FreeRTOS Subscriber client** - Creates MQTT task for receiving messages and file transfers. Handles topic subscriptions and control messages                |
+| `mqtt-client.h/c`   | Shared MQTT client library with network initialization, mutex setup, and common functionality                                                                 |
+| `mqttsn_bridge.h/c` | Bridge module for publishing file transfer status/progress to dashboard                                                                                       |
+| `mqtt_task_defs.h`  | FreeRTOS task definitions - event types, queue structures, and shared handles                                                                                 |
 
 #### Configuration Files
 
 | File                   | Description                                                                                                                 |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `config.h`             | **Main configuration file** - Wi-Fi credentials, gateway IP, MQTT-SN settings, QoS parameters, GPIO pin mappings, topic IDs |
+| `FreeRTOSConfig.h`     | **FreeRTOS configuration** - Scheduler settings, heap size, task priorities, tick rate (1kHz), CPU clock (133MHz)           |
 | `hw_config.c`          | Hardware configuration for SD card SPI pins                                                                                 |
-| `lwipopts.h`           | lwIP (lightweight IP) stack configuration for networking                                                                    |
+| `lwipopts.h`           | lwIP (lightweight IP) stack configuration for networking (NO_SYS=0 for FreeRTOS integration)                                |
 | `pico_flash_region.ld` | Custom linker script for flash memory layout                                                                                |
 
 #### MQTT Protocol Implementation
@@ -73,25 +79,26 @@ Core MQTT-SN client implementation for Raspberry Pi Pico W with file transfer ca
 
 #### File System & Storage
 
-| Directory                           | Description                                                                                                                                                      |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fs/chunk_transfer.h/c`             | High-level chunk-based file transfer session management - handles metadata reception (QoS 2), data chunk writes (QoS 1), bitmap tracking for out-of-order chunks |
-| `fs/data_frame.h/c`                 | Data frame structures for file transfer - defines Metadata and Payload chunk formats with session IDs                                                            |
-| `fs/tests/`                         | File system module tests                                                                                                                                         |
-| `drivers/microsd_driver.h/c`        | High-level microSD card interface wrapper for FatFS library - provides init, read, write, seek, directory operations                                             |
-| `drivers/microsd_chunk.c`           | Optimized chunk write operations for SD card with 32KB buffering                                                                                                 |
-| `drivers/microsd_file.c`            | File-level operations wrapper                                                                                                                                    |
-| `drivers/tests/`                    | Driver tests                                                                                                                                                     |
-| `no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/` | Third-party FatFS library for SD card access via SPI                                                                                                             |
+| Directory                           | Description                                                                                                                                                             |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fs/chunk_transfer.h/c`             | High-level chunk-based file transfer session management with FreeRTOS mutex protection - handles metadata reception (QoS 2), data chunk writes (QoS 1), bitmap tracking |
+| `fs/data_frame.h/c`                 | Data frame structures for file transfer - defines Metadata and Payload chunk formats with session IDs                                                                   |
+| `fs/freertos_hooks.c`               | FreeRTOS hook implementations - stack overflow detection and malloc failure handlers                                                                                    |
+| `fs/tests/`                         | File system module tests                                                                                                                                                |
+| `drivers/microsd_driver.h/c`        | High-level microSD card interface wrapper for FatFS library - provides init, read, write, seek, directory operations                                                    |
+| `drivers/microsd_chunk.c`           | Optimized chunk write operations for SD card with 32KB buffering                                                                                                        |
+| `drivers/microsd_file.c`            | File-level operations wrapper                                                                                                                                           |
+| `drivers/tests/`                    | Driver tests                                                                                                                                                            |
+| `no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/` | Third-party FatFS library for SD card access via SPI                                                                                                                    |
 
 #### Build System
 
-| File/Directory   | Description                                                                                   |
-| ---------------- | --------------------------------------------------------------------------------------------- |
-| `CMakeLists.txt` | CMake build configuration for Pico client - defines TX/RX executables with PICO_TX_BUILD flag |
-| `build.sh`       | Build script - creates build directory and runs cmake/make                                    |
-| `build/`         | Build output directory - contains compiled .uf2 files, makefiles, and build artifacts         |
-| `CMakeFiles/`    | CMake-generated build system files                                                            |
+| File/Directory   | Description                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `CMakeLists.txt` | CMake build configuration - links FreeRTOS kernel, enables PICO_CYW43_ARCH_THREADSAFE_BACKGROUND, defines pico-client-pub/sub targets |
+| `build.sh`       | Build script - creates build directory and runs cmake/make                                                                            |
+| `build/`         | Build output directory - contains pico-client-pub.uf2, pico-client-sub.uf2, and build artifacts                                       |
+| `CMakeFiles/`    | CMake-generated build system files                                                                                                    |
 
 #### Test Files & Results
 
@@ -197,7 +204,8 @@ Configure in `config.h`:
 ## Software Dependencies
 
 ### Pico W Firmware
-- **Pico SDK 2.2.0** (includes lwIP networking stack)
+- **Pico SDK 2.2.0** (includes lwIP networking stack and FreeRTOS kernel)
+- **FreeRTOS Kernel** (included in Pico SDK, configured for SMP on RP2040)
 - **ARM GCC Toolchain** 14.2 Rel1
 - **CMake** 3.5+
 - **FatFS library** (included in `no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/`)
@@ -213,6 +221,48 @@ Configure in `config.h`:
 
 ### MQTT Broker
 - **Mosquitto** or any MQTT broker supporting MQTT 3.1.1
+
+---
+
+## FreeRTOS Architecture
+
+### Task Structure
+
+The system uses a preemptive multitasking design with FreeRTOS:
+
+#### Publisher (TX) Tasks
+
+| Task Name   | Priority | Stack Size | Description                                                                        |
+| ----------- | -------- | ---------- | ---------------------------------------------------------------------------------- |
+| MQTT Task   | 2        | 4096 bytes | Handles MQTT protocol operations, file transfers, QoS retries, and ping keepalives |
+| Button Task | 1        | 1024 bytes | Monitors GPIO buttons with debouncing, sends events to MQTT task via queue         |
+
+#### Subscriber (RX) Tasks
+
+| Task Name | Priority | Stack Size | Description                                                                               |
+| --------- | -------- | ---------- | ----------------------------------------------------------------------------------------- |
+| MQTT Task | 2        | 4096 bytes | Receives MQTT messages, processes file chunks, handles subscriptions and control messages |
+
+### Synchronization
+
+- **Global Mutex (`g_mqtt_mutex`)**: Protects shared MQTT context and network operations
+- **Event Queue (`g_mqtt_event_queue`)**: Inter-task communication for button events and commands
+- **Message Queue Size**: 10 events
+- **Tick Rate**: 1000 Hz (1ms resolution)
+
+### Thread Safety
+
+- **Threadsafe Background Mode**: Wi-Fi driver (CYW43) runs in dedicated background thread with automatic lwIP servicing
+- **No Manual Polling Required**: `cyw43_arch_poll()` calls removed - network stack is serviced automatically
+- **Mutex Protection**: All MQTT operations wrapped with `xSemaphoreTake()`/`xSemaphoreGive()`
+- **Task Delays**: Non-blocking delays using `vTaskDelay()` instead of busy-wait loops
+
+### Memory Configuration
+
+- **Total Heap Size**: 128KB (configurable in `FreeRTOSConfig.h`)
+- **CPU Clock**: 133MHz
+- **Preemption**: Enabled for real-time responsiveness
+- **Hook Functions**: Stack overflow and malloc failure detection enabled
 
 ---
 
@@ -296,8 +346,8 @@ make -j8
 ```
 
 Build outputs:
-- `build/mqtt-sn-pico-client-tx.uf2` - Flash to sender Pico
-- `build/mqtt-sn-pico-client-rx.uf2` - Flash to receiver Pico
+- `build/pico-client-pub.uf2` - Flash to sender Pico (Publisher)
+- `build/pico-client-sub.uf2` - Flash to receiver Pico (Subscriber)
 
 ### Build MQTT-SN Gateway
 
@@ -369,9 +419,9 @@ HTTP+Socket server listening on http://localhost:3000
 
 1. **Hold BOOTSEL button** on Pico W while connecting USB
 2. **Drag and drop** .uf2 file to RPI-RP2 drive:
-   - TX Pico: `mqtt-sn-pico-client-tx.uf2`
-   - RX Pico: `mqtt-sn-pico-client-rx.uf2`
-3. Pico will reboot automatically
+   - TX Pico: `pico-client-pub.uf2`
+   - RX Pico: `pico-client-sub.uf2`
+3. Pico will reboot automatically and FreeRTOS scheduler will start
 
 ### Step 5: Monitor Serial Output
 
@@ -617,10 +667,11 @@ This project uses components under multiple licenses:
 
 ## Authors & Credits
 
-- **INF2004 Project Team** - Main application development
+- **INF2004 Project Team** - Main application development and FreeRTOS integration
 - **CS31** - Original MQTT-SN via UDP implementation
 - **Eclipse Paho** - MQTT-SN library and gateway
-- **Raspberry Pi Foundation** - Pico SDK
+- **Raspberry Pi Foundation** - Pico SDK and FreeRTOS kernel port
+- **FreeRTOS.org** - Real-time operating system kernel
 - **carlk3** - no-OS-FatFS-SD-SDIO-SPI-RPi-Pico library
 
 ---
@@ -629,9 +680,11 @@ This project uses components under multiple licenses:
 
 - [MQTT-SN Protocol Specification v1.2](http://mqtt.org/new/wp-content/uploads/2009/06/MQTT-SN_spec_v1.2.pdf)
 - [Pico W SDK Documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html)
+- [FreeRTOS Documentation](https://www.freertos.org/Documentation/RTOS_book.html)
 - [Eclipse Paho MQTT-SN](https://github.com/eclipse/paho.mqtt-sn.embedded-c)
 - [Mosquitto MQTT Broker](https://mosquitto.org/)
+- [Pico SDK FreeRTOS Integration](https://github.com/raspberrypi/pico-sdk/tree/master/lib/FreeRTOS-Kernel)
 
 ---
 
-**Last Updated**: November 24, 2025
+**Last Updated**: December 8, 2025
