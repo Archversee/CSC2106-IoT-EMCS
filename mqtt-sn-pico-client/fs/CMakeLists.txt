@@ -19,6 +19,7 @@ target_link_libraries(fs_lib
     hardware_pio
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     microsd_driver
+    FreeRTOS-Kernel-Heap4
 )
 
 

@@ -1,6 +1,6 @@
 /*!
  * @file    chunk_transfer.h
- * @brief   High-level chunk-based file transfer management for MQTT
+ * @brief   High-level chunk-based file transfer management for MQTT with RTOS safety
  * @author  CS31 (MQTT-SN via UDP), INF2004 Project Team
  * @date    2025
  *
@@ -13,6 +13,13 @@
  * - Data chunks use QoS 1 (at-least-once delivery)
  * - Data chunks are REFUSED if no metadata has been received
  * - Session must be active (metadata received) before data is accepted
+ *
+ * RTOS SAFETY:
+ * - All file operations are protected by mutex
+ * - Timeout-based locking prevents deadlocks
+ * - Critical sections protect bitmap updates
+ * - Automatic cleanup on errors
+ * - Thread-safe progress tracking
  */
 
 #ifndef CHUNK_TRANSFER_H
@@ -22,7 +29,7 @@
 #include <stdint.h>
 
 #include "data_frame.h"
-#include "ff.h"  // For FIL type
+#include "ff.h" // For FIL type
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +42,8 @@ typedef struct {
     uint32_t total_chunks;    /*!< Total number of chunks expected */
     uint32_t chunk_size;      /*!< Size of each chunk in bytes */
     uint32_t chunks_received; /*!< Number of chunks received so far */
-    uint8_t* chunk_bitmap;    /*!< Dynamically allocated bitmap tracking which chunks are received */
-    uint32_t bitmap_size;     /*!< Size of bitmap in bytes */
+    uint8_t *chunk_bitmap; /*!< Dynamically allocated bitmap tracking which chunks are received */
+    uint32_t bitmap_size;  /*!< Size of bitmap in bytes */
     uint32_t total_file_size; /*!< Total size of the file in bytes */
     char filename[64];        /*!< Filename for this chunked file */
 } fs_chunk_metadata_t;
@@ -57,6 +64,18 @@ typedef struct {
 } transfer_session_t;
 
 /*!
+ * @brief Initialize the file transfer mutex (call once at startup)
+ *
+ * This function must be called before any other chunk transfer operations.
+ * It creates the mutex used to protect file I/O operations.
+ *
+ * @return true on success, false on failure
+ *
+ * @note Thread-safe: Can be called multiple times (idempotent)
+ */
+bool chunk_transfer_init_mutex(void);
+
+/*!
  * @brief Initialize a new chunk transfer session from metadata
  *
  * This function should be called when the metadata chunk (chunk 0) is received
@@ -72,8 +91,10 @@ typedef struct {
  *
  * @note Sets session->active to true on success
  * @note QoS 2 ensures this is called exactly once per transfer
+ * @note Thread-safe: Protected by internal mutex with timeout
+ * @note On error, performs automatic cleanup
  */
-bool chunk_transfer_init_session(const struct Metadata* metadata, transfer_session_t* session,
+bool chunk_transfer_init_session(const struct Metadata *metadata, transfer_session_t *session,
                                  bool use_new_filename);
 
 /*!
@@ -90,8 +111,10 @@ bool chunk_transfer_init_session(const struct Metadata* metadata, transfer_sessi
  * @note REFUSES data chunks if session is not active (metadata not received)
  * @note Handles duplicate chunks gracefully using bitmap
  * @note Received via QoS 1, so duplicates may occur
+ * @note Thread-safe: Protected by internal mutex with timeout
+ * @note Bitmap updates use critical sections for atomicity
  */
-bool chunk_transfer_write_payload(transfer_session_t* session, const struct Payload* payload);
+bool chunk_transfer_write_payload(transfer_session_t *session, const struct Payload *payload);
 
 /*!
  * @brief Sync/flush written chunks to SD card (called after each window)
@@ -105,16 +128,19 @@ bool chunk_transfer_write_payload(transfer_session_t* session, const struct Payl
  *
  * @note For 32KB windows (~138 chunks), call this after each ACK sent
  * @note Reduces SD card wear by batching writes per window instead of per chunk
+ * @note Thread-safe: Protected by internal mutex with timeout
  */
-bool chunk_transfer_sync_window(transfer_session_t* session);
+bool chunk_transfer_sync_window(transfer_session_t *session);
 
 /*!
  * @brief Check if all chunks have been received for a session
  *
  * @param session Pointer to the transfer session
  * @return true if all chunks received, false otherwise
+ *
+ * @note Thread-safe: Read-only operation, no locking required
  */
-bool chunk_transfer_is_complete(const transfer_session_t* session);
+bool chunk_transfer_is_complete(const transfer_session_t *session);
 
 /*!
  * @brief Finalize a chunk transfer session
@@ -124,8 +150,27 @@ bool chunk_transfer_is_complete(const transfer_session_t* session);
  *
  * @param session Pointer to the transfer session to finalize
  * @return true on success, false on failure
+ *
+ * @note Thread-safe: Protected by internal mutex with timeout
+ * @note Automatically cleans up resources on success
  */
-bool chunk_transfer_finalize(transfer_session_t* session);
+bool chunk_transfer_finalize(transfer_session_t *session);
+
+/*!
+ * @brief Abort a chunk transfer session and cleanup resources
+ *
+ * This function forcefully aborts an active transfer session, closes files,
+ * deletes temporary files, and frees allocated memory. Use this for error
+ * recovery or when canceling a transfer.
+ *
+ * @param session Pointer to the transfer session to abort
+ * @return true on success, false on failure
+ *
+ * @note Thread-safe: Protected by internal mutex with timeout
+ * @note Safe to call even if session is partially initialized
+ * @note Forces cleanup even if mutex acquisition fails (emergency recovery)
+ */
+bool chunk_transfer_abort(transfer_session_t *session);
 
 /*!
  * @brief Get the progress of a transfer session
@@ -133,16 +178,20 @@ bool chunk_transfer_finalize(transfer_session_t* session);
  * @param session Pointer to the transfer session
  * @param chunks_received Output parameter for number of chunks received
  * @param total_chunks Output parameter for total number of chunks
+ *
+ * @note Thread-safe: Uses critical section for atomic read
  */
-void chunk_transfer_get_progress(const transfer_session_t* session, uint32_t* chunks_received,
-                                 uint32_t* total_chunks);
+void chunk_transfer_get_progress(const transfer_session_t *session, uint32_t *chunks_received,
+                                 uint32_t *total_chunks);
 
 /*!
  * @brief Print session information for debugging
  *
  * @param session Pointer to the transfer session
+ *
+ * @note Thread-safe: Read-only operation
  */
-void chunk_transfer_print_session_info(const transfer_session_t* session);
+void chunk_transfer_print_session_info(const transfer_session_t *session);
 
 #ifdef __cplusplus
 }

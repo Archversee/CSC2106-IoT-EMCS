@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "engine.io": "^6.6.4",
-    "socket.io": "^4.8.1"
-  }
-}
