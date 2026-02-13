@@ -110,7 +110,7 @@ typedef struct {
 
 typedef struct {
     bool drop_acks;
-    void *file_session;  // Placeholder for compatibility (always NULL)
+    void *file_session; // Placeholder for compatibility (always NULL)
     bool transfer_in_progress;
     topic_entry_t custom_topics[MAX_CUSTOM_TOPICS]; /*!< Custom topic tracking */
 } mqtt_sn_context_t;

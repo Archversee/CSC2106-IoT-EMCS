@@ -25,7 +25,7 @@ TaskHandle_t xMQTTTaskHandle = NULL;
 TaskHandle_t xButtonTaskHandle = NULL;
 
 // Button Task
-void vButtonTask(void* pvParameters) {
+void vButtonTask(void *pvParameters) {
     // Initialize Buttons
     gpio_init(MESSAGEBUTTON_PIN);
     gpio_set_dir(MESSAGEBUTTON_PIN, GPIO_IN);
@@ -43,12 +43,12 @@ void vButtonTask(void* pvParameters) {
         bool current_qos_btn = gpio_get(QOSBUTTON_PIN);
 
         if (last_msg_btn && !current_msg_btn) {
-            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = 0};  // 0 = Simple Message
+            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = 0}; // 0 = Simple Message
             xQueueSend(g_mqtt_event_queue, &event, 0);
         }
 
         if (last_qos_btn && !current_qos_btn) {
-            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = 1};  // 1 = QoS test
+            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = 1}; // 1 = QoS test
             xQueueSend(g_mqtt_event_queue, &event, 0);
         }
 
@@ -60,14 +60,15 @@ void vButtonTask(void* pvParameters) {
 }
 
 // MQTT Task
-void vMQTTTask(void* pvParameters) {
-    mqtt_sn_context_t* mqtt_ctx;
-    struct udp_pcb* pcb;
+void vMQTTTask(void *pvParameters) {
+    mqtt_sn_context_t *mqtt_ctx;
+    struct udp_pcb *pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
     // Initialize Network
-    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr, &fs_initialized) != 0) {
+    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
+                                 &fs_initialized) != 0) {
         printf("Network init failed\n");
         vTaskDelete(NULL);
     }
@@ -79,7 +80,7 @@ void vMQTTTask(void* pvParameters) {
         mqtt_sn_process_topic_registrations(mqtt_ctx, pcb, &gateway_addr, UDP_PORT);
         xSemaphoreGive(g_mqtt_mutex);
     }
-    vTaskDelay(pdMS_TO_TICKS(2000));  // Wait for registration
+    vTaskDelay(pdMS_TO_TICKS(2000)); // Wait for registration
 
     printf("MQTT Task Ready\n");
 
@@ -91,16 +92,17 @@ void vMQTTTask(void* pvParameters) {
         if (xQueueReceive(g_mqtt_event_queue, &event, pdMS_TO_TICKS(100)) == pdTRUE) {
             if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
                 switch (event.type) {
-                    case MQTT_EVENT_PUBLISH: {
-                        uint8_t payload[20] = "Hello FreeRTOS";
-                        uint16_t topic_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/status");
-                        if (topic_id > 0) {
-                            mqtt_sn_publish_topic_id_auto(pcb, &gateway_addr, UDP_PORT, topic_id, 
-                                                         payload, strlen((char*)payload), QOS_LEVEL_1);
-                        }
-                    } break;
-                    default:
-                        break;
+                case MQTT_EVENT_PUBLISH: {
+                    uint8_t payload[20] = "Hello FreeRTOS";
+                    uint16_t topic_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/status");
+                    if (topic_id > 0) {
+                        mqtt_sn_publish_topic_id_auto(pcb, &gateway_addr, UDP_PORT, topic_id,
+                                                      payload, strlen((char *)payload),
+                                                      QOS_LEVEL_1);
+                    }
+                } break;
+                default:
+                    break;
                 }
                 xSemaphoreGive(g_mqtt_mutex);
             }

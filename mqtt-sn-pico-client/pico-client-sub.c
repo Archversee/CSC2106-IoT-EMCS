@@ -24,14 +24,15 @@ QueueHandle_t g_mqtt_event_queue;
 TaskHandle_t xMQTTTaskHandle = NULL;
 
 // MQTT Task
-void vMQTTTask(void* pvParameters) {
-    mqtt_sn_context_t* mqtt_ctx;
-    struct udp_pcb* pcb;
+void vMQTTTask(void *pvParameters) {
+    mqtt_sn_context_t *mqtt_ctx;
+    struct udp_pcb *pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
     // Initialize Network
-    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr, &fs_initialized) != 0) {
+    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
+                                 &fs_initialized) != 0) {
         printf("Network init failed\n");
         vTaskDelete(NULL);
     }

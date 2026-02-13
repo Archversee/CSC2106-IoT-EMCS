@@ -49,8 +49,8 @@ extern SemaphoreHandle_t g_mqtt_mutex;
  * @param fs_initialized_out Output parameter for filesystem initialization status (always false)
  * @return 0 on success, -1 on error
  */
-int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_addr_out,
-                             bool* fs_initialized_out);
+int mqtt_client_network_init(void **mqtt_ctx_out, void **pcb_out, void *gateway_addr_out,
+                             bool *fs_initialized_out);
 
 /*!
  * @brief Initialize common MQTT client components

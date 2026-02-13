@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Global include paths for all targets
 include_directories(${CMAKE_CURRENT_LIST_DIR})
-include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt)
+1000include_directories(${CMAKE_CURRENT_LIST_DIR}/mqtt)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../paho.mqtt-sn.embedded-c-master/MQTTSNPacket/src)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
