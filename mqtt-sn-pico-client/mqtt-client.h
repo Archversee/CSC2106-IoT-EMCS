@@ -5,7 +5,7 @@
  * @date    2025
  *
  * This header provides common functionality shared between the TX and RX
- * MQTT-SN clients, including microSD card management and utility functions.
+ * MQTT-SN clients.
  */
 
 #ifndef MQTT_CLIENT_H
@@ -26,8 +26,6 @@ extern "C" {
 #define WIFI_RETRY_DELAY_MS (5000U)
 #define MQTT_CONNECT_DELAY_MS (1000U)
 #define MQTT_CONNACK_WAIT_MS (100U)
-#define SD_CHECK_INTERVAL_MS (5000U)
-#define MICROSD_INIT_MAX_ATTEMPTS (3U)
 #define MQTT_POLL_DELAY_MS (10U)
 #define MQTT_POLL_SHORT_COUNT (10U)
 #define MQTT_POLL_LONG_DELAY_MS (100U)
@@ -48,34 +46,11 @@ extern SemaphoreHandle_t g_mqtt_mutex;
  * @param mqtt_ctx_out Output parameter for MQTT-SN context (will be initialized)
  * @param pcb_out Output parameter for UDP PCB
  * @param gateway_addr_out Output parameter for gateway address
- * @param fs_initialized_out Output parameter for filesystem initialization status
+ * @param fs_initialized_out Output parameter for filesystem initialization status (always false)
  * @return 0 on success, -1 on error
  */
 int mqtt_client_network_init(void** mqtt_ctx_out, void** pcb_out, void* gateway_addr_out,
                              bool* fs_initialized_out);
-
-/*!
- * @brief Initialize microSD card with retry logic
- *
- * Uses microsd_driver for filesystem operations.
- * The card needs a few seconds to properly initialize, especially on first boot
- * or when the card is freshly inserted or reinserted.
- *
- * @param max_attempts Maximum number of initialization attempts (currently ignored)
- * @param verbose Print detailed status messages
- * @return true if initialization succeeded, false otherwise
- */
-bool mqtt_client_initialize_microsd(uint8_t max_attempts, bool verbose);
-
-/*!
- * @brief Check if microSD card is still accessible
- *
- * This is a lightweight check to detect if the card was removed.
- * Uses microsd_driver to check if the card is present.
- *
- * @return true if card is accessible, false if removed or error
- */
-bool mqtt_client_check_microsd_present(void);
 
 /*!
  * @brief Initialize common MQTT client components
@@ -84,6 +59,18 @@ bool mqtt_client_check_microsd_present(void);
  * common global state.
  */
 void mqtt_client_init(void);
+
+/*!
+ * @brief Get last PINGREQ timestamp
+ * @return Timestamp of last PINGREQ sent
+ */
+uint32_t mqtt_client_get_last_pingreq(void);
+
+/*!
+ * @brief Set last PINGREQ timestamp
+ * @param timestamp Timestamp to set
+ */
+void mqtt_client_set_last_pingreq(uint32_t timestamp);
 
 #ifdef __cplusplus
 }
