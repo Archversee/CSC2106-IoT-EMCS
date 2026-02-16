@@ -442,7 +442,6 @@ void mqtt_sn_send_pubrel(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw
 
 // Check and handle QoS message timeouts and retransmissions
 void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port) {
-    // Snapshot entries to retry to avoid use-after-free if ACK arrives during iteration
     typedef struct {
         bool valid;
         uint16_t msg_id;
@@ -455,9 +454,21 @@ void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_
     } retry_entry_t;
 
     retry_entry_t retry_list[MAX_PENDING_QOS_MSGS] = {0};
-    size_t retry_count = 0;
+    static bool initialized = false;
 
+    // Initialize only once
+    if (!initialized) {
+        memset(retry_list, 0, sizeof(retry_list));
+        initialized = true;
+    }
+
+    size_t retry_count = 0;
     absolute_time_t now = get_absolute_time();
+
+    // Reset valid flags at start of each call
+    for (size_t i = 0; i < MAX_PENDING_QOS_MSGS; i++) {
+        retry_list[i].valid = false;
+    }
 
     // Phase 1: Identify entries to retry or expire (minimize time spent iterating)
     for (size_t i = 0U; i < MAX_PENDING_QOS_MSGS; i++) {
@@ -571,27 +582,11 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
 
         // Dispatch to appropriate handler using lookup table
         bool handled = false;
-        if (g_mqtt_mutex != NULL && xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
-            for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
-                if (msg_handlers[i].msg_type == msg_type) {
-                    msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
-                    handled = true;
-                    break;
-                }
-            }
-            xSemaphoreGive(g_mqtt_mutex);
-        } else {
-            // Fallback if mutex not initialized (e.g. unit tests) or timeout
-            // For now, just run it (unsafe) or skip?
-            // Better to run it if mutex is NULL (legacy mode support if any)
-            if (g_mqtt_mutex == NULL) {
-                for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
-                    if (msg_handlers[i].msg_type == msg_type) {
-                        msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
-                        handled = true;
-                        break;
-                    }
-                }
+        for (size_t i = 0; i < NUM_MSG_HANDLERS; i++) {
+            if (msg_handlers[i].msg_type == msg_type) {
+                msg_handlers[i].handler(ctx, pcb, data, length, addr, port);
+                handled = true;
+                break;
             }
         }
 
@@ -826,7 +821,7 @@ static void handle_pingresp(mqtt_sn_context_t *ctx, struct udp_pcb *pcb, const u
     (void)ctx;
     g_last_pingresp = to_ms_since_boot(get_absolute_time());
     g_ping_ack_received = true;
-    printf("Received PINGRESP\\n");
+    printf("Received PINGRESP\n");
 }
 
 static void handle_connack(mqtt_sn_context_t *ctx, struct udp_pcb *pcb, const uint8_t *data,
@@ -836,7 +831,7 @@ static void handle_connack(mqtt_sn_context_t *ctx, struct udp_pcb *pcb, const ui
     (void)addr;
     (void)port;
     uint8_t return_code = data[MQTTSN_OFFSET_FLAGS];
-    printf("CONNACK: return_code=%d (%s)\\n", return_code,
+    printf("CONNACK: return_code=%d (%s)\n", return_code,
            return_code == MQTTSN_RETURN_ACCEPTED ? "Accepted" : "Rejected");
     g_ping_ack_received = true;
 
@@ -858,7 +853,7 @@ static void handle_suback(mqtt_sn_context_t *ctx, struct udp_pcb *pcb, const uin
     uint16_t msg_id =
         (data[MQTTSN_OFFSET_DURATION_LOW] << BITS_PER_BYTE) | data[MQTTSN_OFFSET_CLIENT_ID];
     uint8_t return_code = data[MQTTSN_OFFSET_PAYLOAD];
-    printf("SUBACK: topic_id=%d, msg_id=%d, return_code=%d\\n", topic_id, msg_id, return_code);
+    printf("SUBACK: topic_id=%d, msg_id=%d, return_code=%d\n", topic_id, msg_id, return_code);
 
     // Mark custom topic as subscribed if successful
     if (ctx && return_code == MQTTSN_RETURN_ACCEPTED) {
@@ -952,14 +947,12 @@ static void handle_publish_received(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
     const uint8_t *payload = &data[MQTTSN_OFFSET_PAYLOAD];
 
     // Regular message handling
-    printf("PUBLISH received (QoS %d, Msg ID %d), Payload (%d bytes)\n", qos, msg_id,
-           payload_len);
+    printf("PUBLISH received (QoS %d, Msg ID %d), Payload (%d bytes)\n", qos, msg_id, payload_len);
 
     // Handle text commands embedded in binary
     if (payload_len == LED_ON_CMD_LEN && memcmp(payload, "led on", LED_ON_CMD_LEN) == 0) {
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1U);
-    } else if (payload_len == LED_OFF_CMD_LEN &&
-               memcmp(payload, "led off", LED_OFF_CMD_LEN) == 0) {
+    } else if (payload_len == LED_OFF_CMD_LEN && memcmp(payload, "led off", LED_OFF_CMD_LEN) == 0) {
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0U);
     }
 

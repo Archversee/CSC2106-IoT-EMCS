@@ -25,15 +25,17 @@
 #define GATEWAY_IP0 172
 #define GATEWAY_IP1 20
 #define GATEWAY_IP2 10
-#define GATEWAY_IP3 10
+#define GATEWAY_IP3 3
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)
-#ifdef PICO_TX_BUILD
-#define MQTT_SN_CLIENT_ID "pico_w_tx"
-#else
-#define MQTT_SN_CLIENT_ID "pico_w_rx"
-#endif
+// #ifdef PICO_TX_BUILD
+// #define MQTT_SN_CLIENT_ID "pico_w_tx"
+// #else
+// #define MQTT_SN_CLIENT_ID "pico_w_rx"
+// #endif
+
+#define MQTT_SN_CLIENT_ID "pico_w_iot"
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
@@ -41,10 +43,7 @@
 #define PINGRESP_TIMEOUT_MS (PING_INTERVAL_MS * 3)
 
 // QoS Message Tracking
-// CRITICAL: Must be >= WINDOW_SIZE_CHUNKS (138) for Go-Back-N file transfer
-// Window size = 32KB / 237 bytes = 138 chunks
-// Increased to 160 to provide headroom for concurrent operations
-#define MAX_PENDING_QOS_MSGS 160
+#define MAX_PENDING_QOS_MSGS 5
 
 #define QOS_RETRY_INTERVAL_US 2000000
 #define QOS_MAX_RETRIES 3
@@ -66,12 +65,16 @@
 #define MESSAGEBUTTON_PIN 20
 #define QOSBUTTON_PIN 21
 #define DROP_ACK_BUTTON_PIN 19
-#define FILE_TRANSFER_BUTTON_PIN 22
+#define TOPICBUTTON_PIN 22
 
 // MQTT-SN Topic IDs
 #define TOPIC_ID_PICO_CMD 1    // pico/cmd - control commands
 #define TOPIC_ID_PICO_STATUS 2 // pico/status - status updates
-#define TOPIC_ID_FILE_DATA 4   // file/data - file chunks (metadata + data)
+
+#define TOPIC_DATA_1 "sensors/data"
+#define TOPIC_DATA_2 "sensors/pico/data"
+#define TOPIC_CMD_1 "sensors/cmd"
+#define TOPIC_CMD_2 "sensors/pico/cmd"
 
 #define PAYLOAD_SIZE 247
 

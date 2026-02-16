@@ -72,6 +72,8 @@ uint32_t mqtt_client_get_last_pingreq(void);
  */
 void mqtt_client_set_last_pingreq(uint32_t timestamp);
 
+void mqtt_client_poll_network(void);
+
 #ifdef __cplusplus
 }
 #endif

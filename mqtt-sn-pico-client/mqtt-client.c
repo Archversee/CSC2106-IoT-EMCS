@@ -14,6 +14,7 @@
 
 #include "FreeRTOS.h"
 #include "config.h"
+#include "lwip/timeouts.h"
 #include "mqtt/mqtt-sn-udp.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
@@ -169,4 +170,9 @@ void vApplicationMallocFailedHook(void) {
     while (1) {
         // Halt on malloc failure
     }
+}
+
+void mqtt_client_poll_network(void) {
+    cyw43_arch_poll();    // Poll CYW43 Wi-Fi driver
+    sys_check_timeouts(); // Check lwIP timers
 }
