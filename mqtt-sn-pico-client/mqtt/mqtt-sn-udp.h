@@ -3,86 +3,15 @@
 #define MQTT_SN_UDP_H
 
 /*
- * MQTT-SN UDP Protocol Implementation with File Transfer Support
+ * MQTT-SN UDP Protocol Implementation (Pure MQTT-SN Layer)
  *
- * FILE TRANSFER QOS POLICY:
- * -------------------------
- * Metadata chunks use QoS 2 (exactly-once delivery) for guaranteed reception.
- * Data chunks use QoS 1 (at-least-once delivery) for reliable transmission.
- *
- * QoS 2 for Metadata (PUBREC/PUBREL/PUBCOMP handshake):
- * - Guarantees exactly-once delivery
- * - Ensures session initialization before any data chunks
- * - No data chunks accepted without metadata
- *
- * QoS 1 for Data Chunks (PUBACK):
- * - Every packet is acknowledged (PUBACK)
- * - Unacknowledged packets are automatically retransmitted
- * - May result in duplicate packet delivery
- *
- * Duplicate Handling:
- * - Each chunk has a unique sequence number and CRC16
- * - Bitmap tracks which chunks have been received
- * - Duplicate chunks are detected and safely ignored
- * - No duplicate data is written to microSD
- *
- * This approach ensures reliable file transfer while handling
- * network packet loss and duplicate deliveries gracefully.
+ * This is a pure MQTT-SN v1.2 protocol implementation without file transfer.
+ * Supports QoS 0, 1, 2 with automatic retransmissions.
  */
 
 #include "../config.h"
-#include "../fs/chunk_transfer.h"
-#include "../fs/data_frame.h"
 #include "lwip/ip_addr.h"
 #include "lwip/udp.h"
-
-/*! File Transfer Configuration */
-#define FILE_TRANSFER_METADATA_QOS 2U /*!< QoS level for metadata (2=exactly-once delivery) */
-#define FILE_TRANSFER_DATA_QOS                                                                     \
-    1U /*!< QoS level for data chunks (1=at-least-once with duplicates handled) */
-#define FILE_TRANSFER_TOPIC_DATA 4U /*!< Topic ID for file data (metadata + chunks) (file/data) */
-#define FILE_TRANSFER_TOPIC_CONTROL 5U    /*!< Topic ID for flow control (file/control) */
-#define METADATA_CONFIRM_TIMEOUT_MS 5000U // 5 second timeout
-
-/*! Go-Back-N Sliding Window Protocol Configuration */
-#define CHUNK_SIZE 237                // Size of each data chunk in bytes (PAYLOAD_DATA_SIZE)
-#define WINDOW_SIZE_BYTES (32 * 1024) // 32KB window size (optimized for Pico W 264KB RAM)
-#define WINDOW_SIZE_CHUNKS (WINDOW_SIZE_BYTES / CHUNK_SIZE) // ~138 chunks per window
-#define MAX_RETRIES_GBN 3 // Maximum retransmission attempts for Go-Back-N
-
-/*! Control Message Types for Go-Back-N Flow Control */
-typedef enum {
-    CTRL_ACK,          // Acknowledge chunks up to seq_num
-    CTRL_NACK,         // Negative acknowledgment - request retransmission from seq_num
-    CTRL_REQUEST_NEXT, // Request next batch of chunks (next window)
-    CTRL_COMPLETE,     // Transfer complete confirmation
-    CTRL_METADATA_RECV // Metadata received confirmation (replaces QoS2 PUBCOMP)
-} control_msg_type_t;
-
-/*! Control Message Structure for file/control topic */
-typedef struct __attribute__((packed)) {
-    control_msg_type_t type; // Control message type (4 bytes enum)
-    uint32_t seq_num;        // Sequence number (for ACK/NACK)
-    uint32_t window_start;   // Start of next requested window
-    uint32_t window_end;     // End of next requested window
-    char session_id[32];     // Session identifier
-} control_message_t;
-
-/*! Sliding Window State (Sender side - TX) */
-typedef struct {
-    uint32_t base;               // Base of sliding window (oldest unACKed)
-    uint32_t next_seq;           // Next sequence to send
-    uint32_t window_size;        // Window size in chunks
-    uint32_t total_chunks;       // Total chunks in file
-    uint32_t current_window_end; // End of current window (for retransmission boundary)
-    bool *acked;                 // ACK bitmap for chunks in current window
-    uint32_t retries;            // Retry counter
-    uint32_t stuck_nack_count;   // Counter for stuck NACK detection
-    uint32_t last_nack_chunk;    // Last chunk that received NACK
-    absolute_time_t last_send_time;
-    char session_id[32]; // Session identifier for this transfer
-    bool active;         // Whether this window is active
-} sliding_window_t;
 
 /*! MQTT-SN Packet Structure Constants */
 #define MQTTSN_HEADER_SIZE 2U          /*!< Minimum header size (length + type) */
@@ -124,16 +53,7 @@ typedef struct {
 #define LED_ON_CMD_LEN 6U  /*!< Length of "led on" command */
 #define LED_OFF_CMD_LEN 7U /*!< Length of "led off" command */
 
-/*! File Transfer Validation Limits */
-#define MAX_CHUNK_COUNT 100000U                   /*!< Maximum allowed chunk count */
-#define MAX_FILE_SIZE_BYTES (10U * 1024U * 1024U) /*!< Maximum file size: 10 MB */
-
 /*! Timing Constants */
-#define QOS2_HANDSHAKE_DELAY_MS 150U /*!< Delay for QoS 2 handshake completion */
-#define INTER_CHUNK_DELAY_US 50000U  /*!< Inter-chunk delay (microseconds) */
-#define POLL_YIELD_DELAY_US                                                                        \
-    5000U /*!< Inter-packet delay (10ms = ~200 packets/sec, prevents network buffer overflow) */
-#define PROGRESS_UPDATE_INTERVAL 10U  /*!< Report progress every N chunks */
 #define TOPIC_RETRY_INTERVAL_MS 5000U /*!< Retry topic registration/subscription every 5s */
 #define MAX_CUSTOM_TOPICS 10U         /*!< Maximum number of custom topics to track */
 
@@ -190,28 +110,9 @@ typedef struct {
 
 typedef struct {
     bool drop_acks;
-    transfer_session_t *file_session;
+    void *file_session; // Placeholder for compatibility (always NULL)
     bool transfer_in_progress;
     topic_entry_t custom_topics[MAX_CUSTOM_TOPICS]; /*!< Custom topic tracking */
-    sliding_window_t tx_window;                     /*!< Sender-side sliding window (TX) */
-    uint32_t last_acked_seq;                        /*!< Last acknowledged sequence number (RX) */
-    char rx_session_id[32];                         /*!< Current receiver session ID */
-    absolute_time_t last_window_check;              /*!< Last time we checked window completion */
-
-    /* RX-side window tracking (prevents control message spam) */
-    uint32_t rx_last_request_next_window; /*!< Last window we sent REQUEST_NEXT for */
-    uint32_t rx_highest_chunk_received;   /*!< Highest chunk seq received in current transfer */
-    uint32_t rx_last_nack_chunk;          /*!< Last chunk we sent NACK for */
-    absolute_time_t rx_last_nack_time;    /*!< Time of last NACK sent */
-
-    /* TX-side metadata confirmation tracking */
-    bool metadata_recv_confirmed; /*!< True when METADATA_RECV control msg received */
-    char tx_session_id[32];       /*!< Session ID for current TX transfer */
-
-    /* UDP connection parameters (for sending control messages) */
-    struct udp_pcb *pcb; /*!< UDP PCB pointer */
-    ip_addr_t gw_addr;   /*!< Gateway address */
-    u16_t gw_port;       /*!< Gateway port */
 } mqtt_sn_context_t;
 
 extern qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
@@ -230,7 +131,6 @@ void mqtt_sn_subscribe_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u
 void mqtt_sn_publish_topic_id(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                               uint16_t topic_id, const uint8_t *payload, size_t payload_len,
                               int qos, uint16_t msg_id, bool is_retransmit);
-// Auto-publish helper: generates msg_id internally for initial sends (not retransmissions)
 void mqtt_sn_publish_topic_id_auto(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
                                    u16_t topic_id, const uint8_t *payload, size_t payload_len,
                                    int qos);
@@ -247,26 +147,6 @@ void udp_recv_callback(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_
 void check_qos_timeouts(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port);
 void remove_pending_qos_msg(uint16_t msg_id);
 uint16_t get_next_msg_id(void);
-
-// File transfer functions
-void send_file_via_mqtt(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                        const char *filename, mqtt_sn_context_t *ctx);
-void send_file_via_mqtt_gbn(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                            const char *filename, mqtt_sn_context_t *ctx);
-void send_file_via_mqtt_auto(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                             const char *filename, mqtt_sn_context_t *ctx);
-void handle_file_metadata(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
-                          struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port);
-void handle_file_payload(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
-                         struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port);
-void handle_control_message(mqtt_sn_context_t *ctx, const uint8_t *payload, size_t len,
-                            struct udp_pcb *pcb, const ip_addr_t *addr, u16_t port);
-
-// Go-Back-N helper functions
-bool init_sliding_window(sliding_window_t *window, uint32_t total_chunks, const char *session_id);
-void cleanup_sliding_window(sliding_window_t *window);
-void send_control_message(struct udp_pcb *pcb, const ip_addr_t *gw_addr, u16_t gw_port,
-                          const control_message_t *ctrl_msg, mqtt_sn_context_t *ctx);
 
 // Custom topic management functions
 bool mqtt_sn_add_topic_for_registration(mqtt_sn_context_t *ctx, const char *topic_name);

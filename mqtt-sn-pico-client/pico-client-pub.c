@@ -1,6 +1,6 @@
 /*!
  * @file    pico-client-pub.c
- * @brief   FreeRTOS-based MQTT-SN Publisher Client
+ * @brief   FreeRTOS-based MQTT-SN Publisher Client (Pure MQTT-SN)
  */
 
 #include <stdio.h>
@@ -8,7 +8,6 @@
 
 #include "FreeRTOS.h"
 #include "config.h"
-#include "drivers/microsd_driver.h"
 #include "mqtt-client.h"
 #include "mqtt/mqtt-sn-udp.h"
 #include "mqtt_task_defs.h"
@@ -25,9 +24,11 @@ QueueHandle_t g_mqtt_event_queue;
 TaskHandle_t xMQTTTaskHandle = NULL;
 TaskHandle_t xButtonTaskHandle = NULL;
 
+// Global QoS level (shared between tasks)
+static uint8_t g_current_qos = QOS_LEVEL_0;
+
 // Button Task
-void vButtonTask(void* pvParameters) {
-    // Initialize Buttons
+void vButtonTask(void *pvParameters) {
     gpio_init(MESSAGEBUTTON_PIN);
     gpio_set_dir(MESSAGEBUTTON_PIN, GPIO_IN);
     gpio_pull_up(MESSAGEBUTTON_PIN);
@@ -36,134 +37,142 @@ void vButtonTask(void* pvParameters) {
     gpio_set_dir(QOSBUTTON_PIN, GPIO_IN);
     gpio_pull_up(QOSBUTTON_PIN);
 
-    gpio_init(FILE_TRANSFER_BUTTON_PIN);
-    gpio_set_dir(FILE_TRANSFER_BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(FILE_TRANSFER_BUTTON_PIN);
-
-    gpio_init(DROP_ACK_BUTTON_PIN);
-    gpio_set_dir(DROP_ACK_BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(DROP_ACK_BUTTON_PIN);
-
     bool last_msg_btn = true;
-    bool last_txt_btn = true;
-    bool last_file_btn = true;
-    bool last_drop_btn = true;
+    bool last_qos_btn = true;
+    uint32_t loop_count = 0;
+
+    fflush(stdout);
 
     for (;;) {
         bool current_msg_btn = gpio_get(MESSAGEBUTTON_PIN);
-        bool current_txt_btn = gpio_get(QOSBUTTON_PIN);
-        bool current_file_btn = gpio_get(FILE_TRANSFER_BUTTON_PIN);
-        bool current_drop_btn = gpio_get(DROP_ACK_BUTTON_PIN);
+        bool current_qos_btn = gpio_get(QOSBUTTON_PIN);
 
+        // GP20: Publish message with current QoS level
         if (last_msg_btn && !current_msg_btn) {
-            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = 0};  // 0 = Simple Message
-            xQueueSend(g_mqtt_event_queue, &event, 0);
+            printf("GP20 pressed - Publishing with QoS %d\n", g_current_qos);
+            fflush(stdout);
+            mqtt_event_t event = {.type = MQTT_EVENT_PUBLISH, .param1 = g_current_qos};
+            xQueueSend(g_mqtt_event_queue, &event, pdMS_TO_TICKS(10));
         }
 
-        if (last_txt_btn && !current_txt_btn) {
-            mqtt_event_t event = {.type = MQTT_EVENT_FILE_TRANSFER_START, .param1 = 1};  // 1 = Text File
-            xQueueSend(g_mqtt_event_queue, &event, 0);
-        }
-
-        if (last_file_btn && !current_file_btn) {
-            mqtt_event_t event = {.type = MQTT_EVENT_FILE_TRANSFER_START, .param1 = 2};  // 2 = Image File
-            xQueueSend(g_mqtt_event_queue, &event, 0);
-        }
-
-        if (last_drop_btn && !current_drop_btn) {
-            // Toggle drop ACK directly via event? Or just toggle global?
-            // Since mqtt_ctx is shared but protected, we can send an event to toggle it safely
-            // But for simplicity, let's just send an event
-            // Actually, we don't have a specific event for this, let's add one or just handle it here if we had access to ctx
-            // But we don't have ctx here.
-            // Let's assume we don't need this for the main demo, or add a generic event
+        // GP21: Cycle through QoS levels (0 -> 1 -> 2 -> 0)
+        if (last_qos_btn && !current_qos_btn) {
+            g_current_qos = (g_current_qos + 1) % 3;
+            printf("GP21 pressed - QoS level changed to: %d\n", g_current_qos);
+            fflush(stdout);
         }
 
         last_msg_btn = current_msg_btn;
-        last_txt_btn = current_txt_btn;
-        last_file_btn = current_file_btn;
-        last_drop_btn = current_drop_btn;
+        last_qos_btn = current_qos_btn;
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
 // MQTT Task
-void vMQTTTask(void* pvParameters) {
-    mqtt_sn_context_t* mqtt_ctx;
-    struct udp_pcb* pcb;
+void vMQTTTask(void *pvParameters) {
+    mqtt_sn_context_t *mqtt_ctx;
+    struct udp_pcb *pcb;
     ip_addr_t gateway_addr;
     bool fs_initialized;
 
+    printf("MQTT Task Started\n");
+    fflush(stdout);
+
     // Initialize Network
-    if (mqtt_client_network_init((void**)&mqtt_ctx, (void**)&pcb, &gateway_addr, &fs_initialized) != 0) {
+    if (mqtt_client_network_init((void **)&mqtt_ctx, (void **)&pcb, &gateway_addr,
+                                 &fs_initialized) != 0) {
         printf("Network init failed\n");
+        fflush(stdout);
         vTaskDelete(NULL);
     }
 
     // Register Topics
-    if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(g_mqtt_mutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
         mqtt_sn_add_topic_for_registration(mqtt_ctx, "pico/cmd");
         mqtt_sn_add_topic_for_registration(mqtt_ctx, "pico/status");
-        mqtt_sn_add_topic_for_registration(mqtt_ctx, "file/data");
         mqtt_sn_process_topic_registrations(mqtt_ctx, pcb, &gateway_addr, UDP_PORT);
         xSemaphoreGive(g_mqtt_mutex);
     }
-    vTaskDelay(pdMS_TO_TICKS(2000));  // Wait for registration
 
-    // Subscribe to control topic
-    if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
-        mqtt_sn_add_topic_for_subscription(mqtt_ctx, "file/control", QOS_LEVEL_1);
-        mqtt_sn_process_topic_registrations(mqtt_ctx, pcb, &gateway_addr, UDP_PORT);
-        xSemaphoreGive(g_mqtt_mutex);
+    TickType_t reg_start = xTaskGetTickCount();
+    bool registered = false;
+    while (!registered && (xTaskGetTickCount() - reg_start) < pdMS_TO_TICKS(5000)) {
+        mqtt_client_poll_network();
+        if (xSemaphoreTake(g_mqtt_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            uint16_t cmd_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/cmd");
+            uint16_t status_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/status");
+            if (cmd_id > 0 && status_id > 0) {
+                registered = true;
+            }
+            xSemaphoreGive(g_mqtt_mutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    printf("MQTT Task Ready\n");
+    printf("MQTT Task Ready (Initial QoS: %d)\n", g_current_qos);
+    fflush(stdout);
 
     mqtt_event_t event;
     uint32_t last_ping = xTaskGetTickCount();
+    uint32_t last_qos_check = xTaskGetTickCount();
+    uint32_t loop_count = 0;
 
     for (;;) {
-        // Wait for event with timeout (for PING)
+        mqtt_client_poll_network();
+
+        // Wait for event with timeout
         if (xQueueReceive(g_mqtt_event_queue, &event, pdMS_TO_TICKS(100)) == pdTRUE) {
-            if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
+            fflush(stdout);
+            if (xSemaphoreTake(g_mqtt_mutex, pdMS_TO_TICKS(500)) == pdTRUE) {
+                printf("Got event type=%d\n", event.type);
+                fflush(stdout);
                 switch (event.type) {
-                    case MQTT_EVENT_PUBLISH: {
-                        uint8_t payload[20] = "Hello FreeRTOS";
-                        mqtt_sn_publish_topic_id_auto(pcb, &gateway_addr, UDP_PORT, TOPIC_ID_PICO_STATUS, payload, strlen((char*)payload), QOS_LEVEL_1);
-                    } break;
-                    case MQTT_EVENT_FILE_TRANSFER_START:
-                        if (fs_initialized) {
-                            const char* filename = (event.param1 == 1) ? "test_1.txt" : "test.jpg";
-                            send_file_via_mqtt_auto(pcb, &gateway_addr, UDP_PORT, filename, mqtt_ctx);
-                        } else {
-                            printf("FS not initialized\n");
-                        }
-                        break;
-                    default:
-                        break;
+                case MQTT_EVENT_PUBLISH: {
+                    uint8_t qos_level = (uint8_t)event.param1;
+                    uint8_t payload[20] = "Hello FreeRTOS";
+                    uint16_t topic_id = mqtt_sn_get_topic_id(mqtt_ctx, "pico/status");
+                    if (topic_id > 0) {
+                        mqtt_sn_publish_topic_id_auto(pcb, &gateway_addr, UDP_PORT, topic_id,
+                                                      payload, strlen((char *)payload), qos_level);
+                        printf("Published message with QoS %d!\n", qos_level);
+                        fflush(stdout);
+                    }
+                } break;
+                default:
+                    break;
                 }
                 xSemaphoreGive(g_mqtt_mutex);
+            } else {
+                printf("FAILED to take g_mqtt_mutex\n");
+                fflush(stdout);
             }
         }
 
-        // Handle PING and Maintenance
+        // Handle PING
         uint32_t now = xTaskGetTickCount();
         if ((now - last_ping) > pdMS_TO_TICKS(PING_INTERVAL_MS)) {
-            if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
-                // Check PING logic (simplified)
+            fflush(stdout);
+            fflush(stdout);
+            if (xSemaphoreTake(g_mqtt_mutex, pdMS_TO_TICKS(500)) == pdTRUE) {
                 mqtt_sn_pingreq(pcb, &gateway_addr, UDP_PORT);
                 xSemaphoreGive(g_mqtt_mutex);
+            } else {
+                printf("FAILED to take g_mqtt_mutex for PINGREQ\n");
+                fflush(stdout);
             }
             last_ping = now;
         }
 
-        // Check QoS timeouts
-        if (xSemaphoreTake(g_mqtt_mutex, portMAX_DELAY) == pdTRUE) {
-            check_qos_timeouts(pcb, &gateway_addr, UDP_PORT);
-            xSemaphoreGive(g_mqtt_mutex);
+        // Check QoS timeouts (less frequently)
+        if ((now - last_qos_check) > pdMS_TO_TICKS(5000)) {
+            if (xSemaphoreTake(g_mqtt_mutex, pdMS_TO_TICKS(500)) == pdTRUE) {
+                check_qos_timeouts(pcb, &gateway_addr, UDP_PORT);
+                xSemaphoreGive(g_mqtt_mutex);
+            }
+            last_qos_check = now;
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
