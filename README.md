@@ -14,11 +14,11 @@ A comprehensive IoT communication system featuring multiple wireless protocols (
 5. ✅ **Dashboard and visualisation of results** - Real-time web dashboard for monitoring and control
 
 ### LoRa Implementation 🚧 (IN PROGRESS)
-1. ⬜ **LoRa packet building and Arduino client side implementation** - Custom packet structure and Arduino-based client development
-2. ⬜ **LoRa multi-hop mesh layer (routing/forwarding)** - Routing protocols and packet forwarding for extended range
-3. ⬜ **Heterogeneous Gateway for protocol translation on Raspberry Pi** - LoRa to MQTT bridge on Raspberry Pi hardware
-4. ⬜ **Performance collection/eval of transport and comparison** - Transport layer benchmarking and MQTT-SN vs LoRa comparison analysis
-5. ⬜ **Dashboard and visualisation of results** - Extended dashboard with protocol comparison charts and real-time LoRa metrics
+1. Add in Arduino Maker own client side code, building MQTT-SN packets over LoRa and sending with correct topics, subscribing to correct topics, output messages
+2. Amend Waveshare-gateway main.c to convert LoRa packets to UDP to translate to Paho MQTT-SN Gateway (shld be pretty quick im almost done with this hard to test without 1.)
+3. Implement the LoRa Mesh
+4. Add statistics into the packets, hop count, latency, payload size
+5. Dashboard to view all messages, topics, and statistics.
 
 ---
 
