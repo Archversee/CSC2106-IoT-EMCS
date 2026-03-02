@@ -25,7 +25,7 @@
 #define GATEWAY_IP0 172
 #define GATEWAY_IP1 20
 #define GATEWAY_IP2 10
-#define GATEWAY_IP3 3
+#define GATEWAY_IP3 13
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)
