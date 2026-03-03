@@ -1,35 +1,23 @@
-/*!
- * @file  mqtt-sn-udp.h
- * @brief MQTT-SN for ATmega328P (2KB RAM) — AVR-constrained port
- *
- * Key reductions vs Pico version:
- *   payload buffer : 247 -> 32 bytes  (button payloads are ~15 bytes)
- *   QoS slots      : 8   -> 3
- *   topic slots    : 10  -> 4
- *   topic_name     : 64  -> 32 chars
- *   All string literals in PROGMEM via F()
- */
 #ifndef MQTT_SN_UDP_H
 #define MQTT_SN_UDP_H
 
+#include "config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* ── Arduino-specific config ─────────────────────────────────── */
-#define LORA_MY_NODE_ID   0x21        /* unique per node */
-#define MQTT_SN_CLIENT_ID "arduino-02" /* short = less flash */
-#define LORA_GW_NODE_ID   0x00        /* RPi bridge */
+// Arduino-specific config
 #define KEEPALIVE_INTERVAL_SEC 60U
 #define LED_PIN LED_BUILTIN
 
-/* ── Memory budget constants ─────────────────────────────────── */
-#define MAX_PENDING_QOS_MSGS 3U       /* was 8  — 3 in-flight is plenty  */
-#define MAX_CUSTOM_TOPICS 4U          /* was 10 — we register 2 topics    */
-#define MQTTSN_RETRY_PAYLOAD_SIZE 32U /* was 247 — button payload ~15B    */
-#define TOPIC_NAME_MAX_LEN 32U        /* was 64                           */
+// Memory budget constants, we use smaller values than the Pico since we have lesser RAM headroom on
+// Arduino Uno/Nano
+#define MAX_PENDING_QOS_MSGS 3U       // was 8 -> 3
+#define MAX_CUSTOM_TOPICS 4U          // was 10 -> 4
+#define MQTTSN_RETRY_PAYLOAD_SIZE 32U // was 247 -> 32
+#define TOPIC_NAME_MAX_LEN 32U        // was 64
 
-/* ── Packet constants (unchanged from Pico) ─────────────────── */
+// Packet constants (unchanged)
 #define MQTTSN_HEADER_SIZE 2U
 #define MQTTSN_CONNECT_FIXED_LEN 6U
 #define MQTTSN_SUBSCRIBE_LEN 7U
@@ -41,7 +29,7 @@
 #define MQTTSN_MAX_PACKET_LEN 255U
 #define MQTTSN_PUBLISH_HEADER_LEN 7U
 
-/* ── Field offsets (unchanged) ───────────────────────────────── */
+// Field offsets (unchanged)
 #define MQTTSN_OFFSET_LENGTH 0U
 #define MQTTSN_OFFSET_MSG_TYPE 1U
 #define MQTTSN_OFFSET_FLAGS 2U
@@ -56,12 +44,12 @@
 #define MQTTSN_OFFSET_PAYLOAD 7U
 #define MQTTSN_OFFSET_RETURN_CODE 2U
 
-/* ── QoS levels (unchanged) ──────────────────────────────────── */
+// QoS levels (unchanged)
 #define QOS_LEVEL_0 0
 #define QOS_LEVEL_1 1
 #define QOS_LEVEL_2 2
 
-/* ── Protocol constants (unchanged) ─────────────────────────── */
+// Protocol constants (unchanged)
 #define BITS_PER_BYTE 8U
 #define MQTTSN_BYTE_MASK 0xFFU
 #define MQTTSN_MSG_TYPE_CONNECT 0x04U
@@ -90,39 +78,25 @@
 #define LED_ON_CMD_LEN 6U
 #define LED_OFF_CMD_LEN 7U
 
-/* ── Timing (unchanged) ──────────────────────────────────────── */
+// Timing (unchanged)
 #define TOPIC_RETRY_INTERVAL_MS 5000UL
 #define QOS_RETRY_INTERVAL_MS 3000UL
 #define QOS_MAX_RETRIES 3U
 
-/* ── Topic names ─────────────────────────────────────────────── */
-#define TOPIC_DATA_1 "sensors/data"
-#define TOPIC_DATA_2 "sensors/arduino/data"
-#define TOPIC_CMD_1 "sensors/cmd"
-#define TOPIC_CMD_2 "sensors/arduino/cmd"
-
-/* ────────────────────────────────────────────────────────────────
- * QoS pending message
- * RAM: 3 slots × (2+1+1+4+1+2+32+1) = 3 × 44 = 132 bytes
- * Was: 8 × 276 = 2,208 bytes on Pico
- * ──────────────────────────────────────────────────────────────*/
+// Was: 2,208 bytes on Pico -> RAM: 132 bytes on Arduino Uno
 typedef struct {
     uint16_t msg_id;
     uint8_t qos;
-    uint8_t step; /* 0=PUBLISH sent, 1=PUBREL sent */
+    uint8_t step; // 0=PUBLISH sent, 1=PUBREL sent
     uint32_t timestamp_ms;
     uint8_t retry_count;
     uint16_t topic_id;
-    uint8_t payload[MQTTSN_RETRY_PAYLOAD_SIZE]; /* 32 bytes */
-    uint8_t payload_len;                        /* uint8_t — max 32, no need for size_t */
+    uint8_t payload[MQTTSN_RETRY_PAYLOAD_SIZE]; // 32 bytes
+    uint8_t payload_len;
     bool in_use;
 } qos_msg_t;
 
-/* ────────────────────────────────────────────────────────────────
- * Topic entry
- * RAM: 4 slots × (32+2+1+1+1+4+1) = 4 × 42 = 168 bytes
- * Was: 10 × 80 = 800 bytes on Pico
- * ──────────────────────────────────────────────────────────────*/
+// Was: 800 bytes on Pico -> RAM: 168 bytes on Arduino Uno
 typedef struct {
     char topic_name[TOPIC_NAME_MAX_LEN];
     uint16_t topic_id;
@@ -134,22 +108,24 @@ typedef struct {
     bool in_use;
 } topic_entry_t;
 
-/* ────────────────────────────────────────────────────────────────
- * Context
- * RAM: 4 × 42 + 2 flags = ~170 bytes
- * Was: ~840 bytes on Pico
- * ──────────────────────────────────────────────────────────────*/
+// Was: 840 bytes on Pico -> RAM: 170 bytes on Arduino Uno
 typedef struct {
-    bool drop_acks; /* test hook — keep for API compat */
+    bool drop_acks; //  Test hook to simulate ACK loss for retries
     topic_entry_t custom_topics[MAX_CUSTOM_TOPICS];
 } mqtt_sn_context_t;
 
-/* ── Globals ─────────────────────────────────────────────────── */
+// Globals
 extern qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
 extern bool g_ping_ack_received;
 extern uint32_t g_last_pingresp;
+extern bool g_puback_pending;
+extern uint16_t g_puback_tid;
+extern uint16_t g_puback_mid;
+extern bool g_pubrec_pending;
+extern uint16_t g_pubrec_mid;
+extern bool g_pubcomp_pending;
+extern uint16_t g_pubcomp_mid;
 
-/* ── Public API (identical signatures to previous port) ─────── */
 void mqtt_sn_connect(void);
 void mqtt_sn_pingreq(void);
 void mqtt_sn_register_topic(const char *topic_name, uint16_t msg_id);
@@ -176,4 +152,4 @@ uint16_t mqtt_sn_get_topic_id(mqtt_sn_context_t *ctx, const char *topic_name);
 void mqtt_sn_poll(mqtt_sn_context_t *ctx);
 void udp_recv_callback_arduino(mqtt_sn_context_t *ctx, const uint8_t *data, uint8_t length);
 
-#endif /* MQTT_SN_UDP_H */
+#endif

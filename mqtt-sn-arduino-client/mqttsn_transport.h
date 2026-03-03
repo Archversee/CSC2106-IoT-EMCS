@@ -1,6 +1,7 @@
 #ifndef MQTTSN_TRANSPORT_H
 #define MQTTSN_TRANSPORT_H
 
+#include "config.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -9,7 +10,7 @@ extern "C" {
 #endif
 
 // Send raw MQTT-SN bytes. Replaces udp_sendto().
-int mqttsn_transport_send(const uint8_t *buf, uint8_t len);
+int mqttsn_transport_send(const uint8_t *buf, uint8_t len, bool wait_response = false);
 
 // Non-blocking receive.
 uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_ms);

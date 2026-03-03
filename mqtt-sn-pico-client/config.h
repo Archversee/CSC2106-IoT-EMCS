@@ -35,7 +35,8 @@
 // #define MQTT_SN_CLIENT_ID "pico_w_rx"
 // #endif
 
-#define MQTT_SN_CLIENT_ID "pico_w_iot"
+#define MQTT_SN_CLIENT_ID                                                                          \
+    "pico_w_iot" // Change to "pico_w_XX" for each node to get a unique MQTT-SN client ID
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
