@@ -323,11 +323,19 @@ static void irq_process(void) {
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 }
 
+static uint64_t last_dn_tx_us = 0;
+
 // Downstream thread: Paho -> LoRa
 static void *downstream_thread(void *arg) {
     (void)arg;
     LOG("[dn] Thread started");
     uint8_t rxbuf[GW_PAYLOAD_MAX];
+
+    // Initialise to current time so even the first pair of back-to-back
+    // downlinks gets spaced correctly - avoids the last_dn_tx_us=0 bypass
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 
     // Staging arrays so we release the lock before transmitting
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
@@ -394,12 +402,41 @@ static void *downstream_thread(void *arg) {
         pthread_mutex_unlock(&clients_lock);
 
         for (int p = 0; p < count; p++) {
-            printf("  Downlink: ");
-            for (int j = 0; j < d_len[p]; j++)
-                printf("%02X ", d_data[p][j]);
-            printf("\n");
-            fflush(stdout);
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            uint64_t now = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
+
+            bool is_ack = (d_len[p] <= 8);
+
+            uint64_t elapsed = now - last_dn_tx_us;
+            if (!is_ack && elapsed < 1500000ULL) {
+                uint64_t wait = 1500000ULL - elapsed;
+                LOG("[dn] Spacing wait %llums", (unsigned long long)(wait / 1000));
+                usleep((useconds_t)wait);
+            }
+
+            irq_flag = false;
             lora_send(d_node[p], dn_seq++, d_data[p], d_len[p]);
+            irq_flag = false;
+
+            // Check MQTT-SN message type byte (second byte of payload)
+            // 0x0D = PUBACK, 0x10 = PUBREL, 0x07 = PUBCOMP response
+            // Only delay for actual QoS ACKs, not REGACK/SUBACK
+            uint8_t msg_type = (d_len[p] >= 2) ? d_data[p][1] : 0;
+            bool is_qos_ack = (msg_type == 0x0D || // PUBACK
+                               msg_type == 0x10 || // PUBREL
+                               msg_type == 0x70);  // PUBCOMP
+
+            if (is_qos_ack) {
+                usleep(300000); // pre-send delay
+                irq_flag = false;
+                lora_send(d_node[p], dn_seq++, d_data[p], d_len[p]);
+                irq_flag = false;
+                usleep(500000); // post-send guard
+            } else {
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
+            }
         }
     }
     LOG("[dn] Thread exiting");

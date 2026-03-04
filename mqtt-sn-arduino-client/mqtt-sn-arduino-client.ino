@@ -8,8 +8,9 @@
 #define KEEPALIVE_MS (KEEPALIVE_INTERVAL_SEC * 1000UL)
 #define QOS_CHK_MS 5000UL
 
-#define PUB_QOS1_MS 30000UL // sensors/data - every 30s - QoS 1
+#define PUB_QOS1_MS 10000UL // sensors/data - every 30s - QoS 1
 #define PUB_QOS0_MS 10000UL // sensors/arduino/data - every 10s - QoS 0
+#define PUB_QOS0_REPS 3U
 
 SSD1306AsciiWire oled;
 
@@ -20,6 +21,10 @@ static uint32_t g_last_pub_qos1 = 0;
 static uint32_t g_last_pub_qos0 = 0;
 static uint16_t g_pub_count_qos0 = 0; // sensors/arduino/data counter
 static uint16_t g_pub_count_qos1 = 0; // sensors/data counter
+
+static uint8_t seq_phase = 0; // 0-2 = QoS0 x3, 3 = QoS1, 4 = delay
+static uint8_t qos0_rep = 0;
+static uint32_t seq_phase_ms = 0;
 
 typedef enum : uint8_t {
     STATE_INIT,
@@ -174,64 +179,72 @@ void loop() {
 
         if (g_pubrec_pending) {
             g_pubrec_pending = false;
-            uint8_t node_slot = (LORA_MY_NODE_ID & 0x0F);
-            delay(node_slot * 600);
             mqtt_sn_send_pubrec(g_pubrec_mid);
             break;
         }
         if (g_pubcomp_pending) {
             g_pubcomp_pending = false;
-            uint8_t node_slot = (LORA_MY_NODE_ID & 0x0F);
-            delay(node_slot * 600);
             mqtt_sn_send_pubcomp(g_pubcomp_mid);
             break;
         }
 
         if (g_puback_pending) {
             g_puback_pending = false;
-            uint8_t node_slot = (LORA_MY_NODE_ID & 0x0F);
-            delay(node_slot * 250);
             mqtt_sn_send_puback(g_puback_tid, g_puback_mid, MQTTSN_RETURN_ACCEPTED);
             break;
         }
 
-        // QoS 0 publish to sensors/arduino/data every 10s
-        // Payload: "<client_id> <pub_count>"
-        if (now - g_last_pub_qos0 >= PUB_QOS0_MS) {
-            g_last_pub_qos0 = now;
-            g_pub_count_qos0++;
-            char payload[48];
-            snprintf(payload, sizeof(payload), "%s %u", MQTT_SN_CLIENT_ID, g_pub_count_qos0);
-            Serial.print(F("PUB QoS0 #"));
-            Serial.println(g_pub_count_qos0);
-            oledShow(F("PUB QoS0"), F(TOPIC_DATA_2));
-            mqtt_sn_publish_topic_id_auto(tid2, (const uint8_t *)payload, strlen(payload),
-                                          QOS_LEVEL_0);
-            oledShow(F("Ready!"), F("Publishing..."));
-            break;
+        // QoS 0 publish phase (3 times)
+        if (seq_phase < 3) {
+            if (now - g_last_pub_qos0 >= PUB_QOS0_MS) {
+                g_last_pub_qos0 = now;
+                g_pub_count_qos0++;
+                char payload[48];
+                snprintf(payload, sizeof(payload), "%s %u", MQTT_SN_CLIENT_ID, g_pub_count_qos0);
+                Serial.print(F("PUB QoS0 #"));
+                Serial.println(g_pub_count_qos0);
+                oledShow(F("PUB QoS0"), F(TOPIC_DATA_2));
+                mqtt_sn_publish_topic_id_auto(tid2, (const uint8_t *)payload, strlen(payload),
+                                              QOS_LEVEL_0);
+                oledShow(F("Ready!"), F("Publishing..."));
+                seq_phase++;
+                if (seq_phase == 3)
+                    seq_phase_ms = now; // start 10s wait before QoS1
+                break;
+            }
         }
-
-        // QoS 1 publish to sensors/data every 30s
-        // Payload: "<client_id> <pub_count>"
-        if (now - g_last_pub_qos1 >= PUB_QOS1_MS) {
-            g_last_pub_qos1 = now;
-            g_pub_count_qos1++;
-            char payload[48];
-            snprintf(payload, sizeof(payload), "%s %u", MQTT_SN_CLIENT_ID, g_pub_count_qos1);
-            Serial.print(F("PUB QoS1 #"));
-            Serial.println(g_pub_count_qos1);
-            oledShow(F("PUB QoS1"), F(TOPIC_DATA_1));
-            mqtt_sn_publish_topic_id_auto(tid1, (const uint8_t *)payload, strlen(payload),
-                                          QOS_LEVEL_1);
-            oledShow(F("Ready!"), F("Publishing..."));
-            break;
+        // 10s delay then QoS 1
+        else if (seq_phase == 3) {
+            if (now - seq_phase_ms >= PUB_QOS1_MS) {
+                g_pub_count_qos1++;
+                char payload[48];
+                snprintf(payload, sizeof(payload), "%s %u", MQTT_SN_CLIENT_ID, g_pub_count_qos1);
+                Serial.print(F("PUB QoS1 #"));
+                Serial.println(g_pub_count_qos1);
+                oledShow(F("PUB QoS1"), F(TOPIC_DATA_1));
+                mqtt_sn_publish_topic_id_auto(tid1, (const uint8_t *)payload, strlen(payload),
+                                              QOS_LEVEL_1);
+                oledShow(F("Ready!"), F("Publishing..."));
+                seq_phase = 4;
+                seq_phase_ms = now; // start 10s final delay
+                break;
+            }
         }
-        // Keepalive PINGREQ every KEEPALIVE_MS
-        if (now - g_last_ping_ms > KEEPALIVE_MS) {
-            mqtt_sn_pingreq();
-            g_last_ping_ms = now;
-            break;
+        // 10s delay then restart
+        else if (seq_phase == 4) {
+            if (now - seq_phase_ms >= PUB_QOS1_MS) {
+                seq_phase = 0;
+                g_last_pub_qos0 = now; // reset so first QoS0 fires after 10s
+                break;
+            }
         }
+        // Keepalive PINGREQ every KEEPALIVE_MS we dont need keepalive here since we are constantly
+        // sending data and it causes radio switcihig between TX and RX interference
+        // if (now - g_last_ping_ms > KEEPALIVE_MS) {
+        //     mqtt_sn_pingreq();
+        //     g_last_ping_ms = now;
+        //     break;
+        // }
 
         // QoS retry check every QOS_CHK_MS
         if (now - g_last_qos_chk_ms > QOS_CHK_MS) {

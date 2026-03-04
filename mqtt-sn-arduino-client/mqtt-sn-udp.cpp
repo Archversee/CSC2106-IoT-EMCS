@@ -191,13 +191,6 @@ void mqtt_sn_send_puback(uint16_t topic_id, uint16_t msg_id, uint8_t return_code
     buf[4] = (msg_id >> 8) & 0xFF;
     buf[5] = msg_id & 0xFF;
     buf[6] = return_code;
-
-    for (uint8_t i = 0; i < MQTTSN_PUBACK_LEN; i++) {
-        Serial.print(buf[i], HEX);
-        Serial.print(' ');
-    }
-    Serial.println();
-
     mqttsn_transport_send(buf, MQTTSN_PUBACK_LEN, false);
 }
 

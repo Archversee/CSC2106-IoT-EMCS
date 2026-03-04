@@ -947,7 +947,8 @@ static void handle_publish_received(mqtt_sn_context_t *ctx, struct udp_pcb *pcb,
     const uint8_t *payload = &data[MQTTSN_OFFSET_PAYLOAD];
 
     // Regular message handling
-    printf("PUBLISH received (QoS %d, Msg ID %d), Payload (%d bytes)\n", qos, msg_id, payload_len);
+    printf("PUBLISH received (QoS %d, Msg ID %d), Payload (%d bytes): %.*s\n", qos, msg_id,
+           payload_len, payload_len, (const char *)payload);
 
     // Handle text commands embedded in binary
     if (payload_len == LED_ON_CMD_LEN && memcmp(payload, "led on", LED_ON_CMD_LEN) == 0) {

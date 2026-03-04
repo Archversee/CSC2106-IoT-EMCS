@@ -105,7 +105,7 @@ Edit `/mqtt-sn-pico-client/config.h`:
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASS "your_wifi_password"
 
-// MQTT-SN Gateway IP (Raspberry Pi running the gateway ip find)
+// MQTT-SN Gateway IP (Raspberry Pi running the paho gateway -- RUN ip address)
 #define GATEWAY_IP0 10
 #define GATEWAY_IP1 200
 #define GATEWAY_IP2 133
@@ -152,23 +152,34 @@ ClientAuthentication=NO
 ---
 
 ## Build Instructions
-
-| Core1121-HF | Connect To Pi 4 |
-| VCC         | 3.3V            |
-| GND         | GND             |
-| SCK         | GPIO11 (SCLK)   |
-| MISO        | GPIO9           |
-| MOSI        | GPIO10          |
-| SDA (SS)    | GPIO8 (CE0)     |
-| RST         | GPIO25          |
-| IRQ         | Not connected   |
-| NC          | Not connected   |
+Waveshare core1121-HF to RPI4 GPIO PINS
+| Core1121-HF | Connect To Pi 4 | GPIO
+| 3.3V        | 3.3V            | 1
+| GND         | GND             | 6
+| DIO9        | GPI23           | 16
+| CS          | GPIO8           | 24
+| CLK         | GPIO11          | 23
+| MOSI        | GPIO10          | 19
+| MISO        | GPIO9           | 21
+| RESET       | GPIO22          | 15
+| BUSY        | GPIO24          | 18
 
 
 ### Build RPI4 with Waveshare Core 1121-HF SPI
 ```bash
 sudo raspi-config  # enable SPI
 sudo reboot
+
+# install packages on RPI4
+sudo apt update
+sudo apt install -y mosquitto mosquitto-clients
+sudo apt install -y build-essential cmake git
+sudo apt install -y libssl-dev
+
+####  Copy Project to Raspberry Pi run on local device rmb connect same network
+
+```bash
+scp -r CSC2106-IoT-EMCS RPIusername@RIPipaddress.20.10.13:/home/RPIusername/Documents/ 
 ```
 
 ### Build Pico W Firmware
@@ -182,7 +193,7 @@ make -j8
 ```
 
 Build outputs:
-- `build/pico-client-IoT.uf2` — Flash to Pico (Remember to change config if multiple)
+- `build/pico-client-IoT.uf2` — Flash to Pico # (Remember to change config if running multiple)
 
 ### Flash Arduino LoRa Client (115200 baud)
 1. Open the `mqtt-sn-arduino-client` sketch (`.ino` file) in **Arduino IDE**
@@ -195,32 +206,26 @@ Build outputs:
 ## Running the System
 
 ### Raspberry Pi 4 Setup
-
-#### Step 0: Copy Project to Raspberry Pi run on local device rmb connect same network
-
-```bash
-scp -r CSC2106-IoT-EMCS RPIusername@RIPipaddress.20.10.13:/home/RPIusername/Documents/
-```
+# We require 3 terminals running concurrently (Mosquitto broker, Paho Gateway, LoRa Gateway)
+# and 1 more for testing 
 
 #### Step 1: Start MQTT Broker (Mosquitto) (Teminal 1)
-
 ```bash
 mosquitto -v
+
+sudo systemctl stop mosquitto # if mosquitto auto runs on boot and port is in use
 ```
 
 #### Step 2: Start MQTT-SN Gateway (Terminal 2)
-
 ```bash
 cd /home/RPIusername/Documents/CSC2106-IoT-EMCS/paho.mqtt-sn.embedded-c/MQTTSNGateway
 chmod +x build.sh
-./build.sh udp  # Might encounter erros building due to prev cmake delete cached cmake files (build.gateway)
+./build.sh udp  # Might encounter errors building due to prev cmake delete cached cmake files (build.gateway)
 cd bin
 ./MQTT-SNGateway
 ```
 
-
 #### Step 3: Start LoRa → UDP Gateway  (Terminal 3)
-
 ```bash 
 cd /home/RPIusername/Documents
 git clone https://github.com/WiringPi/WiringPi # we require WiringPi to run waveshare gateway onmly need to install once
@@ -233,9 +238,7 @@ make run
 ./build
 ```
 
-
 ### Dashboard Setup
-
 #### Step 4: Start Dashboard Backend (NOT DONE)
 
 ```bash
@@ -325,6 +328,8 @@ mosquitto_pub -t sensors/pico/cmd -m "led on"
 mosquitto_sub -t sensors/data          # All nodes
 mosquitto_sub -t sensors/pico/data     # Pico W only
 mosquitto_sub -t sensors/arduino/data  # Arduino only
+
+sudo shutdown -h now # power RPI off
 ```
 
 ---

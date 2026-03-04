@@ -80,7 +80,7 @@
 
 // Timing (unchanged)
 #define TOPIC_RETRY_INTERVAL_MS 5000UL
-#define QOS_RETRY_INTERVAL_MS 3000UL
+#define QOS_RETRY_INTERVAL_MS 10000UL
 #define QOS_MAX_RETRIES 3U
 
 // Was: 2,208 bytes on Pico -> RAM: 132 bytes on Arduino Uno

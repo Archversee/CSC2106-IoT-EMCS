@@ -159,7 +159,10 @@ void vMQTTTask(void *pvParameters) {
                     uint8_t qos_level = (uint8_t)event.param1;
                     uint8_t topic_idx = (uint8_t)event.param2;
                     uint8_t payload[32];
-                    snprintf((char *)payload, sizeof(payload), "Hello FreeRTOS QoS%d", qos_level);
+
+                    static uint32_t msg_counter = 0;
+                    snprintf((char *)payload, sizeof(payload), "%s %lu", MQTT_SN_CLIENT_ID,
+                             ++msg_counter);
 
                     uint16_t topic_id = mqtt_sn_get_topic_id(mqtt_ctx, g_topics[topic_idx]);
                     if (topic_id > 0) {
