@@ -25,7 +25,7 @@
 #define GATEWAY_IP0 172
 #define GATEWAY_IP1 20
 #define GATEWAY_IP2 10
-#define GATEWAY_IP3 3
+#define GATEWAY_IP3 13
 #define UDP_PORT 10000
 
 // MQTT-SN Client ID (conditional based on build type)
@@ -35,7 +35,8 @@
 // #define MQTT_SN_CLIENT_ID "pico_w_rx"
 // #endif
 
-#define MQTT_SN_CLIENT_ID "pico_w_iot"
+#define MQTT_SN_CLIENT_ID                                                                          \
+    "pico_w_iot" // Change to "pico_w_XX" for each node to get a unique MQTT-SN client ID
 
 // MQTT-SN Settings
 #define KEEPALIVE_INTERVAL_SEC 60
