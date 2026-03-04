@@ -395,6 +395,3 @@ This project uses components under multiple licenses:
 
 **Last Updated**: March 4, 2026
 
-
-
-
