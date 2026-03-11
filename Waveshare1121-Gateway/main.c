@@ -52,21 +52,20 @@
 #include "lr1121_config.h"
 #include "wavesahre_lora_1121.h"
 
-/* ── Configuration ─────────────────────────────────────────────────────── */
-
+// Config
 #define PAHO_GW_IP "127.0.0.1"
 #define PAHO_GW_PORT 10000
 
-/* This bridge's LoRa node ID. Nodes must address packets to this ID.
-   Do not change unless you also update all node sketches. */
+/* This bridge's LoRa node ID. Nodes must address packets to this ID. Do not change unless you also
+ * update all node sketches. */
 #define LORA_GW_NODE_ID 0x00
 #define LORA_BROADCAST 0xFF
 
 #define MAX_CLIENTS 30
 #define CLIENT_PORT_BASE 20000 /* per-client UDP ports: 20000 – 20029 */
 
-/* Inactive clients are evicted after this many seconds with no uplink.
-   Frees the slot and UDP socket for reuse. */
+/* Inactive clients are kicked after this many seconds with no uplink. Frees the slot and UDP socket
+ * for reuse. */
 #define CLIENT_TIMEOUT_S 300
 
 #define GW_PAYLOAD_MAX 255
@@ -77,15 +76,21 @@
    has finished processing and re-arming its receiver. */
 #define DN_SPACING_US 1500000ULL
 
-/* ── RadioHead header layout ────────────────────────────────────────────── */
+/* RadioHead header layout*/
 
 #define RH_TO 0
 #define RH_FROM 1
 #define RH_ID 2
 #define RH_FLAGS 3
-#define RH_HDR 4 /* header length in bytes */
+#define RH_HDR 4
 
-/* ── Per-client state ───────────────────────────────────────────────────── */
+/* IRQ dispatch*/
+
+#define IRQ_MASK                                                                                   \
+    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_TIMEOUT |           \
+     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_HEADER_ERROR)
+
+/* Per-client state */
 
 typedef struct {
     uint8_t node_id;
@@ -93,14 +98,14 @@ typedef struct {
     uint16_t local_port;
     struct sockaddr_in paho_addr;
     uint8_t last_seq;
-    time_t last_seen; /* updated on every uplink; used for expiry */
+    time_t last_seen;
     bool active;
 } client_t;
 
 static client_t clients[MAX_CLIENTS];
 static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/* ── Globals ────────────────────────────────────────────────────────────── */
+/* Globals*/
 
 lr1121_t lr1121;
 
@@ -109,23 +114,11 @@ lr1121_t lr1121;
 static volatile bool irq_flag = false;
 
 static volatile int running = 1;
-
-/* Packet counters — written only from their respective threads (rx from
-   main, tx from downstream) so no lock is needed, but declared volatile
-   so the heartbeat printf in the main thread always sees a fresh value. */
 static volatile int pkt_rx_count = 0;
 static volatile int pkt_tx_count = 0;
-
-/* Rolling sequence number for downlink frames. Written only by the
-   downstream thread; declared volatile for safety. */
 static volatile uint8_t dn_seq = 0;
 
-/* Serialises all SPI/radio access between the main thread and the
-   downstream thread. Must be held for the full duration of any radio
-   operation (irq_process, lora_send). */
-static pthread_mutex_t radio_lock = PTHREAD_MUTEX_INITIALIZER;
-
-/* ── Logging ────────────────────────────────────────────────────────────── */
+/* Logging */
 
 static void print_ts(void) {
     time_t t = time(NULL);
@@ -142,9 +135,17 @@ static void print_ts(void) {
         fflush(stdout);                                                                            \
     } while (0)
 
-/* ── IRQ / signal ───────────────────────────────────────────────────────── */
+/* Serialises all SPI/radio access between the main thread and the
+   downstream thread. Must be held for the full duration of any radio
+   operation (irq_process, lora_send). */
+static pthread_mutex_t radio_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/* GPIO ISR — called from wiringPi's ISR thread on the radio's DIO1 edge.
+static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
+static void on_rx_crc_error(void) { LOG("[rx] CRC error"); }
+
+/* IRQ / signal */
+
+/* GPIO ISR called from wiringPi's ISR thread on the radio's DIO1 edge.
    Only sets the flag; all radio SPI access happens in the main thread. */
 void isr(void) { irq_flag = true; }
 
@@ -153,7 +154,7 @@ static void on_signal(int sig) {
     running = 0;
 }
 
-/* ── Client registry ────────────────────────────────────────────────────── */
+/* Client registry*/
 
 /* Must be called with clients_lock held.
    Returns the existing client for node_id, or allocates a new slot and
@@ -167,7 +168,7 @@ static client_t *get_or_create_client(uint8_t node_id) {
         }
     }
 
-    /* New node — find a free slot */
+    /* If new node, find a free slot */
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active)
             continue;
@@ -233,7 +234,7 @@ static void expire_clients(void) {
     }
 }
 
-/* ── LoRa TX ────────────────────────────────────────────────────────────── */
+/* LoRa TX*/
 
 /* Transmit a RadioHead-framed packet to dst.
  *
@@ -260,12 +261,12 @@ static int lora_send(uint8_t dst, uint8_t seq, const uint8_t *payload, uint8_t l
     memcpy(frame + RH_HDR, payload, len);
     uint8_t total = (uint8_t)(len + RH_HDR);
 
-    /* Standby is required before writing TX parameters — the radio will
+    /* Standby is required before writing TX parameters as the radio will
        return BUSY if we attempt to reconfigure while in RX mode. It also
        reduces current draw during the reconfiguration window. */
     lr11xx_system_set_standby(&lr1121, LR11XX_SYSTEM_STANDBY_CFG_RC);
 
-    /* Re-assert modulation and packet parameters — standby can reset them */
+    /* Re-assert modulation and packet parameters so that standby can reset them */
     lr11xx_radio_mod_params_lora_t mod = {
         .sf = LR11XX_RADIO_LORA_SF7,
         .bw = LR11XX_RADIO_LORA_BW_125,
@@ -319,7 +320,7 @@ static int lora_send(uint8_t dst, uint8_t seq, const uint8_t *payload, uint8_t l
     return 0;
 }
 
-/* ── LoRa RX handlers ───────────────────────────────────────────────────── */
+/* LoRa RX handlers*/
 
 /* Called by irq_process() when RX_DONE is set without a CRC error.
    Reads the received frame from the radio, strips the RadioHead header,
@@ -357,7 +358,7 @@ static void on_rx_done(void) {
         return;
     }
 
-    /* Hex dump of MQTT-SN payload for debugging */
+    /*for debugging */
     printf("  MQTT-SN: ");
     for (int i = 0; i < mqttsn_len; i++)
         printf("%02X ", mqttsn[i]);
@@ -383,22 +384,11 @@ static void on_rx_done(void) {
         LOG("[rx] -> Paho:%d via port=%d (%zd bytes)", PAHO_GW_PORT, client->local_port, sent);
 }
 
-static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
-static void on_rx_crc_error(void) { LOG("[rx] CRC error"); }
-
-/* ── IRQ dispatch ───────────────────────────────────────────────────────── */
-
-#define IRQ_MASK                                                                                   \
-    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_TIMEOUT |           \
-     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_HEADER_ERROR)
-
 /* Called from the main loop whenever irq_flag is set.
  *
  * Reads and clears all pending IRQ flags in one SPI transaction, then
  * dispatches to the appropriate handler. After dispatching, the radio is
- * (re-)placed into continuous RX regardless of which IRQ fired — this
- * covers the case where lora_send() left the radio in RX but the TX_DONE
- * IRQ was processed here rather than inside lora_send()'s spin-wait.
+ * (re-)placed into continuous RX regardless of which IRQ fired
  *
  * Caller must hold radio_lock.
  */
@@ -426,7 +416,7 @@ static void irq_process(void) {
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 }
 
-/* ── Downstream thread (Paho -> LoRa) ──────────────────────────────────── */
+/* Downstream thread (Paho -> LoRa)*/
 
 static uint64_t last_dn_tx_us = 0;
 
@@ -442,7 +432,7 @@ static void *downstream_thread(void *arg) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 
-    /* Staging arrays — data is copied here under clients_lock then
+    /* Staging arrays, data is copied here under clients_lock then
        transmitted after the lock is released, keeping the lock window
        short and avoiding contention with the main thread's on_rx_done(). */
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
@@ -466,7 +456,7 @@ static void *downstream_thread(void *arg) {
         pthread_mutex_unlock(&clients_lock);
 
         if (maxfd < 0) {
-            /* No clients yet — sleep briefly and retry */
+            /* No clients yet, sleep briefly and retry */
             usleep(50000);
             continue;
         }
@@ -532,7 +522,7 @@ static void *downstream_thread(void *arg) {
     return NULL;
 }
 
-/* ── Radio initialisation ───────────────────────────────────────────────── */
+/* Radio initialisation*/
 
 static void radio_init(void) {
     lora_init_io_context(&lr1121);
@@ -540,7 +530,7 @@ static void radio_init(void) {
     lora_spi_init(&lr1121);
     lora_system_init(&lr1121);
     lora_print_version(&lr1121);
-    lora_radio_init(&lr1121); /* default 868 MHz — overridden below */
+    lora_radio_init(&lr1121); /* default 868 MHz we override below */
 
     /* Override modulation parameters for 915 MHz US band */
     lr11xx_radio_mod_params_lora_t mod = {
@@ -573,7 +563,7 @@ static void radio_init(void) {
     LOG("[init] SF7 BW125 CR4/5 | 915 MHz | SW=private | CRC ON | MaxPld=%d", GW_PAYLOAD_MAX);
 }
 
-/* ── main ───────────────────────────────────────────────────────────────── */
+/* main*/
 
 int main(void) {
     signal(SIGINT, on_signal);

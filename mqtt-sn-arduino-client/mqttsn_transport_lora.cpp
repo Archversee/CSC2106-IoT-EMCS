@@ -54,11 +54,10 @@ void mqttsn_transport_init(void) {
     Serial.println(LORA_MY_NODE_ID, HEX);
 }
 
-int mqttsn_transport_send(const uint8_t *buf, uint8_t len, bool wait_response) {
+int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     if (!buf || len == 0)
         return -1;
 
-    // Wait for any ongoing TX to finish before sending (max 500ms)
     uint32_t t = millis();
     while (s_rf95.mode() == RHGenericDriver::RHModeTx) {
         if (millis() - t > 500) {
@@ -69,25 +68,18 @@ int mqttsn_transport_send(const uint8_t *buf, uint8_t len, bool wait_response) {
     }
 
     s_rf95.setModeIdle();
-    delay(5); // give radio time to settle
+    delay(5);
 
     bool ok = s_rf95.send(buf, len);
     s_rf95.waitPacketSent();
+
+    s_rf95.setModeRx(); // explicitly re-enter RX after TX
 
     Serial.print(F("[tx] sent "));
     Serial.print(len);
     Serial.print(F("B ok="));
     Serial.println(ok);
 
-    if (wait_response) {
-        uint32_t t = millis();
-        while (millis() - t < 2000) {
-            if (s_rf95.available())
-                break;
-            delay(5);
-        }
-    }
-    delay(10);
     return ok ? 0 : -1;
 }
 
