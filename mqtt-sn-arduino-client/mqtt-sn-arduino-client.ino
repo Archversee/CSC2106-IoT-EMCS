@@ -96,7 +96,7 @@ void loop() {
         break;
 
     // Wait for CONNACK, then start registering topics
-    case STATE_CONNECTING:
+    case STATE_CONNECTING: {
         if (g_ping_ack_received) {
             Serial.println(F("CONNACK ok"));
             oledShow(F("Connected!"), F("Registering..."));
@@ -111,9 +111,9 @@ void loop() {
             g_state = STATE_INIT;
         }
         break;
-
+    }
     // Register topics, wait for REGACKs and topic IDs.
-    case STATE_REGISTERING:
+    case STATE_REGISTERING: {
         // Drain any ACKs that arrived during registration
         if (g_puback_pending) {
             g_puback_pending = false;
@@ -130,7 +130,21 @@ void loop() {
             mqtt_sn_send_pubcomp(g_pubcomp_mid);
             break;
         }
-        mqtt_sn_process_topic_registrations(&g_ctx);
+
+        // Check if any topic has been sent but not yet acknowledged
+        bool waiting_for_ack = false;
+        for (uint8_t i = 0; i < MAX_CUSTOM_TOPICS; i++) {
+            if (g_ctx.custom_topics[i].in_use && !g_ctx.custom_topics[i].is_registered &&
+                g_ctx.custom_topics[i].pending_msg_id != 0) {
+                waiting_for_ack = true;
+                break;
+            }
+        }
+
+        // Only send REGISTER/SUBSCRIBE if not waiting for an ACK or if the retry interval has
+        // expired
+        if (!waiting_for_ack)
+            mqtt_sn_process_topic_registrations(&g_ctx);
 
         if (mqtt_sn_get_topic_id(&g_ctx, TOPIC_DATA_1) > 0 &&
             mqtt_sn_get_topic_id(&g_ctx, TOPIC_DATA_2) > 0 &&
@@ -147,8 +161,6 @@ void loop() {
             Serial.print(F("  CMD2  tid="));
             Serial.println(mqtt_sn_get_topic_id(&g_ctx, TOPIC_CMD_2));
 
-            // All topics registered, set timers for auto publish and keepalive and move to READY
-            // state
             oledShow(F("Ready!"), F("Publishing..."));
             g_last_ping_ms = now;
             g_last_qos_chk_ms = now;
@@ -162,7 +174,7 @@ void loop() {
             g_state = STATE_INIT;
         }
         break;
-
+    }
     // Main loop: publish data, check QoS timeouts, send keepalive PINGREQs
     case STATE_READY: {
         uint16_t tid1 = mqtt_sn_get_topic_id(&g_ctx, TOPIC_DATA_1);

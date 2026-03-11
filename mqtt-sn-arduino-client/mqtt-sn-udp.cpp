@@ -47,13 +47,13 @@ void mqtt_sn_connect(void) {
     buf[5] = KEEPALIVE_INTERVAL_SEC & 0xFF;
     memcpy(buf + 6, cid, id_len);
 
-    mqttsn_transport_send(buf, plen, true);
+    mqttsn_transport_send(buf, plen);
     Serial.println(F("Sent CONNECT"));
 }
 
 void mqtt_sn_pingreq(void) {
     uint8_t buf[2] = {MQTTSN_PINGREQ_LEN, MQTTSN_MSG_TYPE_PINGREQ};
-    mqttsn_transport_send(buf, 2, false);
+    mqttsn_transport_send(buf, 2);
     Serial.println(F("Sent PINGREQ"));
 }
 
@@ -73,7 +73,7 @@ void mqtt_sn_register_topic(const char *topic_name, uint16_t msg_id) {
     buf[5] = msg_id & 0xFF;
     memcpy(buf + 6, topic_name, tlen);
 
-    mqttsn_transport_send(buf, plen, true);
+    mqttsn_transport_send(buf, plen);
     Serial.print(F("Sent REGISTER: "));
     Serial.println(topic_name);
 
@@ -96,7 +96,7 @@ void mqtt_sn_subscribe_topic_name(const char *topic_name, uint16_t msg_id, uint8
     buf[4] = msg_id & 0xFF;
     memcpy(buf + 5, topic_name, tlen);
 
-    mqttsn_transport_send(buf, plen, true);
+    mqttsn_transport_send(buf, plen);
 }
 
 void mqtt_sn_subscribe_topic_id(uint16_t topic_id) {
@@ -108,7 +108,7 @@ void mqtt_sn_subscribe_topic_id(uint16_t topic_id) {
     buf[4] = 0x01;
     buf[5] = (topic_id >> 8) & 0xFF;
     buf[6] = topic_id & 0xFF;
-    mqttsn_transport_send(buf, MQTTSN_SUBSCRIBE_LEN, true);
+    mqttsn_transport_send(buf, MQTTSN_SUBSCRIBE_LEN);
 }
 
 void mqtt_sn_publish_topic_id_auto(uint16_t topic_id, const uint8_t *payload, size_t payload_len,
@@ -140,7 +140,7 @@ void mqtt_sn_publish_topic_id(uint16_t topic_id, const uint8_t *payload, size_t 
     buf[6] = (qos > QOS_LEVEL_0) ? msg_id & 0xFF : 0x00;
     memcpy(buf + MQTTSN_PUBLISH_HEADER_LEN, payload, payload_len);
 
-    if (mqttsn_transport_send(buf, plen, false) != 0) {
+    if (mqttsn_transport_send(buf, plen) != 0) {
         Serial.println(F("PUBLISH send failed"));
         return;
     }
@@ -191,7 +191,7 @@ void mqtt_sn_send_puback(uint16_t topic_id, uint16_t msg_id, uint8_t return_code
     buf[4] = (msg_id >> 8) & 0xFF;
     buf[5] = msg_id & 0xFF;
     buf[6] = return_code;
-    mqttsn_transport_send(buf, MQTTSN_PUBACK_LEN, false);
+    mqttsn_transport_send(buf, MQTTSN_PUBACK_LEN);
 }
 
 void mqtt_sn_send_pubrec(uint16_t msg_id) {
@@ -201,7 +201,7 @@ void mqtt_sn_send_pubrec(uint16_t msg_id) {
     buf[2] = (msg_id >> 8) & 0xFF;
     buf[3] = msg_id & 0xFF;
     buf[4] = MQTTSN_RETURN_ACCEPTED;
-    mqttsn_transport_send(buf, MQTTSN_PUBREC_LEN, false);
+    mqttsn_transport_send(buf, MQTTSN_PUBREC_LEN);
 }
 
 void mqtt_sn_send_pubcomp(uint16_t msg_id) {
@@ -211,7 +211,7 @@ void mqtt_sn_send_pubcomp(uint16_t msg_id) {
     buf[2] = (msg_id >> 8) & 0xFF;
     buf[3] = msg_id & 0xFF;
     buf[4] = MQTTSN_RETURN_ACCEPTED;
-    mqttsn_transport_send(buf, MQTTSN_PUBCOMP_LEN, false);
+    mqttsn_transport_send(buf, MQTTSN_PUBCOMP_LEN);
 }
 
 void mqtt_sn_send_pubrel(uint16_t msg_id) {
@@ -220,7 +220,7 @@ void mqtt_sn_send_pubrel(uint16_t msg_id) {
     buf[1] = MQTTSN_MSG_TYPE_PUBREL;
     buf[2] = (msg_id >> 8) & 0xFF;
     buf[3] = msg_id & 0xFF;
-    mqttsn_transport_send(buf, MQTTSN_PUBREL_LEN, false);
+    mqttsn_transport_send(buf, MQTTSN_PUBREL_LEN);
 }
 
 void check_qos_timeouts(void) {
@@ -332,8 +332,6 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx) {
     if (!ctx)
         return;
     uint32_t now = millis();
-
-    // For each topic in the table that is not yet registered, send REGISTER or SUBSCRIBE
     for (uint8_t i = 0; i < MAX_CUSTOM_TOPICS; i++) {
         if (!ctx->custom_topics[i].in_use)
             continue;
@@ -352,6 +350,7 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx) {
         else
             mqtt_sn_subscribe_topic_name(ctx->custom_topics[i].topic_name, mid,
                                          ctx->custom_topics[i].qos);
+        return;
     }
 }
 
@@ -600,7 +599,7 @@ void udp_recv_callback_arduino(mqtt_sn_context_t *ctx, const uint8_t *data, uint
 
 void mqtt_sn_poll(mqtt_sn_context_t *ctx) {
     uint8_t buf[MQTTSN_PUBLISH_HEADER_LEN + MQTTSN_RETRY_PAYLOAD_SIZE];
-    uint8_t len = mqttsn_transport_recv(buf, sizeof(buf), 50);
+    uint8_t len = mqttsn_transport_recv(buf, sizeof(buf), 200);
     if (len > 0)
         udp_recv_callback_arduino(ctx, buf, len);
 }
