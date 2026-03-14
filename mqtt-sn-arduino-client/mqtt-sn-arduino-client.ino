@@ -70,18 +70,29 @@ void setup() {
     digitalWrite(LED_PIN, LOW);
 
     memset(&g_ctx, 0, sizeof(g_ctx));
-    add_all_topics();
-
     mqttsn_transport_init();
 
+#if MESH_RELAY_ONLY
+    oledShow(F("Relay mode"), F("Forwarding..."));
+    Serial.println(F("Relay-only node ready"));
+    g_state = STATE_READY;
+#else
+    add_all_topics();
     oledShow(F("LoRa ready"), F("Connecting..."));
-    Serial.println(F("setup() complete"));
+    Serial.println(F("Client node setup complete"));
+#endif
 }
 
 void loop() {
     uint32_t now = millis();
 
     mqtt_sn_poll(&g_ctx);
+    
+#if MESH_RELAY_ONLY
+    // Relay-only node: just keep LoRa receive/forward active.
+    delay(10);
+    return;
+#endif
 
     switch (g_state) {
 

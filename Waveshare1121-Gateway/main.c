@@ -92,6 +92,15 @@
 
 /* Per-client state */
 
+typedef struct __attribute__((packed)) {
+    uint8_t src_id;
+    uint8_t dst_id;
+    uint8_t ttl;
+    uint16_t seq_num;
+} mesh_header_t;
+
+#define MESH_HEADER_SIZE ((uint8_t)sizeof(mesh_header_t))
+
 typedef struct {
     uint8_t node_id;
     int udp_sock;
@@ -117,6 +126,7 @@ static volatile int running = 1;
 static volatile int pkt_rx_count = 0;
 static volatile int pkt_tx_count = 0;
 static volatile uint8_t dn_seq = 0;
+static volatile uint16_t dn_mesh_seq = 0;
 
 /* Logging */
 
@@ -346,15 +356,39 @@ static void on_rx_done(void) {
     uint8_t rh_to = buf[RH_TO];
     uint8_t rh_from = buf[RH_FROM];
     uint8_t rh_seq = buf[RH_ID];
-    uint8_t *mqttsn = buf + RH_HDR;
-    uint8_t mqttsn_len = (uint8_t)(size - RH_HDR);
-
     pkt_rx_count++;
     LOG("[rx] #%d from=0x%02X to=0x%02X seq=%d len=%d RSSI=%ddBm SNR=%ddB", pkt_rx_count, rh_from,
-        rh_to, rh_seq, mqttsn_len, pkt_status.rssi_pkt_in_dbm, pkt_status.snr_pkt_in_db);
+        rh_to, rh_seq, size - RH_HDR, pkt_status.rssi_pkt_in_dbm, pkt_status.snr_pkt_in_db);
 
     if (rh_to != LORA_GW_NODE_ID && rh_to != LORA_BROADCAST) {
         LOG("[rx] Not addressed to us (0x%02X), skipping", rh_to);
+        return;
+    }
+
+    uint8_t *payload = buf + RH_HDR;
+    uint8_t payload_len = (uint8_t)(size - RH_HDR);
+
+    if (payload_len < MESH_HEADER_SIZE) {
+        LOG("[mesh] Payload too short for mesh header (%d bytes)", payload_len);
+        return;
+    }
+
+    mesh_header_t mesh;
+    memcpy(&mesh, payload, MESH_HEADER_SIZE);
+
+    uint8_t *mqttsn = payload + MESH_HEADER_SIZE;
+    uint8_t mqttsn_len = (uint8_t)(payload_len - MESH_HEADER_SIZE);
+
+    LOG("[mesh] src=0x%02X dst=0x%02X ttl=%d seq=%d", mesh.src_id, mesh.dst_id, mesh.ttl,
+        mesh.seq_num);
+
+    if (mesh.dst_id != LORA_GW_NODE_ID) {
+        LOG("[mesh] Not for gateway (dst=0x%02X), dropping for now", mesh.dst_id);
+        return;
+    }
+
+    if (mqttsn_len == 0) {
+        LOG("[mesh] Empty MQTT-SN payload after mesh header");
         return;
     }
 
@@ -367,7 +401,7 @@ static void on_rx_done(void) {
 
     /* Look up (or register) the sending node and forward to Paho */
     pthread_mutex_lock(&clients_lock);
-    client_t *client = get_or_create_client(rh_from);
+    client_t *client = get_or_create_client(mesh.src_id);
     if (!client) {
         pthread_mutex_unlock(&clients_lock);
         return;
@@ -506,9 +540,29 @@ static void *downstream_thread(void *arg) {
                 usleep((useconds_t)wait);
             }
 
+            uint8_t tx_payload[GW_PAYLOAD_MAX];
+            mesh_header_t mesh;
+
+            mesh.src_id = LORA_GW_NODE_ID; // gateway is the source
+            mesh.dst_id = d_node[p];       // final destination node
+            mesh.ttl = 3;
+            mesh.seq_num = dn_mesh_seq++;
+
+            uint8_t tx_len = (uint8_t)(MESH_HEADER_SIZE + d_len[p]);
+            if (tx_len > GW_PAYLOAD_MAX) {
+                LOG("[dn] Mesh-wrapped downlink too large (%d bytes), dropping", tx_len);
+                continue;
+            }
+
+            memcpy(tx_payload, &mesh, MESH_HEADER_SIZE);
+            memcpy(tx_payload + MESH_HEADER_SIZE, d_data[p], d_len[p]);
+
+            LOG("[dn-mesh] src=0x%02X dst=0x%02X ttl=%d seq=%d mqttsn_len=%d", mesh.src_id,
+                mesh.dst_id, mesh.ttl, mesh.seq_num, d_len[p]);
+
             pthread_mutex_lock(&radio_lock);
             irq_flag = false;
-            lora_send(d_node[p], seq, d_data[p], d_len[p]);
+            lora_send(LORA_BROADCAST, seq, tx_payload, tx_len);
             irq_flag = false;
             pthread_mutex_unlock(&radio_lock);
 

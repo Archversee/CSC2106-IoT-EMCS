@@ -2,6 +2,9 @@
 #define CONFIG_H
 
 #define LORA_MY_NODE_ID 0x21// Change to "0x2X" for each node to get a unique LoRa node ID
+#define MESH_RELAY_NODE_ID 0x22
+#define MESH_ENABLE_RELAY 0
+#define MESH_RELAY_ONLY 0
 #define MQTT_SN_CLIENT_ID                                                                          \
     "arduino-02" // Change to "arduino-XX" for each node to get a unique MQTT-SN client ID
 #define LORA_GW_NODE_ID 0x00 // RPI bridge ID dont change
