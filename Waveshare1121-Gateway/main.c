@@ -1,37 +1,33 @@
 /*
- * main.c — Bidirectional LoRa <-> UDP Bridge for MQTT-SN
+ * main.c — Bidirectional LoRa <-> UDP Bridge for MQTT-SN  (mesh-aware)
  *
  * Hardware : Raspberry Pi 4 + Waveshare LR1121
  * Upstream : Paho MQTT-SN Gateway localhost:10000 (UDP)
- * Nodes    : Arduino Maker + Cytron RFM95
+ * Nodes    : Arduino + Cytron RFM95
  *
- * Flow (uplink):   Node -LoRa-> [this bridge] -UDP-> Paho GW
- * Flow (downlink): Paho GW -UDP-> [this bridge] -LoRa-> Node
+ * ── What changed vs original ──────────────────────────────────────────────
  *
- * Each unique LoRa FROM-ID gets its own UDP socket bound to a fixed
- * local port (CLIENT_PORT_BASE + slot) so the Paho gateway tracks
- * each node as a distinct client by stable source address:port.
+ * UPLINK (Node → Gateway):
+ *   Packets now carry a 4-byte mesh header before the MQTT-SN payload.
+ *   on_rx_done() strips this header, uses SRC_ID as the stable client key,
+ *   and logs TTL/hop_count for performance analysis.
  *
- * Threading model:
- *   Main thread      — polls irq_flag and calls irq_process() which
- *                      reads/dispatches radio IRQs and forwards uplink
- *                      MQTT-SN payloads to Paho over UDP.
- *   Downstream thread — blocks on select() across all per-client UDP
- *                      sockets, reads downlink packets from Paho, and
- *                      forwards them to the destination node over LoRa.
+ * DOWNLINK (Gateway → Node):
+ *   Paho sends raw MQTT-SN bytes (SUBACK, CONNACK, REGACK etc.) back via UDP.
+ *   The downstream thread now WRAPS these with a mesh header before sending
+ *   over LoRa so that relay nodes can forward them if needed.
+ *   Header: src=GATEWAY(0x00), dst=target_node, ttl=MESH_TTL_DEFAULT, seq=dn_seq
  *
- * Mutexes:
- *   clients_lock — protects the client table (get_or_create, expiry,
- *                  heartbeat printing, socket close on exit).
- *   radio_lock   — serialises all SPI/radio access between the main
- *                  thread (irq_process) and the downstream thread
- *                  (lora_send). Both threads must hold this lock for
- *                  the full duration of any radio operation.
+ * ── Wire format ───────────────────────────────────────────────────────────
+ *   RadioHead header (4B): TO | FROM | ID | FLAGS
+ *   Mesh header      (4B): SRC_ID | DST_ID | TTL | SEQ_NUM
+ *   MQTT-SN payload  (NB)
  *
- * Build:
- *   gcc -o lora_bridge main.c lr1121_config.c wavesahre_lora_1121.c \
- *       -lwiringPi -lpthread
- * Run: sudo ./lora_bridge
+ * ── Threading ─────────────────────────────────────────────────────────────
+ *   Main thread       — polls irq_flag → irq_process() → on_rx_done()
+ *   Downstream thread — select() on per-client UDP sockets → lora_send()
+ *   clients_lock      — protects client table
+ *   radio_lock        — serialises all SPI/radio access
  */
 
 #include <arpa/inet.h>
@@ -50,86 +46,64 @@
 #include <unistd.h>
 
 #include "lr1121_config.h"
+#include "mesh_protocol.h"      /* shared with Arduino nodes */
 #include "wavesahre_lora_1121.h"
 
-// Config
-#define PAHO_GW_IP "127.0.0.1"
-#define PAHO_GW_PORT 10000
+/* ── Configuration ───────────────────────────────────────────────────────── */
+#define PAHO_GW_IP    "127.0.0.1"
+#define PAHO_GW_PORT  10000
 
-/* This bridge's LoRa node ID. Nodes must address packets to this ID. Do not change unless you also
- * update all node sketches. */
-#define LORA_GW_NODE_ID 0x00
-#define LORA_BROADCAST 0xFF
+#define MAX_CLIENTS       30
+#define CLIENT_PORT_BASE  20000
+#define CLIENT_TIMEOUT_S  300
+#define GW_PAYLOAD_MAX    255
+#define RX_CONTINUOUS     0xFFFFFF
+#define DN_SPACING_US     1500000ULL
 
-#define MAX_CLIENTS 30
-#define CLIENT_PORT_BASE 20000 /* per-client UDP ports: 20000 – 20029 */
-
-/* Inactive clients are kicked after this many seconds with no uplink. Frees the slot and UDP socket
- * for reuse. */
-#define CLIENT_TIMEOUT_S 300
-
-#define GW_PAYLOAD_MAX 255
-#define RX_CONTINUOUS 0xFFFFFF
-
-/* Minimum gap between consecutive downlink LoRa transmissions (µs).
-   Prevents back-to-back packets from colliding at the node before it
-   has finished processing and re-arming its receiver. */
-#define DN_SPACING_US 1500000ULL
-
-/* RadioHead header layout*/
-
-#define RH_TO 0
-#define RH_FROM 1
-#define RH_ID 2
+/* ── RadioHead header layout ─────────────────────────────────────────────── */
+#define RH_TO    0
+#define RH_FROM  1
+#define RH_ID    2
 #define RH_FLAGS 3
-#define RH_HDR 4
+#define RH_HDR   4
 
-/* IRQ dispatch*/
+/* Total overhead per outgoing LoRa frame */
+#define FRAME_HDR_TOTAL  (RH_HDR + MESH_HEADER_SIZE)
 
-#define IRQ_MASK                                                                                   \
-    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_TIMEOUT |           \
-     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_HEADER_ERROR)
+/* ── IRQ mask ────────────────────────────────────────────────────────────── */
+#define IRQ_MASK \
+    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | \
+     LR11XX_SYSTEM_IRQ_TIMEOUT | LR11XX_SYSTEM_IRQ_CRC_ERROR | \
+     LR11XX_SYSTEM_IRQ_HEADER_ERROR)
 
-/* Per-client state */
-
-typedef struct __attribute__((packed)) {
-    uint8_t src_id;
-    uint8_t dst_id;
-    uint8_t ttl;
-    uint16_t seq_num;
-} mesh_header_t;
-
-#define MESH_HEADER_SIZE ((uint8_t)sizeof(mesh_header_t))
-
+/* ── Per-client state ────────────────────────────────────────────────────── */
 typedef struct {
-    uint8_t node_id;
-    int udp_sock;
+    uint8_t  node_id;       /* SRC_ID of the originating end-device          */
+    int      udp_sock;
     uint16_t local_port;
     struct sockaddr_in paho_addr;
-    uint8_t last_seq;
-    time_t last_seen;
-    bool active;
+    uint8_t  last_seq;
+    time_t   last_seen;
+    bool     active;
+    /* Performance counters */
+    uint32_t pkt_count;
+    uint32_t hop_total;     /* sum of (TTL_DEFAULT - remaining TTL) per pkt  */
 } client_t;
 
-static client_t clients[MAX_CLIENTS];
+static client_t        clients[MAX_CLIENTS];
 static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t radio_lock   = PTHREAD_MUTEX_INITIALIZER;
 
-/* Globals*/
-
+/* ── Globals ─────────────────────────────────────────────────────────────── */
 lr1121_t lr1121;
 
-/* Set to true by the GPIO ISR when the radio asserts its IRQ line.
-   Cleared by irq_process() after reading and dispatching IRQ flags. */
-static volatile bool irq_flag = false;
+static volatile bool irq_flag     = false;
+static volatile int  running      = 1;
+static volatile int  pkt_rx_count = 0;
+static volatile int  pkt_tx_count = 0;
+static volatile uint8_t dn_seq    = 0;   /* downlink sequence number */
 
-static volatile int running = 1;
-static volatile int pkt_rx_count = 0;
-static volatile int pkt_tx_count = 0;
-static volatile uint8_t dn_seq = 0;
-static volatile uint16_t dn_mesh_seq = 0;
-
-/* Logging */
-
+/* ── Logging ─────────────────────────────────────────────────────────────── */
 static void print_ts(void) {
     time_t t = time(NULL);
     struct tm *tm_info = localtime(&t);
@@ -137,56 +111,35 @@ static void print_ts(void) {
     strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm_info);
     printf("[%s] ", ts);
 }
+#define LOG(fmt, ...) \
+    do { print_ts(); printf(fmt "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 
-#define LOG(fmt, ...)                                                                              \
-    do {                                                                                           \
-        print_ts();                                                                                \
-        printf(fmt "\n", ##__VA_ARGS__);                                                           \
-        fflush(stdout);                                                                            \
-    } while (0)
-
-/* Serialises all SPI/radio access between the main thread and the
-   downstream thread. Must be held for the full duration of any radio
-   operation (irq_process, lora_send). */
-static pthread_mutex_t radio_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
+/* ── ISR / signal ────────────────────────────────────────────────────────── */
+static void on_rx_timeout(void)   { LOG("[rx] Timeout"); }
 static void on_rx_crc_error(void) { LOG("[rx] CRC error"); }
-
-/* IRQ / signal */
-
-/* GPIO ISR called from wiringPi's ISR thread on the radio's DIO1 edge.
-   Only sets the flag; all radio SPI access happens in the main thread. */
 void isr(void) { irq_flag = true; }
+static void on_signal(int sig) { (void)sig; running = 0; }
 
-static void on_signal(int sig) {
-    (void)sig;
-    running = 0;
-}
+/* ── Client registry ─────────────────────────────────────────────────────── */
 
-/* Client registry*/
-
-/* Must be called with clients_lock held.
-   Returns the existing client for node_id, or allocates a new slot and
-   creates a bound UDP socket for it. Returns NULL on failure. */
-static client_t *get_or_create_client(uint8_t node_id) {
-    /* Look up existing client */
+/* Keyed on mesh SRC_ID (original end-device), not RadioHead FROM.
+   Must be called with clients_lock held. */
+static client_t *get_or_create_client(uint8_t src_id) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active && clients[i].node_id == node_id) {
+        if (clients[i].active && clients[i].node_id == src_id) {
             clients[i].last_seen = time(NULL);
             return &clients[i];
         }
     }
-
-    /* If new node, find a free slot */
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active)
-            continue;
+        if (clients[i].active) continue;
 
-        clients[i].node_id = node_id;
-        clients[i].active = true;
-        clients[i].last_seen = time(NULL);
-        clients[i].last_seq = 0;
+        clients[i].node_id    = src_id;
+        clients[i].active     = true;
+        clients[i].last_seen  = time(NULL);
+        clients[i].last_seq   = 0;
+        clients[i].pkt_count  = 0;
+        clients[i].hop_total  = 0;
         clients[i].local_port = (uint16_t)(CLIENT_PORT_BASE + i);
 
         clients[i].udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -195,16 +148,12 @@ static client_t *get_or_create_client(uint8_t node_id) {
             clients[i].active = false;
             return NULL;
         }
-
-        /* Allow immediate port reuse after the bridge restarts */
         int reuse = 1;
         setsockopt(clients[i].udp_sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
-        /* Bind to the fixed per-client local port so Paho sees a stable
-           source address:port for this node across all its packets. */
         struct sockaddr_in local = {0};
-        local.sin_family = AF_INET;
-        local.sin_port = htons(clients[i].local_port);
+        local.sin_family      = AF_INET;
+        local.sin_port        = htons(clients[i].local_port);
         local.sin_addr.s_addr = INADDR_ANY;
         if (bind(clients[i].udp_sock, (struct sockaddr *)&local, sizeof(local)) < 0) {
             LOG("[client] bind() port %d failed: %s", clients[i].local_port, strerror(errno));
@@ -213,75 +162,82 @@ static client_t *get_or_create_client(uint8_t node_id) {
             return NULL;
         }
 
-        /* Cache the Paho gateway address for sendto() in on_rx_done() */
         memset(&clients[i].paho_addr, 0, sizeof(clients[i].paho_addr));
         clients[i].paho_addr.sin_family = AF_INET;
-        clients[i].paho_addr.sin_port = htons(PAHO_GW_PORT);
+        clients[i].paho_addr.sin_port   = htons(PAHO_GW_PORT);
         inet_pton(AF_INET, PAHO_GW_IP, &clients[i].paho_addr.sin_addr);
 
-        LOG("[client] New node=0x%02X -> port=%d", node_id, clients[i].local_port);
+        LOG("[client] New src=0x%02X -> port=%d", src_id, clients[i].local_port);
         return &clients[i];
     }
-
-    LOG("[client] Table full — cannot register node=0x%02X", node_id);
+    LOG("[client] Table full — cannot register src=0x%02X", src_id);
     return NULL;
 }
 
-/* Must be called with clients_lock held.
-   Closes and frees any client slot that has not sent an uplink within
-   CLIENT_TIMEOUT_S seconds. */
 static void expire_clients(void) {
     time_t now = time(NULL);
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (!clients[i].active)
-            continue;
-        if ((now - clients[i].last_seen) < CLIENT_TIMEOUT_S)
-            continue;
-        LOG("[client] Expiring node=0x%02X (idle %lds)", clients[i].node_id,
-            (long)(now - clients[i].last_seen));
+        if (!clients[i].active) continue;
+        if ((now - clients[i].last_seen) < CLIENT_TIMEOUT_S) continue;
+        LOG("[client] Expiring src=0x%02X (idle %lds, pkts=%u, avg_hops=%.2f)",
+            clients[i].node_id,
+            (long)(now - clients[i].last_seen),
+            clients[i].pkt_count,
+            clients[i].pkt_count > 0
+                ? (double)clients[i].hop_total / clients[i].pkt_count : 0.0);
         close(clients[i].udp_sock);
         memset(&clients[i], 0, sizeof(clients[i]));
     }
 }
 
-/* LoRa TX*/
+/* ── LoRa TX ─────────────────────────────────────────────────────────────── */
 
-/* Transmit a RadioHead-framed packet to dst.
+/*
+ * lora_send()
+ * Sends a DOWNLINK packet to a specific node, wrapped with:
+ *   RadioHead header (4B): TO=dst, FROM=GATEWAY, ID=seq, FLAGS=0
+ *   Mesh header      (4B): src=GATEWAY, dst=dst_node, ttl=MESH_TTL_DEFAULT, seq=seq
+ *   MQTT-SN payload  (NB)
  *
- * Caller must hold radio_lock for the entire call and must NOT hold
- * clients_lock (to avoid lock-order inversion with irq_process).
- *
- * The radio is put into standby before reconfiguring because the LR1121
- * rejects parameter writes while actively receiving or transmitting.
- * After TX completes (or times out) the radio is returned to continuous RX
- * so the main thread can resume receiving uplinks immediately.
+ * Caller must hold radio_lock; must NOT hold clients_lock.
  */
-static int lora_send(uint8_t dst, uint8_t seq, const uint8_t *payload, uint8_t len) {
-    if (len + RH_HDR > GW_PAYLOAD_MAX) {
-        LOG("[tx] Payload too large (%d bytes), dropping", len);
+static int lora_send(uint8_t dst_node, uint8_t seq,
+                     const uint8_t *mqttsn_payload, uint8_t mqttsn_len)
+{
+    if (mqttsn_len + FRAME_HDR_TOTAL > GW_PAYLOAD_MAX) {
+        LOG("[tx] Payload too large (%d bytes), dropping", mqttsn_len);
         return -1;
     }
 
-    /* Build RadioHead frame */
-    uint8_t frame[GW_PAYLOAD_MAX];
-    frame[RH_TO] = dst;
-    frame[RH_FROM] = LORA_GW_NODE_ID;
-    frame[RH_ID] = seq;
-    frame[RH_FLAGS] = 0x00;
-    memcpy(frame + RH_HDR, payload, len);
-    uint8_t total = (uint8_t)(len + RH_HDR);
+    /* Build mesh header */
+    mesh_packet_t mesh_pkt;
+    mesh_pkt.src_id      = MESH_ADDR_GATEWAY;
+    mesh_pkt.dst_id      = dst_node;
+    mesh_pkt.ttl         = MESH_TTL_DEFAULT;
+    mesh_pkt.seq_num     = seq;
+    mesh_pkt.payload_len = mqttsn_len;
+    memcpy(mesh_pkt.payload, mqttsn_payload, mqttsn_len);
 
-    /* Standby is required before writing TX parameters as the radio will
-       return BUSY if we attempt to reconfigure while in RX mode. It also
-       reduces current draw during the reconfiguration window. */
+    /* Encode mesh header + payload */
+    uint8_t mesh_buf[GW_PAYLOAD_MAX];
+    uint8_t mesh_len = mesh_encode(&mesh_pkt, mesh_buf, sizeof(mesh_buf));
+    if (mesh_len == 0) return -1;
+
+    /* Prepend RadioHead header */
+    uint8_t frame[GW_PAYLOAD_MAX];
+    frame[RH_TO]    = dst_node;
+    frame[RH_FROM]  = MESH_ADDR_GATEWAY;
+    frame[RH_ID]    = seq;
+    frame[RH_FLAGS] = 0x00;
+    memcpy(frame + RH_HDR, mesh_buf, mesh_len);
+    uint8_t total = (uint8_t)(RH_HDR + mesh_len);
+
+    /* Put radio into standby before reconfiguring */
     lr11xx_system_set_standby(&lr1121, LR11XX_SYSTEM_STANDBY_CFG_RC);
 
-    /* Re-assert modulation and packet parameters so that standby can reset them */
     lr11xx_radio_mod_params_lora_t mod = {
-        .sf = LR11XX_RADIO_LORA_SF7,
-        .bw = LR11XX_RADIO_LORA_BW_125,
-        .cr = LR11XX_RADIO_LORA_CR_4_5,
-        .ldro = 0,
+        .sf = LR11XX_RADIO_LORA_SF7, .bw = LR11XX_RADIO_LORA_BW_125,
+        .cr = LR11XX_RADIO_LORA_CR_4_5, .ldro = 0,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_mod_params(&lr1121, &mod));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rf_freq(&lr1121, 915000000UL));
@@ -289,169 +245,146 @@ static int lora_send(uint8_t dst, uint8_t seq, const uint8_t *payload, uint8_t l
 
     lr11xx_radio_pkt_params_lora_t tx_pkt = {
         .preamble_len_in_symb = 8,
-        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes = total,
-        .crc = LR11XX_RADIO_LORA_CRC_ON,
-        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes     = total,
+        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
+        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &tx_pkt));
     lr11xx_regmem_write_buffer8(&lr1121, frame, total);
-
-    /* Start TX with a 5-second hardware timeout as a safety net */
     ASSERT_LR11XX_RC(lr11xx_radio_set_tx(&lr1121, 5000));
 
-    /* Spin-wait for TX_DONE IRQ (set by the GPIO ISR).
-       The 600 ms ceiling matches the 5 s hardware timeout with margin. */
     int waited = 0;
-    while (!irq_flag && waited < 600) {
-        usleep(2000);
-        waited += 2;
-    }
+    while (!irq_flag && waited < 600) { usleep(2000); waited += 2; }
 
-    /* Clear all pending IRQ flags. If we hit the spin-wait ceiling without
-       TX_DONE this also clears any stale flags so the next RX is clean. */
     lr11xx_system_irq_mask_t irq_regs = 0;
     lr11xx_system_get_and_clear_irq_status(&lr1121, &irq_regs);
     irq_flag = false;
 
-    /* Return to continuous RX so the main thread can receive uplinks again */
+    /* Return to continuous RX */
     lr11xx_radio_pkt_params_lora_t rx_pkt = {
         .preamble_len_in_symb = 8,
-        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes = GW_PAYLOAD_MAX,
-        .crc = LR11XX_RADIO_LORA_CRC_ON,
-        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes     = GW_PAYLOAD_MAX,
+        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
+        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &rx_pkt));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 
     pkt_tx_count++;
-    LOG("[tx] %d bytes -> 0x%02X seq=%d", total, dst, seq);
+    LOG("[tx] %dB -> node=0x%02X seq=%d (rh=%dB mesh=%dB mqttsn=%dB)",
+        total, dst_node, seq, RH_HDR, MESH_HEADER_SIZE, mqttsn_len);
     return 0;
 }
 
-/* LoRa RX handlers*/
+/* ── LoRa RX handler ─────────────────────────────────────────────────────── */
 
-/* Called by irq_process() when RX_DONE is set without a CRC error.
-   Reads the received frame from the radio, strips the RadioHead header,
-   and forwards the bare MQTT-SN payload to the Paho gateway over UDP. */
+/*
+ * on_rx_done()
+ *
+ * Incoming frame layout:
+ *   [RH_TO][RH_FROM][RH_ID][RH_FLAGS]          ← RadioHead header (4B)
+ *   [SRC_ID][DST_ID][TTL][SEQ_NUM]              ← Mesh header (4B)
+ *   [MQTT-SN payload...]                        ← N bytes
+ *
+ * We strip both headers and forward bare MQTT-SN bytes to Paho,
+ * using SRC_ID as the stable client identity.
+ */
 static void on_rx_done(void) {
     uint8_t buf[GW_PAYLOAD_MAX + 1];
     lr11xx_radio_rx_buffer_status_t rx_buf;
-    lr11xx_radio_pkt_status_lora_t pkt_status;
+    lr11xx_radio_pkt_status_lora_t  pkt_status;
 
     lr11xx_radio_get_rx_buffer_status(&lr1121, &rx_buf);
     uint8_t size = rx_buf.pld_len_in_bytes;
 
-    if (size < (uint8_t)(RH_HDR + 1) || size > GW_PAYLOAD_MAX) {
+    /* Minimum: RH(4) + Mesh(4) + 1 byte MQTT-SN */
+    if (size < (uint8_t)(FRAME_HDR_TOTAL + 1) || size > GW_PAYLOAD_MAX) {
         LOG("[rx] Bad size %d, dropping", size);
         return;
     }
 
-    /* Reading the buffer also clears the radio's internal RX FIFO,
-       making it ready to receive the next packet immediately. */
     lr11xx_regmem_read_buffer8(&lr1121, buf, rx_buf.buffer_start_pointer, size);
     lr11xx_radio_get_lora_pkt_status(&lr1121, &pkt_status);
 
-    uint8_t rh_to = buf[RH_TO];
-    uint8_t rh_from = buf[RH_FROM];
-    uint8_t rh_seq = buf[RH_ID];
+    /* ── Strip RadioHead header ──────────────────────────────────────── */
+    uint8_t rh_seq  = buf[RH_ID];
+    uint8_t *mesh   = buf + RH_HDR;            /* pointer to mesh header   */
+    uint8_t  msize  = size - RH_HDR;           /* bytes from mesh hdr on   */
+
+    /* ── Decode mesh header ─────────────────────────────────────────── */
+    mesh_packet_t pkt;
+    if (!mesh_decode(mesh, msize, &pkt)) {
+        LOG("[rx] mesh_decode failed, dropping");
+        return;
+    }
+
+    uint8_t hops_taken = MESH_TTL_DEFAULT - pkt.ttl;
+
     pkt_rx_count++;
-    LOG("[rx] #%d from=0x%02X to=0x%02X seq=%d len=%d RSSI=%ddBm SNR=%ddB", pkt_rx_count, rh_from,
-        rh_to, rh_seq, size - RH_HDR, pkt_status.rssi_pkt_in_dbm, pkt_status.snr_pkt_in_db);
+    LOG("[rx] #%d src=0x%02X dst=0x%02X ttl=%d seq=%d hops=%d len=%d RSSI=%ddBm SNR=%ddB",
+        pkt_rx_count,
+        pkt.src_id, pkt.dst_id, pkt.ttl, pkt.seq_num, hops_taken,
+        pkt.payload_len,
+        pkt_status.rssi_pkt_in_dbm, pkt_status.snr_pkt_in_db);
 
-    if (rh_to != LORA_GW_NODE_ID && rh_to != LORA_BROADCAST) {
-        LOG("[rx] Not addressed to us (0x%02X), skipping", rh_to);
+    /* Discard if not destined for the gateway */
+    if (pkt.dst_id != MESH_ADDR_GATEWAY && pkt.dst_id != MESH_ADDR_BROADCAST) {
+        LOG("[rx] mesh dst=0x%02X not for gateway, skipping", pkt.dst_id);
+        return;
+    }
+    if (pkt.payload_len == 0) {
+        LOG("[rx] empty MQTT-SN payload, dropping");
         return;
     }
 
-    uint8_t *payload = buf + RH_HDR;
-    uint8_t payload_len = (uint8_t)(size - RH_HDR);
+    /* Debug: raw MQTT-SN bytes */
+    printf("  MQTT-SN (%dB): ", pkt.payload_len);
+    for (int i = 0; i < pkt.payload_len; i++) printf("%02X ", pkt.payload[i]);
+    printf("\n"); fflush(stdout);
 
-    if (payload_len < MESH_HEADER_SIZE) {
-        LOG("[mesh] Payload too short for mesh header (%d bytes)", payload_len);
-        return;
-    }
-
-    mesh_header_t mesh;
-    memcpy(&mesh, payload, MESH_HEADER_SIZE);
-
-    uint8_t *mqttsn = payload + MESH_HEADER_SIZE;
-    uint8_t mqttsn_len = (uint8_t)(payload_len - MESH_HEADER_SIZE);
-
-    LOG("[mesh] src=0x%02X dst=0x%02X ttl=%d seq=%d", mesh.src_id, mesh.dst_id, mesh.ttl,
-        mesh.seq_num);
-
-    if (mesh.dst_id != LORA_GW_NODE_ID) {
-        LOG("[mesh] Not for gateway (dst=0x%02X), dropping for now", mesh.dst_id);
-        return;
-    }
-
-    if (mqttsn_len == 0) {
-        LOG("[mesh] Empty MQTT-SN payload after mesh header");
-        return;
-    }
-
-    /*for debugging */
-    printf("  MQTT-SN: ");
-    for (int i = 0; i < mqttsn_len; i++)
-        printf("%02X ", mqttsn[i]);
-    printf("\n");
-    fflush(stdout);
-
-    /* Look up (or register) the sending node and forward to Paho */
+    /* ── Forward to Paho, keyed on SRC_ID ───────────────────────────── */
     pthread_mutex_lock(&clients_lock);
-    client_t *client = get_or_create_client(mesh.src_id);
-    if (!client) {
-        pthread_mutex_unlock(&clients_lock);
-        return;
-    }
-    client->last_seq = rh_seq;
+    client_t *client = get_or_create_client(pkt.src_id);
+    if (!client) { pthread_mutex_unlock(&clients_lock); return; }
 
-    ssize_t sent = sendto(client->udp_sock, mqttsn, mqttsn_len, 0,
-                          (struct sockaddr *)&client->paho_addr, sizeof(client->paho_addr));
+    client->last_seq = rh_seq;
+    client->pkt_count++;
+    client->hop_total += hops_taken;
+
+    ssize_t sent = sendto(client->udp_sock,
+                          pkt.payload, pkt.payload_len, 0,
+                          (struct sockaddr *)&client->paho_addr,
+                          sizeof(client->paho_addr));
     pthread_mutex_unlock(&clients_lock);
 
     if (sent < 0)
         LOG("[rx] sendto Paho failed: %s", strerror(errno));
     else
-        LOG("[rx] -> Paho:%d via port=%d (%zd bytes)", PAHO_GW_PORT, client->local_port, sent);
+        LOG("[rx] -> Paho:%d port=%d (%zdB) [src=0x%02X hops=%d]",
+            PAHO_GW_PORT, client->local_port, sent, pkt.src_id, hops_taken);
 }
 
-/* Called from the main loop whenever irq_flag is set.
- *
- * Reads and clears all pending IRQ flags in one SPI transaction, then
- * dispatches to the appropriate handler. After dispatching, the radio is
- * (re-)placed into continuous RX regardless of which IRQ fired
- *
- * Caller must hold radio_lock.
- */
+/* ── IRQ dispatcher ──────────────────────────────────────────────────────── */
 static void irq_process(void) {
     irq_flag = false;
-
     lr11xx_system_irq_mask_t irq_regs = 0;
     lr11xx_system_get_and_clear_irq_status(&lr1121, &irq_regs);
     irq_regs &= IRQ_MASK;
 
     if (irq_regs & LR11XX_SYSTEM_IRQ_RX_DONE) {
-        if (irq_regs & LR11XX_SYSTEM_IRQ_CRC_ERROR)
-            on_rx_crc_error();
-        else
-            on_rx_done();
+        if (irq_regs & LR11XX_SYSTEM_IRQ_CRC_ERROR) on_rx_crc_error();
+        else                                         on_rx_done();
     }
-    if (irq_regs & LR11XX_SYSTEM_IRQ_TIMEOUT)
-        on_rx_timeout();
-    if (irq_regs & LR11XX_SYSTEM_IRQ_HEADER_ERROR)
-        LOG("[rx] Header error");
-    if (irq_regs & LR11XX_SYSTEM_IRQ_TX_DONE)
-        LOG("[tx] TX_DONE IRQ");
+    if (irq_regs & LR11XX_SYSTEM_IRQ_TIMEOUT)      on_rx_timeout();
+    if (irq_regs & LR11XX_SYSTEM_IRQ_HEADER_ERROR) LOG("[rx] Header error");
+    if (irq_regs & LR11XX_SYSTEM_IRQ_TX_DONE)      LOG("[tx] TX_DONE IRQ");
 
-    /* Ensure the radio is in continuous RX after handling any IRQ type */
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 }
 
-/* Downstream thread (Paho -> LoRa)*/
-
+/* ── Downstream thread (Paho → LoRa) ─────────────────────────────────────── */
 static uint64_t last_dn_tx_us = 0;
 
 static void *downstream_thread(void *arg) {
@@ -459,16 +392,11 @@ static void *downstream_thread(void *arg) {
     LOG("[dn] Thread started");
 
     uint8_t rxbuf[GW_PAYLOAD_MAX];
-
-    /* Seed the spacing timer to now so the very first downlink is not
-       held up by an uninitialised last_dn_tx_us of zero. */
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 
-    /* Staging arrays, data is copied here under clients_lock then
-       transmitted after the lock is released, keeping the lock window
-       short and avoiding contention with the main thread's on_rx_done(). */
+    /* Staging buffers — filled under clients_lock, sent after releasing it */
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
     uint8_t d_len[MAX_CLIENTS];
     uint8_t d_node[MAX_CLIENTS];
@@ -478,95 +406,60 @@ static void *downstream_thread(void *arg) {
         int maxfd = -1;
         FD_ZERO(&rfds);
 
-        /* Build the fd_set from active client sockets under the lock */
         pthread_mutex_lock(&clients_lock);
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if (clients[i].active && clients[i].udp_sock >= 0) {
                 FD_SET(clients[i].udp_sock, &rfds);
-                if (clients[i].udp_sock > maxfd)
-                    maxfd = clients[i].udp_sock;
+                if (clients[i].udp_sock > maxfd) maxfd = clients[i].udp_sock;
             }
         }
         pthread_mutex_unlock(&clients_lock);
 
-        if (maxfd < 0) {
-            /* No clients yet, sleep briefly and retry */
-            usleep(50000);
-            continue;
-        }
+        if (maxfd < 0) { usleep(50000); continue; }
 
-        /* Wait up to 50 ms for any client socket to become readable */
         struct timeval tv = {0, 50000};
-        if (select(maxfd + 1, &rfds, NULL, NULL, &tv) <= 0)
-            continue;
+        if (select(maxfd + 1, &rfds, NULL, NULL, &tv) <= 0) continue;
 
-        /* Read all ready sockets into the staging arrays */
         int count = 0;
         pthread_mutex_lock(&clients_lock);
         for (int i = 0; i < MAX_CLIENTS && count < MAX_CLIENTS; i++) {
-            if (!clients[i].active)
-                continue;
-            if (!FD_ISSET(clients[i].udp_sock, &rfds))
-                continue;
+            if (!clients[i].active) continue;
+            if (!FD_ISSET(clients[i].udp_sock, &rfds)) continue;
 
             struct sockaddr_in src;
             socklen_t sl = sizeof(src);
             ssize_t n = recvfrom(clients[i].udp_sock, rxbuf, sizeof(rxbuf), 0,
                                  (struct sockaddr *)&src, &sl);
-            if (n <= 0)
-                continue;
+            if (n <= 0) continue;
 
             memcpy(d_data[count], rxbuf, n);
-            d_len[count] = (uint8_t)n;
+            d_len[count]  = (uint8_t)n;
             d_node[count] = clients[i].node_id;
             count++;
-            LOG("[dn] %zd bytes queued for node=0x%02X", n, clients[i].node_id);
+            LOG("[dn] %zdB queued for node=0x%02X (will be mesh-wrapped)", n, clients[i].node_id);
         }
         pthread_mutex_unlock(&clients_lock);
 
-        /* Transmit each staged packet over LoRa */
+        /* Transmit each staged downlink packet with mesh wrapper */
         for (int p = 0; p < count; p++) {
             clock_gettime(CLOCK_MONOTONIC, &ts);
-            uint64_t now = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
-            uint8_t seq = dn_seq++;
+            uint64_t now     = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
+            uint8_t  seq     = dn_seq++;
             uint64_t elapsed = now - last_dn_tx_us;
 
-            /* Enforce minimum inter-packet spacing to give the node time
-               to finish processing the previous downlink and re-arm its
-               receiver before the next transmission arrives. */
             if (elapsed < DN_SPACING_US) {
                 uint64_t wait = DN_SPACING_US - elapsed;
                 LOG("[dn] Spacing wait %llums", (unsigned long long)(wait / 1000));
                 usleep((useconds_t)wait);
             }
 
-            uint8_t tx_payload[GW_PAYLOAD_MAX];
-            mesh_header_t mesh;
-
-            mesh.src_id = LORA_GW_NODE_ID; // gateway is the source
-            mesh.dst_id = d_node[p];       // final destination node
-            mesh.ttl = 3;
-            mesh.seq_num = dn_mesh_seq++;
-
-            uint8_t tx_len = (uint8_t)(MESH_HEADER_SIZE + d_len[p]);
-            if (tx_len > GW_PAYLOAD_MAX) {
-                LOG("[dn] Mesh-wrapped downlink too large (%d bytes), dropping", tx_len);
-                continue;
-            }
-
-            memcpy(tx_payload, &mesh, MESH_HEADER_SIZE);
-            memcpy(tx_payload + MESH_HEADER_SIZE, d_data[p], d_len[p]);
-
-            LOG("[dn-mesh] src=0x%02X dst=0x%02X ttl=%d seq=%d mqttsn_len=%d", mesh.src_id,
-                mesh.dst_id, mesh.ttl, mesh.seq_num, d_len[p]);
-
             pthread_mutex_lock(&radio_lock);
             irq_flag = false;
-            lora_send(LORA_BROADCAST, seq, tx_payload, tx_len);
+            /* lora_send() wraps the payload with mesh header internally */
+            lora_send(d_node[p], seq, d_data[p], d_len[p]);
             irq_flag = false;
             pthread_mutex_unlock(&radio_lock);
 
-            /* Record send time for spacing calculation on the next packet */
             clock_gettime(CLOCK_MONOTONIC, &ts);
             last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
         }
@@ -576,40 +469,32 @@ static void *downstream_thread(void *arg) {
     return NULL;
 }
 
-/* Radio initialisation*/
-
+/* ── Radio init ──────────────────────────────────────────────────────────── */
 static void radio_init(void) {
     lora_init_io_context(&lr1121);
     lora_init_io(&lr1121);
     lora_spi_init(&lr1121);
     lora_system_init(&lr1121);
     lora_print_version(&lr1121);
-    lora_radio_init(&lr1121); /* default 868 MHz we override below */
+    lora_radio_init(&lr1121);
 
-    /* Override modulation parameters for 915 MHz US band */
     lr11xx_radio_mod_params_lora_t mod = {
-        .sf = LR11XX_RADIO_LORA_SF7,
-        .bw = LR11XX_RADIO_LORA_BW_125,
-        .cr = LR11XX_RADIO_LORA_CR_4_5,
-        .ldro = 0,
+        .sf = LR11XX_RADIO_LORA_SF7, .bw = LR11XX_RADIO_LORA_BW_125,
+        .cr = LR11XX_RADIO_LORA_CR_4_5, .ldro = 0,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_mod_params(&lr1121, &mod));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rf_freq(&lr1121, 915000000UL));
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_public_network(&lr1121, false));
 
-    /* Set maximum receive payload size so the radio does not discard
-       packets larger than its default buffer configuration. */
     lr11xx_radio_pkt_params_lora_t pkt = {
         .preamble_len_in_symb = 8,
-        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes = GW_PAYLOAD_MAX,
-        .crc = LR11XX_RADIO_LORA_CRC_ON,
-        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes     = GW_PAYLOAD_MAX,
+        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
+        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &pkt));
 
-    /* Register GPIO ISR and configure radio to assert DIO1 for all
-       relevant IRQ sources. Clear any stale flags before entering RX. */
     lora_init_irq(&lr1121, &isr);
     ASSERT_LR11XX_RC(lr11xx_system_set_dio_irq_params(&lr1121, IRQ_MASK, 0));
     ASSERT_LR11XX_RC(lr11xx_system_clear_irq_status(&lr1121, LR11XX_SYSTEM_IRQ_ALL_MASK));
@@ -617,21 +502,20 @@ static void radio_init(void) {
     LOG("[init] SF7 BW125 CR4/5 | 915 MHz | SW=private | CRC ON | MaxPld=%d", GW_PAYLOAD_MAX);
 }
 
-/* main*/
-
+/* ── main ────────────────────────────────────────────────────────────────── */
 int main(void) {
-    signal(SIGINT, on_signal);
+    signal(SIGINT,  on_signal);
     signal(SIGTERM, on_signal);
 
-    printf("  MQTT-SN LoRa <-> UDP Bridge\n");
-    printf("  Paho GW  : %s:%d\n", PAHO_GW_IP, PAHO_GW_PORT);
-    printf("  Ports    : %d-%d\n", CLIENT_PORT_BASE, CLIENT_PORT_BASE + MAX_CLIENTS - 1);
+    printf("  MQTT-SN LoRa <-> UDP Bridge  [mesh-aware v2]\n");
+    printf("  Paho GW       : %s:%d\n", PAHO_GW_IP, PAHO_GW_PORT);
+    printf("  Client ports  : %d-%d\n", CLIENT_PORT_BASE, CLIENT_PORT_BASE + MAX_CLIENTS - 1);
+    printf("  Frame layout  : RH(%dB) + Mesh(%dB) + MQTT-SN(NB)\n", RH_HDR, MESH_HEADER_SIZE);
+    printf("  Downlink      : mesh-wrapped (src=GW, ttl=%d)\n", MESH_TTL_DEFAULT);
 
     memset(clients, 0, sizeof(clients));
     radio_init();
 
-    /* Start downstream thread before enabling RX so any immediate Paho
-       traffic after connect is handled without dropping packets. */
     pthread_t ds_thread;
     if (pthread_create(&ds_thread, NULL, downstream_thread, NULL) != 0) {
         LOG("[main] pthread_create failed: %s", strerror(errno));
@@ -649,18 +533,19 @@ int main(void) {
             pthread_mutex_unlock(&radio_lock);
         } else {
             usleep(10000);
-
-            /* Heartbeat every ~10 s: print stats and expire idle clients */
             if (++hb >= 1000) {
                 hb = 0;
                 LOG("[hb] rx=%d tx=%d", pkt_rx_count, pkt_tx_count);
-
                 pthread_mutex_lock(&clients_lock);
                 expire_clients();
                 for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (clients[i].active)
-                        printf("  node=0x%02X port=%d age=%lds\n", clients[i].node_id,
-                               clients[i].local_port, (long)(time(NULL) - clients[i].last_seen));
+                    if (!clients[i].active) continue;
+                    printf("  src=0x%02X port=%d pkts=%u avg_hops=%.2f age=%lds\n",
+                           clients[i].node_id, clients[i].local_port,
+                           clients[i].pkt_count,
+                           clients[i].pkt_count > 0
+                               ? (double)clients[i].hop_total / clients[i].pkt_count : 0.0,
+                           (long)(time(NULL) - clients[i].last_seen));
                 }
                 pthread_mutex_unlock(&clients_lock);
                 fflush(stdout);
@@ -668,7 +553,6 @@ int main(void) {
         }
     }
 
-    /* Graceful shutdown */
     pthread_join(ds_thread, NULL);
     lr11xx_system_set_standby(&lr1121, LR11XX_SYSTEM_STANDBY_CFG_RC);
 

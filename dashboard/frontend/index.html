@@ -1,153 +1,722 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSC2106 IoT Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #0f1115;
+    --bg3: #151820;
+    --border: #1e2229;
+    --border2: #2a303a;
+    --text: #e2e8f0;
+    --text2: #8892a0;
+    --text3: #4a5568;
+    --accent: #00d4ff;
+    --accent2: #0099bb;
+    --green: #00ff9d;
+    --green2: #00cc7a;
+    --red: #ff4757;
+    --amber: #ffb400;
+    --purple: #a78bfa;
+    --grid: rgba(30, 34, 41, 0.8);
+  }
 
-    <title>CSC2106 IoT Dashboard</title>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-    <style>
-        body {
-            font-family: Arial;
-            background: #f2f2f2;
-            padding: 20px;
-        }
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
 
-        button {
-            padding: 10px;
-            margin: 5px;
-            font-size: 16px;
-        }
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+  }
 
-        .panel {
-            background: white;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-    </style>
+  .header-left { display: flex; align-items: center; gap: 16px; }
 
+  .logo-mark {
+    width: 32px; height: 32px;
+    border: 1.5px solid var(--accent);
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .logo-mark::before {
+    content: '';
+    width: 12px; height: 12px;
+    background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.6); }
+  }
+
+  .title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .subtitle {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .sys-time {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+  #clock { color: var(--text2); }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 280px;
+    grid-template-rows: auto 1fr;
+    gap: 1px;
+    background: var(--border);
+    min-height: calc(100vh - 73px);
+  }
+
+  .panel {
+    background: var(--bg2);
+    padding: 20px;
+  }
+
+  .panel-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border2);
+  }
+
+  /* Device cards */
+  .device-card {
+    border: 1px solid var(--border2);
+    padding: 14px;
+    margin-bottom: 8px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+  .device-card.online { border-color: rgba(0,255,157,0.3); }
+  .device-card.offline { border-color: var(--border2); }
+
+  .device-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .device-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .status-dot.online {
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green2);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .device-meta {
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .device-meta span { display: flex; justify-content: space-between; }
+  .device-meta .val { color: var(--text2); }
+
+  .device-id {
+    position: absolute;
+    top: 6px; right: 14px;
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 1px;
+    grid-column: 1 / -1;
+  }
+
+  .stat-box {
+    background: var(--bg2);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .stat-unit { font-size: 11px; color: var(--text3); }
+
+  /* Chart panel */
+  .chart-panel {
+    background: var(--bg2);
+    padding: 20px;
+    grid-column: 2;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+  }
+
+  /* Controls */
+  .controls-panel {
+    background: var(--bg2);
+    padding: 20px;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .cmd-btn {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .cmd-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+  .cmd-btn:active { transform: scale(0.98); }
+  .cmd-btn .icon {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  .cmd-btn.danger:hover {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(255,71,87,0.05);
+  }
+
+  /* Log panel */
+  .log-panel {
+    background: var(--bg2);
+    padding: 20px;
+    grid-column: 3;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .log-feed {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 380px;
+  }
+
+  .log-feed::-webkit-scrollbar { width: 3px; }
+  .log-feed::-webkit-scrollbar-track { background: var(--bg); }
+  .log-feed::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .log-entry {
+    padding: 6px 8px;
+    border-left: 2px solid transparent;
+    font-size: 11px;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(6px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-entry.arduino { border-color: var(--accent2); }
+  .log-entry.pico { border-color: var(--purple); }
+  .log-entry.cmd { border-color: var(--amber); }
+
+  .log-time { color: var(--text3); font-size: 10px; }
+  .log-topic { color: var(--text2); }
+  .log-msg { color: var(--text); font-weight: 500; }
+
+  /* Main chart area */
+  .main-area {
+    grid-column: 2;
+    grid-row: 2;
+    background: var(--bg2);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 16px;
+    width: fit-content;
+  }
+  .tab {
+    padding: 7px 16px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: var(--bg3);
+    color: var(--text3);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: var(--bg2);
+    color: var(--accent);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .msg-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .msg-list::-webkit-scrollbar { width: 3px; }
+  .msg-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .msg-item {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 7px 10px;
+    background: var(--bg3);
+    font-size: 11px;
+    animation: fadeIn 0.3s ease;
+  }
+  .msg-item .t { color: var(--text3); font-size: 10px; }
+  .msg-item .topic { color: var(--accent2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-item .val { color: var(--green); font-weight: 700; white-space: nowrap; }
+
+  /* RSSI badge */
+  .rssi-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,255,0.2);
+  }
+
+  /* Responsive helpers */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(3,1fr); }
+  }
+</style>
 </head>
-
 <body>
 
-    <h1>CSC2106 IoT Dashboard</h1>
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark"></div>
+    <div>
+      <div class="title">Dashboard</div>
+      <div class="subtitle">MQTT-SN Transport · LoRa Mesh · Group 11</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sys-time">SYS <span id="clock">--:--:--</span></div>
+    <div id="conn-status" class="rssi-badge">● CONNECTING</div>
+  </div>
+</header>
 
-    <h2>Devices</h2>
+<div class="layout">
 
-    <p id="picoStatus">Pico : Offline</p>
-    <p id="arduinoStatus">Arduino : Offline</p>
+  <!-- Stats bar -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-label">Total Messages</div>
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-unit">received</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Arduino-03 Pkts</div>
+      <div class="stat-value" id="stat-03">0</div>
+      <div class="stat-unit">relay node</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Arduino-02 Pkts</div>
+      <div class="stat-value" id="stat-02">0</div>
+      <div class="stat-unit">endpoint node</div>
+    </div>
+  </div>
 
-    <hr>
+  <!-- Left: Devices + Controls -->
+  <div class="panel controls-panel">
+    <div class="panel-label">Devices</div>
 
-    <button onclick="sendCmd('led on')">LED ON</button>
-    <button onclick="sendCmd('led off')">LED OFF</button>
+    <div class="device-card offline" id="card-pico">
+      <div class="device-id">PICO-W</div>
+      <div class="device-header">
+        <div class="device-name">Pico W</div>
+        <div class="status-dot" id="dot-pico"></div>
+      </div>
+      <div class="device-meta">
+        <span><span>Transport</span><span class="val">Wi-Fi UDP</span></span>
+        <span><span>Status</span><span class="val" id="pico-status-text">Offline</span></span>
+      </div>
+    </div>
 
-    <hr>
+    <div class="device-card offline" id="card-arduino03">
+      <div class="device-id">0x23</div>
+      <div class="device-header">
+        <div class="device-name">Arduino-03</div>
+        <div class="status-dot" id="dot-03"></div>
+      </div>
+      <div class="device-meta">
+        <span><span>Role</span><span class="val">Relay</span></span>
+        <span><span>Transport</span><span class="val">LoRa Mesh</span></span>
+        <span><span>Last msg</span><span class="val" id="last-03">—</span></span>
+      </div>
+    </div>
 
-    <h2>Sensor Graph</h2>
-    <canvas id="sensorChart"></canvas>
+    <div class="device-card offline" id="card-arduino02">
+      <div class="device-id">0x22</div>
+      <div class="device-header">
+        <div class="device-name">Arduino-02</div>
+        <div class="status-dot" id="dot-02"></div>
+      </div>
+      <div class="device-meta">
+        <span><span>Role</span><span class="val">Endpoint</span></span>
+        <span><span>Transport</span><span class="val">LoRa Mesh</span></span>
+        <span><span>Last msg</span><span class="val" id="last-02">—</span></span>
+      </div>
+    </div>
 
-    <hr>
+    <div style="margin-top: 24px;">
+      <div class="panel-label">Commands</div>
+      <button class="cmd-btn" onclick="sendCmd('led on')">
+        <span class="icon"></span> LED ON — all nodes
+      </button>
+      <button class="cmd-btn danger" onclick="sendCmd('led off')">
+        <span class="icon"></span> LED OFF — all nodes
+      </button>
+      <button class="cmd-btn" onclick="sendCmd('led on')">
+        <span class="icon"></span> LED ON — arduino only
+      </button>
+    </div>
+  </div>
 
-    <h2>Pico Data</h2>
-    <ul id="pico" class="panel"></ul>
+  <!-- Centre: Chart -->
+  <div class="main-area">
+    <div class="panel-label">Sensor Data</div>
 
-    <h2>Arduino Data</h2>
-    <ul id="arduino" class="panel"></ul>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('graph', this)">Graph</button>
+      <button class="tab" onclick="switchTab('arduino', this)">Arduino</button>
+      <button class="tab" onclick="switchTab('pico', this)">Pico</button>
+    </div>
 
-    <h2>Commands</h2>
-    <ul id="cmd" class="panel"></ul>
+    <div class="tab-content active" id="tab-graph">
+      <div class="chart-wrap">
+        <canvas id="sensorChart"></canvas>
+      </div>
+    </div>
 
-    <script>
+    <div class="tab-content" id="tab-arduino">
+      <ul class="msg-list" id="arduino-list"></ul>
+    </div>
 
-        const socket = io();
+    <div class="tab-content" id="tab-pico">
+      <ul class="msg-list" id="pico-list"></ul>
+    </div>
+  </div>
 
-        const ctx = document.getElementById("sensorChart");
+  <!-- Right: Live log -->
+  <div class="log-panel">
+    <div class="panel-label">Live Feed</div>
+    <div class="log-feed" id="log-feed"></div>
+  </div>
 
-        const chart = new Chart(ctx, {
+</div>
 
-            type: "line",
+<script>
+const socket = io();
 
-            data: {
-                labels: [],
-                datasets: [{
-                    label: "Sensor Data",
-                    data: [],
-                    borderColor: "blue",
-                    fill: false
-                }]
-            },
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+}, 1000);
 
-            options: {
-                animation: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-
-        });
-
-        socket.on("mqtt_message", (data) => {
-
-            const li = document.createElement("li");
-            const time = new Date().toLocaleTimeString();
-
-            li.innerText = `[${time}] ${data.topic} : ${data.message}`;
-
-            let list;
-
-            if (data.topic.includes("pico")) {
-                list = document.getElementById("pico");
-                document.getElementById("picoStatus").innerText = "Pico : Online";
-            }
-            else if (data.topic.includes("arduino")) {
-                list = document.getElementById("arduino");
-                document.getElementById("arduinoStatus").innerText = "Arduino : Online";
-            }
-            else {
-                list = document.getElementById("cmd");
-            }
-
-            list.prepend(li);
-
-            // graph update
-            if (data.topic === "sensors/data") {
-
-                const parts = data.message.split(" ");
-
-                if (parts.length > 1) {
-
-                    const value = parseInt(parts[1]);
-
-                    chart.data.labels.push(new Date().toLocaleTimeString());
-                    chart.data.datasets[0].data.push(value);
-
-                    if (chart.data.labels.length > 20) {
-                        chart.data.labels.shift();
-                        chart.data.datasets[0].data.shift();
-                    }
-
-                    chart.update();
-
-                }
-
-            }
-
-        });
-
-        function sendCmd(msg) {
-            fetch(`/cmd/${msg}`);
+// Chart
+const ctx = document.getElementById('sensorChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: 'Arduino-03',
+        data: [],
+        borderColor: '#00d4ff',
+        backgroundColor: 'rgba(0,212,255,0.05)',
+        borderWidth: 1.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#00d4ff',
+        tension: 0.3,
+        fill: true
+      },
+      {
+        label: 'Arduino-02',
+        data: [],
+        borderColor: '#00ff9d',
+        backgroundColor: 'rgba(0,255,157,0.05)',
+        borderWidth: 1.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#00ff9d',
+        tension: 0.3,
+        fill: true
+      }
+    ]
+  },
+  options: {
+    animation: false,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: '#8892a0',
+          font: { family: 'JetBrains Mono', size: 11 },
+          boxWidth: 12
         }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#4a5568', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 6 },
+        grid: { color: 'rgba(30,34,41,0.8)' }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#4a5568', font: { family: 'JetBrains Mono', size: 10 } },
+        grid: { color: 'rgba(30,34,41,0.8)' }
+      }
+    }
+  }
+});
 
-    </script>
+// Counters
+let total = 0, cnt03 = 0, cnt02 = 0;
+const MAX_POINTS = 20;
 
+// Socket connection status
+socket.on('connect', () => {
+  document.getElementById('conn-status').textContent = '● LIVE';
+  document.getElementById('conn-status').style.color = '#00ff9d';
+  document.getElementById('conn-status').style.borderColor = 'rgba(0,255,157,0.3)';
+  document.getElementById('conn-status').style.background = 'rgba(0,255,157,0.05)';
+});
+socket.on('disconnect', () => {
+  document.getElementById('conn-status').textContent = '● OFFLINE';
+  document.getElementById('conn-status').style.color = '#ff4757';
+});
+
+socket.on('mqtt_message', (data) => {
+  const time = new Date().toLocaleTimeString('en-GB');
+  const msg = data.message;
+  const topic = data.topic;
+  const parts = msg.split(' ');
+  const node = parts[0]; // e.g. "arduino-03"
+  const counter = parts.length > 1 ? parseInt(parts[1]) : null;
+
+  total++;
+  document.getElementById('stat-total').textContent = total;
+
+  // Identify node
+  const is03 = node === 'arduino-03' || topic.includes('arduino') && msg.includes('03');
+  const is02 = node === 'arduino-02' || topic.includes('arduino') && msg.includes('02');
+  const isPico = topic.includes('pico');
+
+  // Update device cards
+  if (is03) {
+    cnt03++;
+    document.getElementById('stat-03').textContent = cnt03;
+    document.getElementById('dot-03').classList.add('online');
+    document.getElementById('card-arduino03').classList.replace('offline', 'online');
+    document.getElementById('last-03').textContent = time;
+  }
+  if (is02) {
+    cnt02++;
+    document.getElementById('stat-02').textContent = cnt02;
+    document.getElementById('dot-02').classList.add('online');
+    document.getElementById('card-arduino02').classList.replace('offline', 'online');
+    document.getElementById('last-02').textContent = time;
+  }
+  if (isPico) {
+    document.getElementById('dot-pico').classList.add('online');
+    document.getElementById('card-pico').classList.replace('offline', 'online');
+    document.getElementById('pico-status-text').textContent = 'Online';
+  }
+
+  // Update Arduino status text
+  if (is03 || is02) {
+    // handled by card
+  }
+
+  // Chart update — sensors/data only
+  if (topic === 'sensors/arduino/data' && counter !== null) {
+    const label = time;
+    if (chart.data.labels.length === 0 || chart.data.labels[chart.data.labels.length - 1] !== label) {
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(null);
+      chart.data.datasets[1].data.push(null);
+      if (chart.data.labels.length > MAX_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+        chart.data.datasets[1].data.shift();
+      }
+    }
+    const idx = chart.data.labels.length - 1;
+    if (is03) chart.data.datasets[0].data[idx] = counter;
+    if (is02) chart.data.datasets[1].data[idx] = counter;
+    chart.update();
+  }
+
+  // Live log feed
+  const feed = document.getElementById('log-feed');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${isPico ? 'pico' : topic.includes('cmd') ? 'cmd' : 'arduino'}`;
+  entry.innerHTML = `<div class="log-time">${time}</div><div class="log-topic">${topic}</div><div class="log-msg">${msg}</div>`;
+  feed.insertBefore(entry, feed.firstChild);
+  if (feed.children.length > 60) feed.removeChild(feed.lastChild);
+
+  // Message lists
+  const listId = isPico ? 'pico-list' : 'arduino-list';
+  const list = document.getElementById(listId);
+  const item = document.createElement('li');
+  item.className = 'msg-item';
+  item.innerHTML = `<span class="t">${time}</span><span class="topic">${topic}</span><span class="val">${msg}</span>`;
+  list.insertBefore(item, list.firstChild);
+  if (list.children.length > 40) list.removeChild(list.lastChild);
+});
+
+function sendCmd(msg) {
+  fetch(`/cmd/${encodeURIComponent(msg)}`);
+  // Log the command
+  const feed = document.getElementById('log-feed');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry cmd';
+  entry.innerHTML = `<div class="log-time">${new Date().toLocaleTimeString('en-GB')}</div><div class="log-topic">sensors/cmd</div><div class="log-msg">→ ${msg}</div>`;
+  feed.insertBefore(entry, feed.firstChild);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
 </body>
-
 </html>

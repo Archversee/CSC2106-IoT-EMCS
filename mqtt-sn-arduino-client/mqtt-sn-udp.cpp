@@ -341,7 +341,14 @@ void mqtt_sn_process_topic_registrations(mqtt_sn_context_t *ctx) {
             (uint32_t)(now - ctx->custom_topics[i].last_attempt_ms) < TOPIC_RETRY_INTERVAL_MS)
             continue;
 
-        uint16_t mid = get_next_msg_id();
+        // If a request is already in-flight, reuse the same mid on retry
+        // so a delayed REGACK still matches (LoRa can delay replies seconds).
+        uint16_t mid;
+        if (ctx->custom_topics[i].pending_msg_id != 0)
+            mid = ctx->custom_topics[i].pending_msg_id;
+        else
+            mid = get_next_msg_id();
+
         ctx->custom_topics[i].pending_msg_id = mid;
         ctx->custom_topics[i].last_attempt_ms = now;
 
@@ -522,6 +529,15 @@ static void handle_publish(mqtt_sn_context_t *ctx, const uint8_t *d, uint8_t len
         Serial.print((char)payload[i]);
     Serial.println();
 
+    if (plen >= 6 && strncmp((char*)payload, "led on", 6) == 0) {
+        digitalWrite(LED_PIN, HIGH);
+        Serial.println(F("[cmd] LED ON"));
+    } else if (plen >= 7 && strncmp((char*)payload, "led off", 7) == 0) {
+        digitalWrite(LED_PIN, LOW);
+        Serial.println(F("[cmd] LED OFF"));
+    }
+
+
     // ACK if QoS > 0
     if (qos == QOS_LEVEL_1) {
         if (g_puback_pending) {
@@ -602,4 +618,10 @@ void mqtt_sn_poll(mqtt_sn_context_t *ctx) {
     uint8_t len = mqttsn_transport_recv(buf, sizeof(buf), 200);
     if (len > 0)
         udp_recv_callback_arduino(ctx, buf, len);
+    // Drain additional packets (e.g. relay node gets CONNACK right after forwarding)
+    for (uint8_t i = 0; i < 4; i++) {
+        len = mqttsn_transport_recv(buf, sizeof(buf), 0);
+        if (len == 0) break;
+        udp_recv_callback_arduino(ctx, buf, len);
+    }
 }

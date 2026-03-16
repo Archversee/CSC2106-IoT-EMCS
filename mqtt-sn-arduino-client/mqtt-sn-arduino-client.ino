@@ -223,6 +223,7 @@ void loop() {
                 g_last_pub_qos0 = now;
                 g_pub_count_qos0++;
                 char payload[48];
+                uint32_t ts = millis();
                 snprintf(payload, sizeof(payload), "%s %u", MQTT_SN_CLIENT_ID, g_pub_count_qos0);
                 Serial.print(F("PUB QoS0 #"));
                 Serial.println(g_pub_count_qos0);
