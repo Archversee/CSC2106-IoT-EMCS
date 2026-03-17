@@ -25,11 +25,9 @@
     --red: #ff4757;
     --amber: #ffb400;
     --purple: #a78bfa;
-    --grid: rgba(30, 34, 41, 0.8);
+    --orange: #ff8c42;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     background: var(--bg);
     color: var(--text);
@@ -38,24 +36,14 @@
     min-height: 100vh;
     overflow-x: hidden;
   }
-
-  /* Scanline overlay */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.03) 2px,
-      rgba(0,0,0,0.03) 4px
-    );
+    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
     pointer-events: none;
     z-index: 1000;
   }
-
-  /* Header */
   .header {
     border-bottom: 1px solid var(--border);
     padding: 20px 32px;
@@ -64,56 +52,17 @@
     justify-content: space-between;
     background: var(--bg2);
   }
-
   .header-left { display: flex; align-items: center; gap: 16px; }
-
-  .logo-mark {
-    width: 32px; height: 32px;
-    border: 1.5px solid var(--accent);
-    display: grid;
-    place-items: center;
-    position: relative;
-  }
-  .logo-mark::before {
-    content: '';
-    width: 12px; height: 12px;
-    background: var(--accent);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.6); }
-  }
-
-  .title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 18px;
-    letter-spacing: -0.02em;
-    color: var(--text);
-  }
-  .subtitle {
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .sys-time {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.05em;
-  }
+  .logo-mark { width: 32px; height: 32px; border: 1.5px solid var(--accent); display: grid; place-items: center; }
+  .logo-mark::before { content: ''; width: 12px; height: 12px; background: var(--accent); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.6)} }
+  .title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+  .subtitle { font-size: 10px; color: var(--text3); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 24px; }
+  .sys-time { font-size: 11px; color: var(--text3); }
   #clock { color: var(--text2); }
+  .rssi-badge { display: inline-block; padding: 2px 6px; font-size: 10px; background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
 
-  /* Layout */
   .layout {
     display: grid;
     grid-template-columns: 260px 1fr 280px;
@@ -122,296 +71,139 @@
     background: var(--border);
     min-height: calc(100vh - 73px);
   }
-
-  .panel {
-    background: var(--bg2);
-    padding: 20px;
-  }
-
+  .panel { background: var(--bg2); padding: 20px; }
   .panel-label {
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text3);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
   }
-  .panel-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border2);
-  }
+  .panel-label::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
 
-  /* Device cards */
-  .device-card {
-    border: 1px solid var(--border2);
-    padding: 14px;
-    margin-bottom: 8px;
-    position: relative;
-    transition: border-color 0.3s;
-  }
-  .device-card.online { border-color: rgba(0,255,157,0.3); }
-  .device-card.offline { border-color: var(--border2); }
-
-  .device-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .device-name {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--text);
-  }
-
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--text3);
-    transition: background 0.3s, box-shadow 0.3s;
-  }
-  .status-dot.online {
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green2);
-    animation: blink 2s ease-in-out infinite;
-  }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  .device-meta {
-    font-size: 11px;
-    color: var(--text3);
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .device-meta span { display: flex; justify-content: space-between; }
-  .device-meta .val { color: var(--text2); }
-
-  .device-id {
-    position: absolute;
-    top: 6px; right: 14px;
-    font-size: 9px;
-    color: var(--text3);
-    letter-spacing: 0.1em;
-  }
-
-  /* Stats row */
+  /* Stats */
   .stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--border);
-    margin-bottom: 1px;
-    grid-column: 1 / -1;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--border); margin-bottom: 1px; grid-column: 1 / -1;
   }
-
-  .stat-box {
-    background: var(--bg2);
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .stat-label {
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text3);
-  }
-  .stat-value {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 28px;
-    color: var(--accent);
-    line-height: 1;
-    letter-spacing: -0.03em;
-  }
+  .stat-box { background: var(--bg2); padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+  .stat-label { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3); }
+  .stat-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--accent); line-height: 1; letter-spacing: -0.03em; }
   .stat-unit { font-size: 11px; color: var(--text3); }
 
-  /* Chart panel */
-  .chart-panel {
-    background: var(--bg2);
-    padding: 20px;
-    grid-column: 2;
-  }
+  /* Device cards */
+  .device-card { border: 1px solid var(--border2); padding: 14px; margin-bottom: 8px; position: relative; transition: border-color .3s; }
+  .device-card.online { border-color: rgba(0,255,157,0.3); }
+  .device-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .device-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); transition: background .3s,box-shadow .3s; }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green2); animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .device-meta { font-size: 11px; color: var(--text3); display: flex; flex-direction: column; gap: 3px; }
+  .device-meta span { display: flex; justify-content: space-between; }
+  .device-meta .val { color: var(--text2); }
+  .device-id { position: absolute; top: 6px; right: 14px; font-size: 9px; color: var(--text3); letter-spacing: .1em; }
 
-  .chart-wrap {
-    position: relative;
-    height: 220px;
-  }
-
-  /* Controls */
-  .controls-panel {
-    background: var(--bg2);
-    padding: 20px;
-    grid-column: 1;
-    grid-row: 2;
-  }
-
+  /* Cmd buttons */
   .cmd-btn {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border2);
-    background: transparent;
-    color: var(--text2);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-    transition: all 0.2s;
-    text-align: left;
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border2); background: transparent;
+    color: var(--text2); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .05em;
+    cursor: pointer; display: flex; align-items: center; gap: 10px; margin-bottom: 6px; transition: all .2s; text-align: left;
   }
-  .cmd-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,212,255,0.05);
-  }
-  .cmd-btn:active { transform: scale(0.98); }
-  .cmd-btn .icon {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
-  .cmd-btn.danger:hover {
-    border-color: var(--red);
-    color: var(--red);
-    background: rgba(255,71,87,0.05);
-  }
+  .cmd-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.05); }
+  .cmd-btn.danger:hover { border-color: var(--red); color: var(--red); background: rgba(255,71,87,0.05); }
+  .cmd-btn .icon { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
   /* Log panel */
-  .log-panel {
-    background: var(--bg2);
-    padding: 20px;
-    grid-column: 3;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .log-feed {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    max-height: 380px;
-  }
-
+  .log-panel { background: var(--bg2); padding: 20px; grid-column: 3; grid-row: 2; display: flex; flex-direction: column; }
+  .log-feed { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; max-height: 380px; }
   .log-feed::-webkit-scrollbar { width: 3px; }
-  .log-feed::-webkit-scrollbar-track { background: var(--bg); }
   .log-feed::-webkit-scrollbar-thumb { background: var(--border2); }
-
-  .log-entry {
-    padding: 6px 8px;
-    border-left: 2px solid transparent;
-    font-size: 11px;
-    line-height: 1.5;
-    animation: fadeIn 0.3s ease;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(6px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
+  .log-entry { padding: 6px 8px; border-left: 2px solid transparent; font-size: 11px; line-height: 1.5; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateX(6px)} to{opacity:1;transform:translateX(0)} }
   .log-entry.arduino { border-color: var(--accent2); }
   .log-entry.pico { border-color: var(--purple); }
   .log-entry.cmd { border-color: var(--amber); }
-
+  .log-entry.routing { border-color: var(--orange); }
+  .log-entry.forwarding { border-color: var(--green2); }
   .log-time { color: var(--text3); font-size: 10px; }
   .log-topic { color: var(--text2); }
   .log-msg { color: var(--text); font-weight: 500; }
 
-  /* Main chart area */
-  .main-area {
-    grid-column: 2;
-    grid-row: 2;
-    background: var(--bg2);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 1px;
-    background: var(--border);
-    margin-bottom: 16px;
-    width: fit-content;
-  }
+  /* Main area */
+  .main-area { grid-column: 2; grid-row: 2; background: var(--bg2); padding: 20px; display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 1px; background: var(--border); margin-bottom: 16px; width: fit-content; }
   .tab {
-    padding: 7px 16px;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    background: var(--bg3);
-    color: var(--text3);
-    border: none;
-    font-family: 'JetBrains Mono', monospace;
-    transition: all 0.2s;
+    padding: 7px 16px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    cursor: pointer; background: var(--bg3); color: var(--text3); border: none;
+    font-family: 'JetBrains Mono', monospace; transition: all .2s;
   }
-  .tab.active {
-    background: var(--bg2);
-    color: var(--accent);
-  }
-
+  .tab.active { background: var(--bg2); color: var(--accent); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-
-  .msg-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    max-height: 280px;
-    overflow-y: auto;
-  }
+  .chart-wrap { position: relative; height: 200px; }
+  .msg-list { display: flex; flex-direction: column; gap: 3px; max-height: 280px; overflow-y: auto; }
   .msg-list::-webkit-scrollbar { width: 3px; }
   .msg-list::-webkit-scrollbar-thumb { background: var(--border2); }
-
-  .msg-item {
-    display: grid;
-    grid-template-columns: 80px 1fr auto;
-    gap: 12px;
-    align-items: center;
-    padding: 7px 10px;
-    background: var(--bg3);
-    font-size: 11px;
-    animation: fadeIn 0.3s ease;
-  }
+  .msg-item { display: grid; grid-template-columns: 80px 1fr auto; gap: 12px; align-items: center; padding: 7px 10px; background: var(--bg3); font-size: 11px; animation: fadeIn .3s ease; }
   .msg-item .t { color: var(--text3); font-size: 10px; }
   .msg-item .topic { color: var(--accent2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .msg-item .val { color: var(--green); font-weight: 700; white-space: nowrap; }
 
-  /* RSSI badge */
-  .rssi-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    font-size: 10px;
-    background: rgba(0,212,255,0.1);
-    color: var(--accent);
-    border: 1px solid rgba(0,212,255,0.2);
-  }
+  /* ── Routing vs Forwarding ── */
+  .rvf-section { margin-bottom: 14px; }
+  .rvf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rvf-card { border: 1px solid var(--border2); padding: 14px; position: relative; overflow: hidden; }
+  .rvf-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .routing-card::before { background: var(--orange); }
+  .forwarding-card::before { background: var(--green); }
+  .rvf-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+  .routing-card .rvf-card-title { color: var(--orange); }
+  .forwarding-card .rvf-card-title { color: var(--green); }
+  .rvf-card-desc { font-size: 10px; color: var(--text3); line-height: 1.5; margin-bottom: 10px; }
+  .rvf-metric-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .rvf-metric-row:last-child { border-bottom: none; }
+  .rvf-metric-label { color: var(--text3); }
+  .routing-card .rvf-metric-value { color: var(--orange); font-weight: 700; }
+  .forwarding-card .rvf-metric-value { color: var(--green); font-weight: 700; }
 
-  /* Responsive helpers */
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    .stats-row { grid-template-columns: repeat(3,1fr); }
-  }
+  .rvf-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .rvf-chart-box { border: 1px solid var(--border2); padding: 12px; }
+  .rvf-chart-title { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; font-size: 10px; margin-bottom: 6px; }
+  .bar-label { width: 80px; color: var(--text3); flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: var(--bg3); border: 1px solid var(--border2); position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; width: 0%; transition: width .5s ease; }
+  .bar-fill.routing { background: var(--orange); }
+  .bar-fill.forwarding { background: var(--green); }
+  .bar-val { width: 32px; text-align: right; color: var(--text2); }
+
+  .split-row { margin-top: 10px; }
+  .split-track { height: 14px; background: var(--bg3); border: 1px solid var(--border2); position: relative; overflow: hidden; }
+  .split-fill-route { position: absolute; height: 100%; background: var(--orange); transition: width .5s; }
+  .split-fill-fwd { position: absolute; height: 100%; background: var(--green); transition: left .5s, width .5s; }
+  .split-labels { display: flex; justify-content: space-between; font-size: 9px; margin-top: 4px; }
+
+  .rvf-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 12px; }
+  .rvf-table th { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--text3); padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border2); font-weight: 400; }
+  .rvf-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .rvf-table tr:last-child td { border-bottom: none; }
+  .rvf-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .rvf-table td:first-child { color: var(--text3); }
+  .rvf-table td:nth-child(2) { color: var(--orange); }
+  .rvf-table td:nth-child(3) { color: var(--green); }
+
+  .type-badge { display: inline-block; padding: 2px 6px; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; border: 1px solid; }
+  .type-badge.routing { color: var(--orange); border-color: rgba(255,140,66,.4); background: rgba(255,140,66,.08); }
+  .type-badge.forwarding { color: var(--green); border-color: rgba(0,255,157,.4); background: rgba(0,255,157,.08); }
+
+  .rvf-timeline { display: flex; flex-direction: column; gap: 3px; max-height: 120px; overflow-y: auto; }
+  .rvf-timeline::-webkit-scrollbar { width: 3px; }
+  .rvf-timeline::-webkit-scrollbar-thumb { background: var(--border2); }
+  .rvf-event { display: grid; grid-template-columns: 68px 80px 1fr auto; gap: 8px; align-items: center; padding: 5px 8px; background: var(--bg3); font-size: 10px; animation: fadeIn .3s ease; }
+  .ev-time { color: var(--text3); }
+  .ev-node { color: var(--text2); }
+  .ev-topic { color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .controls-panel { background: var(--bg2); padding: 20px; grid-column: 1; grid-row: 2; }
 </style>
 </head>
 <body>
@@ -432,7 +224,6 @@
 
 <div class="layout">
 
-  <!-- Stats bar -->
   <div class="stats-row">
     <div class="stat-box">
       <div class="stat-label">Total Messages</div>
@@ -451,7 +242,7 @@
     </div>
   </div>
 
-  <!-- Left: Devices + Controls -->
+  <!-- Left panel -->
   <div class="panel controls-panel">
     <div class="panel-label">Devices</div>
 
@@ -495,44 +286,115 @@
 
     <div style="margin-top: 24px;">
       <div class="panel-label">Commands</div>
-      <button class="cmd-btn" onclick="sendCmd('led on')">
-        <span class="icon"></span> LED ON — all nodes
-      </button>
-      <button class="cmd-btn danger" onclick="sendCmd('led off')">
-        <span class="icon"></span> LED OFF — all nodes
-      </button>
-      <button class="cmd-btn" onclick="sendCmd('led on')">
-        <span class="icon"></span> LED ON — arduino only
-      </button>
+      <button class="cmd-btn" onclick="sendCmd('led on')"><span class="icon"></span> LED ON — all nodes</button>
+      <button class="cmd-btn danger" onclick="sendCmd('led off')"><span class="icon"></span> LED OFF — all nodes</button>
+      <button class="cmd-btn" onclick="sendCmd('led on arduino')"><span class="icon"></span> LED ON — arduino only</button>
     </div>
   </div>
 
-  <!-- Centre: Chart -->
+  <!-- Centre -->
   <div class="main-area">
     <div class="panel-label">Sensor Data</div>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('graph', this)">Graph</button>
-      <button class="tab" onclick="switchTab('arduino', this)">Arduino</button>
-      <button class="tab" onclick="switchTab('pico', this)">Pico</button>
+      <button class="tab active" onclick="switchTab('graph',this)">Graph</button>
+      <button class="tab" onclick="switchTab('rvf',this)">Routing vs Fwd</button>
+      <button class="tab" onclick="switchTab('arduino',this)">Arduino</button>
+      <button class="tab" onclick="switchTab('pico',this)">Pico</button>
     </div>
 
+    <!-- Graph -->
     <div class="tab-content active" id="tab-graph">
-      <div class="chart-wrap">
-        <canvas id="sensorChart"></canvas>
-      </div>
+      <div class="chart-wrap"><canvas id="sensorChart"></canvas></div>
     </div>
 
+    <!-- Routing vs Forwarding -->
+    <div class="tab-content" id="tab-rvf">
+
+      <div class="rvf-grid">
+        <div class="rvf-card routing-card">
+          <div class="rvf-card-title">⇢ Routing</div>
+          <div class="rvf-card-desc">Node makes path decision — selects next hop, updates route table. Relay node (Arduino-03).</div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Packets</span><span class="rvf-metric-value" id="rvf-route-count">0</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Unique topics</span><span class="rvf-metric-value" id="rvf-route-topics">0</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">% of traffic</span><span class="rvf-metric-value" id="rvf-route-pct">0%</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Last seen</span><span class="rvf-metric-value" id="rvf-route-last">—</span></div>
+        </div>
+
+        <div class="rvf-card forwarding-card">
+          <div class="rvf-card-title">↷ Forwarding</div>
+          <div class="rvf-card-desc">Node passes packet along — table lookup only, no new route computation. Endpoint (Arduino-02).</div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Packets</span><span class="rvf-metric-value" id="rvf-fwd-count">0</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Unique topics</span><span class="rvf-metric-value" id="rvf-fwd-topics">0</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">% of traffic</span><span class="rvf-metric-value" id="rvf-fwd-pct">0%</span></div>
+          <div class="rvf-metric-row"><span class="rvf-metric-label">Last seen</span><span class="rvf-metric-value" id="rvf-fwd-last">—</span></div>
+        </div>
+      </div>
+
+      <div class="rvf-chart-row">
+        <div class="rvf-chart-box">
+          <div class="rvf-chart-title">Packet count comparison</div>
+          <div class="bar-row">
+            <span class="bar-label">Routing</span>
+            <div class="bar-track"><div class="bar-fill routing" id="bar-route"></div></div>
+            <span class="bar-val" id="bar-route-val">0</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Forwarding</span>
+            <div class="bar-track"><div class="bar-fill forwarding" id="bar-fwd"></div></div>
+            <span class="bar-val" id="bar-fwd-val">0</span>
+          </div>
+
+          <div class="split-row">
+            <div class="rvf-chart-title">Traffic split</div>
+            <div class="split-track">
+              <div class="split-fill-route" id="split-route"></div>
+              <div class="split-fill-fwd" id="split-fwd"></div>
+            </div>
+            <div class="split-labels">
+              <span style="color:var(--orange)">ROUTING <span id="split-pct-route">0%</span></span>
+              <span style="color:var(--green)">FORWARDING <span id="split-pct-fwd">0%</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rvf-chart-box">
+          <div class="rvf-chart-title">Live rate (10s buckets)</div>
+          <div style="position:relative;height:110px;"><canvas id="rvfChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="rvf-chart-title" style="margin-bottom:6px;">Behaviour comparison</div>
+      <table class="rvf-table">
+        <thead>
+          <tr><th>Property</th><th>⇢ Routing</th><th>↷ Forwarding</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Decision type</td><td>Next-hop selection</td><td>Table lookup</td></tr>
+          <tr><td>Node role</td><td>Arduino-03 (Relay)</td><td>Arduino-02 (Endpoint)</td></tr>
+          <tr><td>Processing cost</td><td>Higher (path compute)</td><td>Lower (match &amp; send)</td></tr>
+          <tr><td>Topic pattern</td><td>sensors/arduino/relay</td><td>sensors/arduino/data</td></tr>
+          <tr><td>Packet count</td><td id="tbl-route-count">0</td><td id="tbl-fwd-count">0</td></tr>
+          <tr><td>Avg interval (s)</td><td id="tbl-route-interval">—</td><td id="tbl-fwd-interval">—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="rvf-chart-title" style="margin-bottom:6px;">Recent events</div>
+      <div class="rvf-timeline" id="rvf-timeline"></div>
+    </div>
+
+    <!-- Arduino tab -->
     <div class="tab-content" id="tab-arduino">
       <ul class="msg-list" id="arduino-list"></ul>
     </div>
 
+    <!-- Pico tab -->
     <div class="tab-content" id="tab-pico">
       <ul class="msg-list" id="pico-list"></ul>
     </div>
   </div>
 
-  <!-- Right: Live log -->
+  <!-- Right log -->
   <div class="log-panel">
     <div class="panel-label">Live Feed</div>
     <div class="log-feed" id="log-feed"></div>
@@ -543,180 +405,248 @@
 <script>
 const socket = io();
 
-// Clock
 setInterval(() => {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
 }, 1000);
 
-// Chart
-const ctx = document.getElementById('sensorChart').getContext('2d');
-const chart = new Chart(ctx, {
+// ── Sensor chart ──────────────────────────────────────────
+const sCtx = document.getElementById('sensorChart').getContext('2d');
+const chart = new Chart(sCtx, {
   type: 'line',
   data: {
     labels: [],
     datasets: [
-      {
-        label: 'Arduino-03',
-        data: [],
-        borderColor: '#00d4ff',
-        backgroundColor: 'rgba(0,212,255,0.05)',
-        borderWidth: 1.5,
-        pointRadius: 3,
-        pointBackgroundColor: '#00d4ff',
-        tension: 0.3,
-        fill: true
-      },
-      {
-        label: 'Arduino-02',
-        data: [],
-        borderColor: '#00ff9d',
-        backgroundColor: 'rgba(0,255,157,0.05)',
-        borderWidth: 1.5,
-        pointRadius: 3,
-        pointBackgroundColor: '#00ff9d',
-        tension: 0.3,
-        fill: true
-      }
+      { label:'Arduino-03', data:[], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.05)', borderWidth:1.5, pointRadius:3, pointBackgroundColor:'#00d4ff', tension:0.3, fill:true },
+      { label:'Arduino-02', data:[], borderColor:'#00ff9d', backgroundColor:'rgba(0,255,157,0.05)', borderWidth:1.5, pointRadius:3, pointBackgroundColor:'#00ff9d', tension:0.3, fill:true }
     ]
   },
   options: {
-    animation: false,
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        labels: {
-          color: '#8892a0',
-          font: { family: 'JetBrains Mono', size: 11 },
-          boxWidth: 12
-        }
-      }
-    },
-    scales: {
-      x: {
-        ticks: { color: '#4a5568', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 6 },
-        grid: { color: 'rgba(30,34,41,0.8)' }
-      },
-      y: {
-        beginAtZero: true,
-        ticks: { color: '#4a5568', font: { family: 'JetBrains Mono', size: 10 } },
-        grid: { color: 'rgba(30,34,41,0.8)' }
-      }
+    animation:false, responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8892a0', font:{family:'JetBrains Mono',size:11}, boxWidth:12 } } },
+    scales:{
+      x:{ ticks:{color:'#4a5568',font:{family:'JetBrains Mono',size:10},maxTicksLimit:6}, grid:{color:'rgba(30,34,41,0.8)'} },
+      y:{ beginAtZero:true, ticks:{color:'#4a5568',font:{family:'JetBrains Mono',size:10}}, grid:{color:'rgba(30,34,41,0.8)'} }
     }
   }
 });
 
-// Counters
-let total = 0, cnt03 = 0, cnt02 = 0;
-const MAX_POINTS = 20;
+// ── RvF chart ─────────────────────────────────────────────
+const rCtx = document.getElementById('rvfChart').getContext('2d');
+const rvfChart = new Chart(rCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label:'Routing', data:[], borderColor:'#ff8c42', backgroundColor:'rgba(255,140,66,0.08)', borderWidth:1.5, pointRadius:2, tension:0.3, fill:true },
+      { label:'Forwarding', data:[], borderColor:'#00ff9d', backgroundColor:'rgba(0,255,157,0.06)', borderWidth:1.5, pointRadius:2, tension:0.3, fill:true }
+    ]
+  },
+  options: {
+    animation:false, responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8892a0', font:{family:'JetBrains Mono',size:9}, boxWidth:10 } } },
+    scales:{
+      x:{ ticks:{color:'#4a5568',font:{family:'JetBrains Mono',size:9},maxTicksLimit:5}, grid:{color:'rgba(30,34,41,0.8)'} },
+      y:{ beginAtZero:true, ticks:{color:'#4a5568',font:{family:'JetBrains Mono',size:9}}, grid:{color:'rgba(30,34,41,0.8)'} }
+    }
+  }
+});
 
-// Socket connection status
+// ── State ─────────────────────────────────────────────────
+let total=0, cnt03=0, cnt02=0;
+let routeCount=0, fwdCount=0;
+let routeTopics=new Set(), fwdTopics=new Set();
+let routeTS=[], fwdTS=[];
+let bucketRoute=0, bucketFwd=0, lastFlush=Date.now();
+const MAX_PTS=20, MAX_TS=60;
+
+// ── Classification ────────────────────────────────────────
+function classify(topic, msg) {
+  const t=topic.toLowerCase(), m=msg.toLowerCase();
+  if (t.includes('relay')||t.includes('route')||t.includes('routing')) return 'routing';
+  if (m.includes('arduino-03')||m.startsWith('arduino-03')) return 'routing';
+  if (t.includes('arduino')&&(m.includes('03')||m.includes('relay'))) return 'routing';
+  if (t.includes('pico')) return 'pico';
+  if (t.includes('data')||t.includes('forward')||t.includes('fwd')) return 'forwarding';
+  if (m.includes('arduino-02')||m.startsWith('arduino-02')) return 'forwarding';
+  return 'forwarding';
+}
+
+function updateRvfUI() {
+  const tot = routeCount + fwdCount;
+  const rPct = tot>0 ? Math.round(routeCount/tot*100) : 0;
+  const fPct = tot>0 ? 100-rPct : 0;
+
+  document.getElementById('rvf-route-count').textContent = routeCount;
+  document.getElementById('rvf-fwd-count').textContent   = fwdCount;
+  document.getElementById('tbl-route-count').textContent = routeCount;
+  document.getElementById('tbl-fwd-count').textContent   = fwdCount;
+  document.getElementById('rvf-route-pct').textContent   = rPct+'%';
+  document.getElementById('rvf-fwd-pct').textContent     = fPct+'%';
+  document.getElementById('rvf-route-topics').textContent= routeTopics.size;
+  document.getElementById('rvf-fwd-topics').textContent  = fwdTopics.size;
+  document.getElementById('split-pct-route').textContent = rPct+'%';
+  document.getElementById('split-pct-fwd').textContent   = fPct+'%';
+
+  const maxC = Math.max(routeCount, fwdCount, 1);
+  document.getElementById('bar-route').style.width = (routeCount/maxC*100)+'%';
+  document.getElementById('bar-fwd').style.width   = (fwdCount/maxC*100)+'%';
+  document.getElementById('bar-route-val').textContent = routeCount;
+  document.getElementById('bar-fwd-val').textContent   = fwdCount;
+
+  document.getElementById('split-route').style.width = rPct+'%';
+  document.getElementById('split-fwd').style.width   = fPct+'%';
+  document.getElementById('split-fwd').style.left    = rPct+'%';
+
+  function avgInterval(ts) {
+    if (ts.length<2) return '—';
+    let sum=0;
+    for (let i=1;i<ts.length;i++) sum+=(ts[i]-ts[i-1])/1000;
+    return (sum/(ts.length-1)).toFixed(1);
+  }
+  document.getElementById('tbl-route-interval').textContent = avgInterval(routeTS);
+  document.getElementById('tbl-fwd-interval').textContent   = avgInterval(fwdTS);
+}
+
+function flushBucket() {
+  const now=Date.now();
+  if (now-lastFlush < 10000) return;
+  const lbl = new Date().toLocaleTimeString('en-GB');
+  rvfChart.data.labels.push(lbl);
+  rvfChart.data.datasets[0].data.push(bucketRoute);
+  rvfChart.data.datasets[1].data.push(bucketFwd);
+  if (rvfChart.data.labels.length>MAX_PTS) {
+    rvfChart.data.labels.shift();
+    rvfChart.data.datasets.forEach(d=>d.data.shift());
+  }
+  rvfChart.update();
+  bucketRoute=0; bucketFwd=0; lastFlush=now;
+}
+
+// ── Socket ────────────────────────────────────────────────
 socket.on('connect', () => {
-  document.getElementById('conn-status').textContent = '● LIVE';
-  document.getElementById('conn-status').style.color = '#00ff9d';
-  document.getElementById('conn-status').style.borderColor = 'rgba(0,255,157,0.3)';
-  document.getElementById('conn-status').style.background = 'rgba(0,255,157,0.05)';
+  const el=document.getElementById('conn-status');
+  el.textContent='● LIVE'; el.style.color='#00ff9d';
+  el.style.borderColor='rgba(0,255,157,0.3)'; el.style.background='rgba(0,255,157,0.05)';
 });
 socket.on('disconnect', () => {
-  document.getElementById('conn-status').textContent = '● OFFLINE';
-  document.getElementById('conn-status').style.color = '#ff4757';
+  const el=document.getElementById('conn-status');
+  el.textContent='● OFFLINE'; el.style.color='#ff4757';
 });
 
 socket.on('mqtt_message', (data) => {
   const time = new Date().toLocaleTimeString('en-GB');
-  const msg = data.message;
-  const topic = data.topic;
+  const now  = Date.now();
+  const {topic, message: msg} = data;
   const parts = msg.split(' ');
-  const node = parts[0]; // e.g. "arduino-03"
-  const counter = parts.length > 1 ? parseInt(parts[1]) : null;
+  const node  = parts[0];
+  const counter = parts.length>1 ? parseInt(parts[1]) : null;
 
   total++;
   document.getElementById('stat-total').textContent = total;
 
-  // Identify node
-  const is03 = node === 'arduino-03' || topic.includes('arduino') && msg.includes('03');
-  const is02 = node === 'arduino-02' || topic.includes('arduino') && msg.includes('02');
-  const isPico = topic.includes('pico');
+  const is03  = node==='arduino-03' || (topic.includes('arduino')&&msg.includes('03'));
+  const is02  = node==='arduino-02' || (topic.includes('arduino')&&msg.includes('02'));
+  const isPico= topic.includes('pico');
 
-  // Update device cards
   if (is03) {
-    cnt03++;
-    document.getElementById('stat-03').textContent = cnt03;
+    cnt03++; document.getElementById('stat-03').textContent=cnt03;
     document.getElementById('dot-03').classList.add('online');
-    document.getElementById('card-arduino03').classList.replace('offline', 'online');
-    document.getElementById('last-03').textContent = time;
+    document.getElementById('card-arduino03').className='device-card online';
+    document.getElementById('last-03').textContent=time;
   }
   if (is02) {
-    cnt02++;
-    document.getElementById('stat-02').textContent = cnt02;
+    cnt02++; document.getElementById('stat-02').textContent=cnt02;
     document.getElementById('dot-02').classList.add('online');
-    document.getElementById('card-arduino02').classList.replace('offline', 'online');
-    document.getElementById('last-02').textContent = time;
+    document.getElementById('card-arduino02').className='device-card online';
+    document.getElementById('last-02').textContent=time;
   }
   if (isPico) {
     document.getElementById('dot-pico').classList.add('online');
-    document.getElementById('card-pico').classList.replace('offline', 'online');
-    document.getElementById('pico-status-text').textContent = 'Online';
+    document.getElementById('card-pico').className='device-card online';
+    document.getElementById('pico-status-text').textContent='Online';
   }
 
-  // Update Arduino status text
-  if (is03 || is02) {
-    // handled by card
-  }
-
-  // Chart update — sensors/data only
-  if (topic === 'sensors/arduino/data' && counter !== null) {
-    const label = time;
-    if (chart.data.labels.length === 0 || chart.data.labels[chart.data.labels.length - 1] !== label) {
-      chart.data.labels.push(label);
+  // Sensor chart
+  if (topic==='sensors/arduino/data' && counter!==null) {
+    const lbl=time;
+    if (!chart.data.labels.length || chart.data.labels[chart.data.labels.length-1]!==lbl) {
+      chart.data.labels.push(lbl);
       chart.data.datasets[0].data.push(null);
       chart.data.datasets[1].data.push(null);
-      if (chart.data.labels.length > MAX_POINTS) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-        chart.data.datasets[1].data.shift();
-      }
+      if (chart.data.labels.length>MAX_PTS) { chart.data.labels.shift(); chart.data.datasets.forEach(d=>d.data.shift()); }
     }
-    const idx = chart.data.labels.length - 1;
-    if (is03) chart.data.datasets[0].data[idx] = counter;
-    if (is02) chart.data.datasets[1].data[idx] = counter;
+    const idx=chart.data.labels.length-1;
+    if (is03) chart.data.datasets[0].data[idx]=counter;
+    if (is02) chart.data.datasets[1].data[idx]=counter;
     chart.update();
   }
 
-  // Live log feed
-  const feed = document.getElementById('log-feed');
-  const entry = document.createElement('div');
-  entry.className = `log-entry ${isPico ? 'pico' : topic.includes('cmd') ? 'cmd' : 'arduino'}`;
-  entry.innerHTML = `<div class="log-time">${time}</div><div class="log-topic">${topic}</div><div class="log-msg">${msg}</div>`;
-  feed.insertBefore(entry, feed.firstChild);
-  if (feed.children.length > 60) feed.removeChild(feed.lastChild);
+  // RvF classification
+  const type = classify(topic, msg);
 
-  // Message lists
-  const listId = isPico ? 'pico-list' : 'arduino-list';
-  const list = document.getElementById(listId);
-  const item = document.createElement('li');
-  item.className = 'msg-item';
-  item.innerHTML = `<span class="t">${time}</span><span class="topic">${topic}</span><span class="val">${msg}</span>`;
-  list.insertBefore(item, list.firstChild);
-  if (list.children.length > 40) list.removeChild(list.lastChild);
+  if (type==='routing') {
+    routeCount++; routeTopics.add(topic);
+    routeTS.push(now); if (routeTS.length>MAX_TS) routeTS.shift();
+    bucketRoute++;
+    document.getElementById('rvf-route-last').textContent=time;
+  } else if (type==='forwarding') {
+    fwdCount++; fwdTopics.add(topic);
+    fwdTS.push(now); if (fwdTS.length>MAX_TS) fwdTS.shift();
+    bucketFwd++;
+    document.getElementById('rvf-fwd-last').textContent=time;
+  }
+
+  if (type!=='pico') {
+    updateRvfUI();
+    flushBucket();
+
+    // Timeline
+    const tl=document.getElementById('rvf-timeline');
+    const ev=document.createElement('div');
+    ev.className='rvf-event';
+    const badge=`<span class="type-badge ${type}">${type==='routing'?'⇢ route':'↷ fwd'}</span>`;
+    const nodeLabel=is03?'Arduino-03':is02?'Arduino-02':'—';
+    ev.innerHTML=`<span class="ev-time">${time}</span><span class="ev-node">${nodeLabel}</span><span class="ev-topic">${topic}</span>${badge}`;
+    tl.insertBefore(ev,tl.firstChild);
+    if (tl.children.length>30) tl.removeChild(tl.lastChild);
+  }
+
+  // Live feed
+  const feed=document.getElementById('log-feed');
+  const entry=document.createElement('div');
+  const eClass=isPico?'pico':topic.includes('cmd')?'cmd':type==='routing'?'routing':'forwarding';
+  entry.className=`log-entry ${eClass}`;
+  entry.innerHTML=`<div class="log-time">${time}</div><div class="log-topic">${topic}</div><div class="log-msg">${msg}</div>`;
+  feed.insertBefore(entry,feed.firstChild);
+  if (feed.children.length>60) feed.removeChild(feed.lastChild);
+
+  // Msg lists
+  const listId=isPico?'pico-list':'arduino-list';
+  const list=document.getElementById(listId);
+  const item=document.createElement('li');
+  item.className='msg-item';
+  item.innerHTML=`<span class="t">${time}</span><span class="topic">${topic}</span><span class="val">${msg}</span>`;
+  list.insertBefore(item,list.firstChild);
+  if (list.children.length>40) list.removeChild(list.lastChild);
 });
 
 function sendCmd(msg) {
   fetch(`/cmd/${encodeURIComponent(msg)}`);
-  // Log the command
-  const feed = document.getElementById('log-feed');
-  const entry = document.createElement('div');
-  entry.className = 'log-entry cmd';
-  entry.innerHTML = `<div class="log-time">${new Date().toLocaleTimeString('en-GB')}</div><div class="log-topic">sensors/cmd</div><div class="log-msg">→ ${msg}</div>`;
-  feed.insertBefore(entry, feed.firstChild);
+  const feed=document.getElementById('log-feed');
+  const entry=document.createElement('div');
+  entry.className='log-entry cmd';
+  entry.innerHTML=`<div class="log-time">${new Date().toLocaleTimeString('en-GB')}</div><div class="log-topic">sensors/cmd</div><div class="log-msg">→ ${msg}</div>`;
+  feed.insertBefore(entry,feed.firstChild);
 }
 
 function switchTab(name, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
 }
+
+setInterval(flushBucket, 5000);
 </script>
 </body>
 </html>

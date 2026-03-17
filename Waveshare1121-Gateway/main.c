@@ -103,6 +103,26 @@ static volatile int  pkt_rx_count = 0;
 static volatile int  pkt_tx_count = 0;
 static volatile uint8_t dn_seq    = 0;   /* downlink sequence number */
 
+/* ── Gateway-side dedup ───────────────────────────────────────────────────── */
+/* Prevents duplicate uplink packets (flooding sends same pkt via multiple
+   paths) from being forwarded to Paho twice, which causes double REGACKs
+   that confuse endpoint nodes during topic registration.               */
+#define GW_DEDUP_SIZE 16
+typedef struct { uint8_t src; uint8_t seq; bool valid; } gw_dedup_t;
+static gw_dedup_t gw_dedup[GW_DEDUP_SIZE];
+static uint8_t    gw_dedup_head = 0;
+
+static bool gw_dedup_seen(uint8_t src, uint8_t seq) {
+    for (int i = 0; i < GW_DEDUP_SIZE; i++)
+        if (gw_dedup[i].valid && gw_dedup[i].src == src && gw_dedup[i].seq == seq)
+            return true;
+    return false;
+}
+static void gw_dedup_add(uint8_t src, uint8_t seq) {
+    gw_dedup[gw_dedup_head] = (gw_dedup_t){src, seq, true};
+    gw_dedup_head = (gw_dedup_head + 1) % GW_DEDUP_SIZE;
+}
+
 /* ── Logging ─────────────────────────────────────────────────────────────── */
 static void print_ts(void) {
     time_t t = time(NULL);
@@ -339,6 +359,14 @@ static void on_rx_done(void) {
         return;
     }
 
+    /* ── Gateway dedup: drop if already forwarded this (src, seq) ───── */
+    if (gw_dedup_seen(pkt.src_id, pkt.seq_num)) {
+        LOG("[rx] dedup hit src=0x%02X seq=%d, dropping duplicate uplink",
+            pkt.src_id, pkt.seq_num);
+        return;
+    }
+    gw_dedup_add(pkt.src_id, pkt.seq_num);
+
     /* Debug: raw MQTT-SN bytes */
     printf("  MQTT-SN (%dB): ", pkt.payload_len);
     for (int i = 0; i < pkt.payload_len; i++) printf("%02X ", pkt.payload[i]);
@@ -514,6 +542,7 @@ int main(void) {
     printf("  Downlink      : mesh-wrapped (src=GW, ttl=%d)\n", MESH_TTL_DEFAULT);
 
     memset(clients, 0, sizeof(clients));
+    memset(gw_dedup, 0, sizeof(gw_dedup));
     radio_init();
 
     pthread_t ds_thread;

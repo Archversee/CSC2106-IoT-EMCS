@@ -529,15 +529,6 @@ static void handle_publish(mqtt_sn_context_t *ctx, const uint8_t *d, uint8_t len
         Serial.print((char)payload[i]);
     Serial.println();
 
-    if (plen >= 6 && strncmp((char*)payload, "led on", 6) == 0) {
-        digitalWrite(LED_PIN, HIGH);
-        Serial.println(F("[cmd] LED ON"));
-    } else if (plen >= 7 && strncmp((char*)payload, "led off", 7) == 0) {
-        digitalWrite(LED_PIN, LOW);
-        Serial.println(F("[cmd] LED OFF"));
-    }
-
-
     // ACK if QoS > 0
     if (qos == QOS_LEVEL_1) {
         if (g_puback_pending) {

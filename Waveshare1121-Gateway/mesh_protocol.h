@@ -40,7 +40,7 @@
 
 /* ── Mesh parameters ──────────────────────────────────────────────────────── */
 #define MESH_TTL_DEFAULT     3      /* starting TTL for every new packet  */
-#define MESH_DEDUP_CACHE_SIZE 8     /* ring-buffer size for dedup entries */
+#define MESH_DEDUP_CACHE_SIZE 16     /* ring-buffer size for dedup entries */
 
 /* ── Payload buffer size ──────────────────────────────────────────────────── */
 /* RH_RF95_MAX_MESSAGE_LEN = 251 bytes (RadioHead constant).
