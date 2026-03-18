@@ -6,7 +6,7 @@ import glob
 files = sorted(glob.glob("lora_test*.csv"))
 
 # ---------- load file ----------
-file = files[-1]   # take latest file
+file = files[-1]
 data = pd.read_csv(file)
 
 # ---------- split QoS ----------
@@ -16,26 +16,26 @@ qos1 = data[data["topic"] == "sensors/data"]
 results = {}
 
 def compute_metrics(df, name):
-
     if len(df) < 2:
         return None
 
     df = df.sort_values(by="timestamp")
-
     timestamps = df["timestamp"]
-
     duration = max(timestamps.iloc[-1] - timestamps.iloc[0], 1e-6)
     throughput = len(timestamps) / duration
-
     intervals = timestamps.diff().dropna()
     avg_interval = intervals.mean()
     jitter = intervals.std()
 
-    seq_numbers = df["payload"].str.split().str[-1].astype(int)
-
-    expected = seq_numbers.iloc[-1] - seq_numbers.iloc[0] + 1
-    received = len(seq_numbers)
-    loss = (expected - received) / expected
+    # FIXED: count actual gaps instead of first/last comparison
+    seq = df["payload"].str.split().str[-1].astype(int).reset_index(drop=True).sort_values()
+    gaps = 0
+    for i in range(1, len(seq)):
+        gap = seq.iloc[i] - seq.iloc[i-1] - 1
+        if gap > 0:
+            gaps += gap
+    expected = seq.iloc[-1] - seq.iloc[0] + 1
+    loss = max(0, gaps / expected)
 
     return {
         "throughput": throughput,
@@ -50,7 +50,6 @@ results["QoS1"] = compute_metrics(qos1, "QoS1")
 
 # ---------- print ----------
 print("\n===== LORA SINGLE-HOP ANALYSIS =====\n")
-
 for k, v in results.items():
     if v:
         print(f"{k}:")
@@ -61,12 +60,7 @@ for k, v in results.items():
         print()
 
 # ---------- prepare for plotting ----------
-labels = []
-throughputs = []
-latencies = []
-jitters = []
-losses = []
-
+labels, throughputs, latencies, jitters, losses = [], [], [], [], []
 for k, v in results.items():
     if v:
         labels.append(k)
@@ -77,51 +71,45 @@ for k, v in results.items():
 
 # ---------- throughput ----------
 plt.figure()
-plt.bar(labels, throughputs)
+plt.bar(labels, throughputs, color="#FF9800")
 plt.title("LoRa Throughput (Single-Hop)")
 plt.ylabel("Messages/sec")
 plt.savefig("lora_throughput.png")
 
 # ---------- latency ----------
 plt.figure()
-plt.bar(labels, latencies)
+plt.bar(labels, latencies, color="#FF9800")
 plt.title("LoRa Average Interval")
 plt.ylabel("Seconds")
 plt.savefig("lora_latency.png")
 
 # ---------- jitter ----------
 plt.figure()
-plt.bar(labels, jitters)
+plt.bar(labels, jitters, color="#FF9800")
 plt.title("LoRa Jitter")
 plt.ylabel("Std Deviation")
 plt.savefig("lora_jitter.png")
 
 # ---------- packet loss ----------
 plt.figure()
-plt.bar(labels, losses)
+plt.bar(labels, losses, color="#FF9800")
 plt.title("LoRa Packet Loss")
 plt.ylabel("Loss Ratio")
 plt.savefig("lora_packet_loss.png")
 
 # ---------- timeline ----------
 plt.figure()
-
 for label, df in [("QoS0", qos0), ("QoS1", qos1)]:
-
     if len(df) < 2:
         continue
-
     seq = df["payload"].str.split().str[-1].astype(int)
     timestamps = df["timestamp"]
     timestamps = timestamps - timestamps.iloc[0]
-
     plt.scatter(seq, timestamps, label=label)
 
 plt.title("LoRa Timeline (Seq vs Time)")
 plt.xlabel("Sequence Number")
 plt.ylabel("Time (s)")
 plt.legend()
-
 plt.savefig("lora_timeline.png")
-
 plt.show()
