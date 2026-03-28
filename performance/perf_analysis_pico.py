@@ -2,7 +2,7 @@ import csv
 import glob
 import statistics
 
-files = sorted(glob.glob("pico_qos*.csv"))
+files = sorted(glob.glob("data/pico_qos*.csv"))
 
 print("\n===== PICO MQTT-SN PERFORMANCE ANALYSIS =====\n")
 print(f"{'Test':<8} {'Msgs':>6} {'Duration(s)':>12} {'Throughput':>12} {'AvgInterval':>12} {'Jitter':>8} {'PDR':>8} {'Loss':>8}")

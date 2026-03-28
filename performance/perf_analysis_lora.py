@@ -8,7 +8,7 @@ TOPIC_QOS = {
     "sensors/data":         "QoS1",
 }
 
-files = sorted(glob.glob("lora_*.csv"))
+files = sorted(glob.glob("data/lora_*.csv"))
 
 print("\n===== LORA MQTT-SN PERFORMANCE ANALYSIS =====\n")
 print(f"{'File':<12} {'QoS':<6} {'Topic':<28} {'Msgs':>6} {'Duration(s)':>12} {'Throughput':>12} {'AvgInterval':>12} {'Jitter':>10} {'PDR':>8} {'Loss':>8}")

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import glob
 
 # ---------- load pico data ----------
-pico_files = sorted(glob.glob("pico_qos*.csv"))
+pico_files = sorted(glob.glob("data/pico_qos*.csv"))
 pico_results = {}
 
 for f in pico_files:
@@ -34,7 +34,7 @@ for f in pico_files:
     }
 
 # ---------- load lora data ----------
-lora_files = sorted(glob.glob("lora_test*.csv"))
+lora_files = sorted(glob.glob("data/lora_test*.csv"))
 lora_data = pd.read_csv(lora_files[-1])
 
 lora_qos0 = lora_data[lora_data["topic"] == "sensors/arduino/data"].sort_values("timestamp")
@@ -120,6 +120,6 @@ plot_comparison(axes[1][0], "Jitter (Std Deviation)",   "Seconds",      "jitter"
 plot_comparison(axes[1][1], "Packet Loss Ratio",        "Loss Ratio",   "loss")
 
 plt.tight_layout()
-plt.savefig("comparison_wifi_vs_lora.png", dpi=150)
+plt.savefig("charts/comparison_wifi_vs_lora.png", dpi=150)
 print("\nSaved → comparison_wifi_vs_lora.png")
 plt.show()

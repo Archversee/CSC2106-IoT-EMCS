@@ -3,7 +3,7 @@ import glob
 import matplotlib.pyplot as plt
 import numpy as np
 
-files = sorted(glob.glob("pico_qos*.csv"))
+files = sorted(glob.glob("data/pico_qos*.csv"))
 
 labels=[]
 throughputs=[]
@@ -50,7 +50,7 @@ plt.figure()
 plt.bar(labels,throughputs)
 plt.title("Pico MQTT-SN Throughput")
 plt.ylabel("Messages/sec")
-plt.savefig("pico_throughput.png")
+plt.savefig("charts/pico_throughput.png")
 
 
 # ---------- latency ----------
@@ -58,7 +58,7 @@ plt.figure()
 plt.bar(labels,latencies)
 plt.title("Average Message Interval")
 plt.ylabel("Seconds")
-plt.savefig("pico_latency.png")
+plt.savefig("charts/pico_latency.png")
 
 
 # ---------- jitter ----------
@@ -66,7 +66,7 @@ plt.figure()
 plt.bar(labels,jitters)
 plt.title("Message Jitter")
 plt.ylabel("Std Deviation")
-plt.savefig("pico_jitter.png")
+plt.savefig("charts/pico_jitter.png")
 
 
 # ---------- packet loss ----------
@@ -74,7 +74,7 @@ plt.figure()
 plt.bar(labels,loss_rates)
 plt.title("Packet Loss Rate")
 plt.ylabel("Loss Ratio")
-plt.savefig("pico_packet_loss.png")
+plt.savefig("charts/pico_packet_loss.png")
 
 
 # ---------- timeline plot (ADVANCED GRAPH) ----------
@@ -99,6 +99,6 @@ plt.xlabel("Message Sequence Number")
 plt.ylabel("Time Since First Message (s)")
 plt.legend()
 
-plt.savefig("pico_message_timeline.png")
+plt.savefig("charts/pico_message_timeline.png")
 
 plt.show()

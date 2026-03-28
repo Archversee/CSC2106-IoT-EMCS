@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = sorted(glob.glob("lora_test*.csv"))
+files = sorted(glob.glob("data/lora_test*.csv"))
 
 # ---------- load file ----------
 file = files[-1]
@@ -74,28 +74,28 @@ plt.figure()
 plt.bar(labels, throughputs, color="#FF9800")
 plt.title("LoRa Throughput (Single-Hop)")
 plt.ylabel("Messages/sec")
-plt.savefig("lora_throughput.png")
+plt.savefig("charts/lora_throughput.png")
 
 # ---------- latency ----------
 plt.figure()
 plt.bar(labels, latencies, color="#FF9800")
 plt.title("LoRa Average Interval")
 plt.ylabel("Seconds")
-plt.savefig("lora_latency.png")
+plt.savefig("charts/lora_latency.png")
 
 # ---------- jitter ----------
 plt.figure()
 plt.bar(labels, jitters, color="#FF9800")
 plt.title("LoRa Jitter")
 plt.ylabel("Std Deviation")
-plt.savefig("lora_jitter.png")
+plt.savefig("charts/lora_jitter.png")
 
 # ---------- packet loss ----------
 plt.figure()
 plt.bar(labels, losses, color="#FF9800")
 plt.title("LoRa Packet Loss")
 plt.ylabel("Loss Ratio")
-plt.savefig("lora_packet_loss.png")
+plt.savefig("charts/lora_packet_loss.png")
 
 # ---------- timeline ----------
 plt.figure()
@@ -111,5 +111,5 @@ plt.title("LoRa Timeline (Seq vs Time)")
 plt.xlabel("Sequence Number")
 plt.ylabel("Time (s)")
 plt.legend()
-plt.savefig("lora_timeline.png")
+plt.savefig("charts/lora_timeline.png")
 plt.show()
