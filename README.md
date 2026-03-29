@@ -18,7 +18,7 @@ A comprehensive IoT communication system featuring multiple wireless protocols (
 2. ⬜ **LoRa multi-hop mesh layer (routing/forwarding)** - Routing protocols and packet forwarding for extended range
 3. ✅ **Heterogeneous Gateway for protocol translation on Raspberry Pi** - LoRa to UDP Gateway (`Waveshare1121-Gateway`) bridging LoRa to MQTT-SN Gateway
 4. ⬜ **Performance collection/eval of transport and comparison** - Transport layer benchmarking and MQTT-SN vs LoRa comparison analysis
-5. ⬜ **Dashboard and visualisation of results** - Extended dashboard with protocol comparison charts and real-time LoRa metrics
+5. ✅ **Dashboard and visualisation of results** - Extended dashboard with protocol comparison charts and real-time LoRa metrics
 
 ---
 
@@ -239,7 +239,7 @@ make run
 ```
 
 ### Dashboard Setup
-#### Step 4: Start Dashboard Backend (NOT DONE)
+#### Step 4: Start Dashboard Backend
 
 ```bash
 cd dashboard/backend
@@ -259,7 +259,7 @@ node server.js
 
 Flash the `mqtt-sn-arduino-client` sketch via Arduino IDE (see Build Instructions above).
 
-### Step 7: Open Dashboard (NOT DONE)
+### Step 7: Open Dashboard
 
 Navigate to: `http://localhost:3000`
 
