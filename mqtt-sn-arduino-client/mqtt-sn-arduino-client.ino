@@ -14,7 +14,7 @@
 
 SSD1306AsciiWire oled;
 
-static mqtt_sn_context_t g_ctx;
+mqtt_sn_context_t g_ctx;
 static uint32_t g_last_ping_ms = 0;
 static uint32_t g_last_qos_chk_ms = 0;
 static uint32_t g_last_pub_qos1 = 0;
@@ -37,8 +37,8 @@ typedef enum : uint8_t {
 static state_t g_state = STATE_INIT;
 static uint32_t g_state_ms = 0;
 
-#define CONNECT_TIMEOUT_MS 8000UL
-#define REGISTER_TIMEOUT_MS 60000UL
+#define CONNECT_TIMEOUT_MS 20000UL
+#define REGISTER_TIMEOUT_MS 120000UL
 
 // OLED
 static void oledShow(const __FlashStringHelper *l1, const __FlashStringHelper *l2 = nullptr) {
@@ -87,7 +87,7 @@ void loop() {
     uint32_t now = millis();
 
     mqtt_sn_poll(&g_ctx);
-    
+
 #if MESH_RELAY_ONLY
     // Relay-only node: just keep LoRa receive/forward active.
     delay(10);
@@ -112,7 +112,7 @@ void loop() {
             Serial.println(F("CONNACK ok"));
             oledShow(F("Connected!"), F("Registering..."));
             add_all_topics(); /* handle_connack wiped table */
-            delay(500);
+            delay(1500);
             mqtt_sn_process_topic_registrations(&g_ctx);
             g_state_ms = now;
             g_state = STATE_REGISTERING;
@@ -177,6 +177,7 @@ void loop() {
             g_last_qos_chk_ms = now;
             g_last_pub_qos1 = now;
             g_last_pub_qos0 = now - PUB_QOS0_MS;
+            delay(1000);
             g_state = STATE_READY;
 
         } else if (now - g_state_ms > REGISTER_TIMEOUT_MS) {

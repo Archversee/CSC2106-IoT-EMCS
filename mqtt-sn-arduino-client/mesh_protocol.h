@@ -25,33 +25,33 @@
  */
 
 #include <stdint.h>
-#include <string.h>   /* memcpy */
+#include <string.h> /* memcpy */
 
 /* ── Well-known addresses ─────────────────────────────────────────────────── */
-#define MESH_ADDR_GATEWAY    0x00
-#define MESH_ADDR_BROADCAST  0xFF
+#define MESH_ADDR_GATEWAY 0x00
+#define MESH_ADDR_BROADCAST 0xFF
 
 /* ── Header layout ────────────────────────────────────────────────────────── */
-#define MESH_HEADER_SIZE     4      /* SRC + DST + TTL + SEQ              */
-#define MESH_OFF_SRC         0
-#define MESH_OFF_DST         1
-#define MESH_OFF_TTL         2
-#define MESH_OFF_SEQ         3
+#define MESH_HEADER_SIZE 4 /* SRC + DST + TTL + SEQ              */
+#define MESH_OFF_SRC 0
+#define MESH_OFF_DST 1
+#define MESH_OFF_TTL 2
+#define MESH_OFF_SEQ 3
 
 /* ── Mesh parameters ──────────────────────────────────────────────────────── */
-#define MESH_TTL_DEFAULT     3      /* starting TTL for every new packet  */
-#define MESH_DEDUP_CACHE_SIZE 16     /* ring-buffer size for dedup entries */
+#define MESH_TTL_DEFAULT 3      /* starting TTL for every new packet  */
+#define MESH_DEDUP_CACHE_SIZE 8 /* ring-buffer size for dedup entries */
 
 /* ── Payload buffer size ──────────────────────────────────────────────────── */
 /* RH_RF95_MAX_MESSAGE_LEN = 251 bytes (RadioHead constant).
    We hardcode it here so this header needs no external includes.
    If you change LoRa library, update this value to match.          */
-#define MESH_RH_MAX_LEN      251
-#define MESH_PAYLOAD_MAX     (MESH_RH_MAX_LEN - MESH_HEADER_SIZE)  /* 247 bytes */
+#define MESH_RH_MAX_LEN 251
+#define MESH_PAYLOAD_MAX (MESH_RH_MAX_LEN - MESH_HEADER_SIZE) /* 247 bytes */
 
 /* ── Node role ────────────────────────────────────────────────────────────── */
-#define NODE_ROLE_ENDPOINT   0   /* leaf — only sends/receives own data   */
-#define NODE_ROLE_RELAY      1   /* middle — also floods for other nodes  */
+#define NODE_ROLE_ENDPOINT 0 /* leaf — only sends/receives own data   */
+#define NODE_ROLE_RELAY 1    /* middle — also floods for other nodes  */
 
 /* ── Mesh packet struct ───────────────────────────────────────────────────── */
 typedef struct {
@@ -64,12 +64,12 @@ typedef struct {
 } mesh_packet_t;
 
 /* ── Encode ───────────────────────────────────────────────────────────────── */
-static inline uint8_t mesh_encode(const mesh_packet_t *pkt,
-                                   uint8_t *buf, uint8_t buf_size)
-{
-    if (!pkt || !buf) return 0;
+static inline uint8_t mesh_encode(const mesh_packet_t *pkt, uint8_t *buf, uint8_t buf_size) {
+    if (!pkt || !buf)
+        return 0;
     uint8_t total = (uint8_t)(MESH_HEADER_SIZE + pkt->payload_len);
-    if (total > buf_size) return 0;
+    if (total > buf_size)
+        return 0;
     buf[MESH_OFF_SRC] = pkt->src_id;
     buf[MESH_OFF_DST] = pkt->dst_id;
     buf[MESH_OFF_TTL] = pkt->ttl;
@@ -80,14 +80,13 @@ static inline uint8_t mesh_encode(const mesh_packet_t *pkt,
 }
 
 /* ── Decode ───────────────────────────────────────────────────────────────── */
-static inline int mesh_decode(const uint8_t *buf, uint8_t len,
-                               mesh_packet_t *pkt)
-{
-    if (!buf || !pkt || len < MESH_HEADER_SIZE) return 0;
-    pkt->src_id      = buf[MESH_OFF_SRC];
-    pkt->dst_id      = buf[MESH_OFF_DST];
-    pkt->ttl         = buf[MESH_OFF_TTL];
-    pkt->seq_num     = buf[MESH_OFF_SEQ];
+static inline int mesh_decode(const uint8_t *buf, uint8_t len, mesh_packet_t *pkt) {
+    if (!buf || !pkt || len < MESH_HEADER_SIZE)
+        return 0;
+    pkt->src_id = buf[MESH_OFF_SRC];
+    pkt->dst_id = buf[MESH_OFF_DST];
+    pkt->ttl = buf[MESH_OFF_TTL];
+    pkt->seq_num = buf[MESH_OFF_SEQ];
     pkt->payload_len = (uint8_t)(len - MESH_HEADER_SIZE);
     if (pkt->payload_len > 0)
         memcpy(pkt->payload, buf + MESH_HEADER_SIZE, pkt->payload_len);

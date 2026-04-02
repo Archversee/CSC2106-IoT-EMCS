@@ -18,13 +18,13 @@
  *   - inferred hop count from topology (2-node mesh: a02 → a03 → gateway)
  */
 
-const express  = require("express");
-const http     = require("http");
+const express = require("express");
+const http = require("http");
 const socketIo = require("socket.io");
-const mqtt     = require("mqtt");
-const cors     = require("cors");
+const mqtt = require("mqtt");
+const cors = require("cors");
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
 
 app.use(cors());
@@ -34,8 +34,8 @@ app.use(express.static("../frontend"));
 const io = socketIo(server, { cors: { origin: "*" } });
 
 // ── MQTT ──────────────────────────────────────────────────────────────────
-const MQTT_BROKER = "mqtt://localhost:1883";
-const mqttClient  = mqtt.connect(MQTT_BROKER, {
+const MQTT_BROKER = "mqtt://172.20.10.13:1883"; // "mqtt://localhost:1883" if running locally
+const mqttClient = mqtt.connect(MQTT_BROKER, {
     clientId: "csc2106_dashboard_" + Math.random().toString(16).slice(2, 8),
     clean: true,
     reconnectPeriod: 3000
@@ -47,15 +47,15 @@ mqttClient.on("connect", () => {
         if (!err) console.log("[MQTT] Subscribed to sensors/#");
     });
 });
-mqttClient.on("error",     (e) => console.error("[MQTT] Error:", e.message));
-mqttClient.on("reconnect", ()  => console.log("[MQTT] Reconnecting..."));
+mqttClient.on("error", (e) => console.error("[MQTT] Error:", e.message));
+mqttClient.on("reconnect", () => console.log("[MQTT] Reconnecting..."));
 
 // ── Payload parser ────────────────────────────────────────────────────────
 // "arduino-02 5"  →  { node: "arduino-02", seq: 5 }
 function parsePayload(raw) {
     const parts = raw.trim().split(/\s+/);
-    const node  = parts[0] || "";
-    const seq   = parts.length > 1 ? parseInt(parts[1], 10) : NaN;
+    const node = parts[0] || "";
+    const seq = parts.length > 1 ? parseInt(parts[1], 10) : NaN;
     return { node, seq: isNaN(seq) ? null : seq };
 }
 
@@ -73,25 +73,25 @@ function bucket(node) {
 function freshRun(mode) {
     return {
         mode,
-        active:     false,
-        startTime:  null,
-        endTime:    null,
-        pkts:       0,
-        seqTrack:   {},          // topic → { last, gaps, dupes }
-        dupes:      0,
-        gaps:       0,
-        perNode:    { a02: 0, a03: 0, a04: 0, a05: 0, pico: 0 },
+        active: false,
+        startTime: null,
+        endTime: null,
+        pkts: 0,
+        seqTrack: {},          // topic → { last, gaps, dupes }
+        dupes: 0,
+        gaps: 0,
+        perNode: { a02: 0, a03: 0, a04: 0, a05: 0, pico: 0 },
         timestamps: [],
-        events:     []
+        events: []
     };
 }
 
 let currentMode = "flooding";
-let activeRun   = null;
+let activeRun = null;
 
 const runs = {
     flooding: freshRun("flooding"),
-    routing:  freshRun("routing")
+    routing: freshRun("routing")
 };
 
 const allTime = { total: 0, perNode: { a02: 0, a03: 0, a04: 0, a05: 0, pico: 0 } };
@@ -136,7 +136,7 @@ function buildSummary(mode) {
         avgInterval = (sum / (r.timestamps.length - 1) / 1000).toFixed(2);
     }
 
-    const expected    = r.pkts + r.gaps;
+    const expected = r.pkts + r.gaps;
     const deliveryPct = expected > 0
         ? ((r.pkts / expected) * 100).toFixed(1)
         : null;
@@ -147,25 +147,25 @@ function buildSummary(mode) {
 
     return {
         mode,
-        active:       r.active,
-        pkts:         r.pkts,
-        dupes:        r.dupes,
-        gaps:         r.gaps,
+        active: r.active,
+        pkts: r.pkts,
+        dupes: r.dupes,
+        gaps: r.gaps,
         deliveryPct,
         avgInterval,
         inferredHops,
-        perNode:      { ...r.perNode },
-        duration:     r.startTime ? (r.endTime || Date.now()) - r.startTime : 0,
-        startTime:    r.startTime,
-        endTime:      r.endTime,
-        events:       r.events.slice(-60)
+        perNode: { ...r.perNode },
+        duration: r.startTime ? (r.endTime || Date.now()) - r.startTime : 0,
+        startTime: r.startTime,
+        endTime: r.endTime,
+        events: r.events.slice(-60)
     };
 }
 
 function broadcastUpdate() {
     io.emit("run_update", {
-        flooding:   buildSummary("flooding"),
-        routing:    buildSummary("routing"),
+        flooding: buildSummary("flooding"),
+        routing: buildSummary("routing"),
         allTime,
         activeRun,
         currentMode
@@ -174,9 +174,9 @@ function broadcastUpdate() {
 
 // ── MQTT incoming ─────────────────────────────────────────────────────────
 mqttClient.on("message", (topic, message) => {
-    const raw  = message.toString().trim();
+    const raw = message.toString().trim();
     const time = new Date().toLocaleTimeString("en-GB");
-    const now  = Date.now();
+    const now = Date.now();
 
     console.log(`[MQTT] ${topic} : ${raw}`);
 
@@ -201,7 +201,7 @@ mqttClient.on("message", (topic, message) => {
 
         const result = trackSeq(r, topic, node, seq);
         isDupe = result.isDupe;
-        gap    = result.gap;
+        gap = result.gap;
 
         r.events.push({ time, node, topic, seq, isDupe, gap, mode: activeRun });
         if (r.events.length > 200) r.events.shift();
@@ -220,8 +220,8 @@ io.on("connection", (socket) => {
     console.log("[WS] Client connected");
     socket.emit("mode_change", { mode: currentMode });
     socket.emit("run_update", {
-        flooding:  buildSummary("flooding"),
-        routing:   buildSummary("routing"),
+        flooding: buildSummary("flooding"),
+        routing: buildSummary("routing"),
         allTime, activeRun, currentMode
     });
     socket.on("disconnect", () => console.log("[WS] Client disconnected"));
@@ -246,14 +246,14 @@ app.get("/run/start/:mode", (req, res) => {
 
     if (activeRun) _stopRun(activeRun);
 
-    runs[mode]           = freshRun(mode);
-    runs[mode].active    = true;
+    runs[mode] = freshRun(mode);
+    runs[mode].active = true;
     runs[mode].startTime = Date.now();
-    activeRun            = mode;
-    currentMode          = mode;
+    activeRun = mode;
+    currentMode = mode;
 
     io.emit("mode_change", { mode });
-    io.emit("run_started",  { mode, startTime: runs[mode].startTime });
+    io.emit("run_started", { mode, startTime: runs[mode].startTime });
     mqttClient.publish("sensors/cmd", `run start ${mode}`);
     console.log(`[RUN] Started: ${mode}`);
     broadcastUpdate();
@@ -275,7 +275,7 @@ app.get("/run/stop/:mode", (req, res) => {
 });
 
 function _stopRun(mode) {
-    runs[mode].active  = false;
+    runs[mode].active = false;
     runs[mode].endTime = Date.now();
     if (activeRun === mode) activeRun = null;
     const s = buildSummary(mode);
@@ -288,14 +288,14 @@ function _stopRun(mode) {
 app.get("/run/stats", (_req, res) => res.json({
     currentMode, activeRun,
     flooding: buildSummary("flooding"),
-    routing:  buildSummary("routing"),
+    routing: buildSummary("routing"),
     allTime
 }));
 
 app.get("/reset", (_req, res) => {
     if (activeRun) _stopRun(activeRun);
     runs.flooding = freshRun("flooding");
-    runs.routing  = freshRun("routing");
+    runs.routing = freshRun("routing");
     allTime.total = 0; allTime.perNode = { a02: 0, a03: 0, a04: 0, a05: 0, pico: 0 };
     broadcastUpdate();
     console.log("[RESET] Cleared");
@@ -315,8 +315,8 @@ app.get("/export", (_req, res) => {
     res.json({
         exportedAt: new Date().toISOString(),
         currentMode, activeRun,
-        flooding:   buildSummary("flooding"),
-        routing:    buildSummary("routing"),
+        flooding: buildSummary("flooding"),
+        routing: buildSummary("routing"),
         allTime
     });
 });

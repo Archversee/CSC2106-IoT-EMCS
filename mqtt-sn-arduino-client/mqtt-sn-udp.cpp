@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <string.h>
 
+extern mqtt_sn_context_t g_ctx;
+
 qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
 bool g_ping_ack_received = false;
 uint32_t g_last_pingresp = 0;
@@ -61,7 +63,6 @@ void mqtt_sn_register_topic(const char *topic_name, uint16_t msg_id) {
     if (!topic_name)
         return;
     uint8_t tlen = (uint8_t)strlen(topic_name);
-    // stack buffer sized to worst-case topic length
     uint8_t buf[6 + TOPIC_NAME_MAX_LEN];
     uint8_t plen = 6 + tlen;
 
@@ -77,7 +78,17 @@ void mqtt_sn_register_topic(const char *topic_name, uint16_t msg_id) {
     Serial.print(F("Sent REGISTER: "));
     Serial.println(topic_name);
 
-    delay(15);
+    // Poll while waiting so we don't miss the REGACK
+    uint32_t t = millis();
+    uint8_t rxbuf[MQTTSN_PUBLISH_HEADER_LEN + MQTTSN_RETRY_PAYLOAD_SIZE];
+    while (millis() - t < 2000) {
+        uint8_t len = mqttsn_transport_recv(rxbuf, sizeof(rxbuf), 0);
+        if (len > 0) {
+            udp_recv_callback_arduino(&g_ctx, rxbuf, len);
+            break;
+        }
+        delay(10);
+    }
 }
 
 void mqtt_sn_subscribe_topic_name(const char *topic_name, uint16_t msg_id, uint8_t qos) {
@@ -97,6 +108,17 @@ void mqtt_sn_subscribe_topic_name(const char *topic_name, uint16_t msg_id, uint8
     memcpy(buf + 5, topic_name, tlen);
 
     mqttsn_transport_send(buf, plen);
+
+    uint32_t t = millis();
+    uint8_t rxbuf[MQTTSN_PUBLISH_HEADER_LEN + MQTTSN_RETRY_PAYLOAD_SIZE];
+    while (millis() - t < 2000) {
+        uint8_t len = mqttsn_transport_recv(rxbuf, sizeof(rxbuf), 0);
+        if (len > 0) {
+            udp_recv_callback_arduino(&g_ctx, rxbuf, len);
+            break;
+        }
+        delay(10);
+    }
 }
 
 void mqtt_sn_subscribe_topic_id(uint16_t topic_id) {
@@ -612,7 +634,8 @@ void mqtt_sn_poll(mqtt_sn_context_t *ctx) {
     // Drain additional packets (e.g. relay node gets CONNACK right after forwarding)
     for (uint8_t i = 0; i < 4; i++) {
         len = mqttsn_transport_recv(buf, sizeof(buf), 0);
-        if (len == 0) break;
+        if (len == 0)
+            break;
         udp_recv_callback_arduino(ctx, buf, len);
     }
 }
