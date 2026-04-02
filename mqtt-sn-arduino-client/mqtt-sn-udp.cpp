@@ -5,6 +5,7 @@
 #include <string.h>
 
 extern mqtt_sn_context_t g_ctx;
+extern void oledShowCmd(const char *msg);
 
 qos_msg_t g_pending_msgs[MAX_PENDING_QOS_MSGS];
 bool g_ping_ack_received = false;
@@ -550,6 +551,12 @@ static void handle_publish(mqtt_sn_context_t *ctx, const uint8_t *d, uint8_t len
     for (uint8_t i = 0; i < plen; i++)
         Serial.print((char)payload[i]);
     Serial.println();
+
+    char cmd_str[32];
+    uint8_t copy = plen < 31 ? plen : 31;
+    memcpy(cmd_str, payload, copy);
+    cmd_str[copy] = '\0';
+    oledShowCmd(cmd_str);
 
     // ACK if QoS > 0
     if (qos == QOS_LEVEL_1) {

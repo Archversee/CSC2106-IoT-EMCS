@@ -39,6 +39,7 @@ static uint32_t g_state_ms = 0;
 
 #define CONNECT_TIMEOUT_MS 20000UL
 #define REGISTER_TIMEOUT_MS 120000UL
+#define CMD_DISPLAY_MS 5000UL
 
 // OLED
 static void oledShow(const __FlashStringHelper *l1, const __FlashStringHelper *l2 = nullptr) {
@@ -46,6 +47,18 @@ static void oledShow(const __FlashStringHelper *l1, const __FlashStringHelper *l
     oled.println(l1);
     if (l2)
         oled.println(l2);
+}
+
+uint32_t g_last_cmd_ms = 0;
+char g_last_cmd[32] = "";
+
+void oledShowCmd(const char *msg) {
+    oled.clear();
+    oled.println(F("CMD received:"));
+    oled.println(msg);
+    g_last_cmd_ms = millis();
+    strncpy(g_last_cmd, msg, 31);
+    g_last_cmd[31] = '\0';
 }
 
 // Add all 4 topics
@@ -172,7 +185,9 @@ void loop() {
             Serial.print(F("  CMD2  tid="));
             Serial.println(mqtt_sn_get_topic_id(&g_ctx, TOPIC_CMD_2));
 
-            oledShow(F("Ready!"), F("Publishing..."));
+            if (millis() - g_last_cmd_ms >= CMD_DISPLAY_MS) {
+                oledShow(F("Ready!"), F("Publishing..."));
+            }
             g_last_ping_ms = now;
             g_last_qos_chk_ms = now;
             g_last_pub_qos1 = now;
@@ -231,7 +246,9 @@ void loop() {
                 oledShow(F("PUB QoS0"), F(TOPIC_DATA_2));
                 mqtt_sn_publish_topic_id_auto(tid2, (const uint8_t *)payload, strlen(payload),
                                               QOS_LEVEL_0);
-                oledShow(F("Ready!"), F("Publishing..."));
+                if (millis() - g_last_cmd_ms >= CMD_DISPLAY_MS) {
+                    oledShow(F("Ready!"), F("Publishing..."));
+                }
                 seq_phase++;
                 if (seq_phase == 3)
                     seq_phase_ms = now; // start 10s wait before QoS1
@@ -249,7 +266,9 @@ void loop() {
                 oledShow(F("PUB QoS1"), F(TOPIC_DATA_1));
                 mqtt_sn_publish_topic_id_auto(tid1, (const uint8_t *)payload, strlen(payload),
                                               QOS_LEVEL_1);
-                oledShow(F("Ready!"), F("Publishing..."));
+                if (millis() - g_last_cmd_ms >= CMD_DISPLAY_MS) {
+                    oledShow(F("Ready!"), F("Publishing..."));
+                }
                 seq_phase = 4;
                 seq_phase_ms = now; // start 10s final delay
                 break;
