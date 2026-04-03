@@ -12,10 +12,10 @@
 
 // Memory budget constants, we use smaller values than the Pico since we have lesser RAM headroom on
 // Arduino Uno/Nano
-#define MAX_PENDING_QOS_MSGS 3U       // was 8 -> 3
+#define MAX_PENDING_QOS_MSGS 1U       // was 8 -> 1
 #define MAX_CUSTOM_TOPICS 4U          // was 10 -> 4
-#define MQTTSN_RETRY_PAYLOAD_SIZE 32U // was 247 -> 32
-#define TOPIC_NAME_MAX_LEN 32U        // was 64
+#define MQTTSN_RETRY_PAYLOAD_SIZE 16U // was 247 -> 16
+#define TOPIC_NAME_MAX_LEN 24U        // was 64
 
 // Packet constants (unchanged)
 #define MQTTSN_HEADER_SIZE 2U

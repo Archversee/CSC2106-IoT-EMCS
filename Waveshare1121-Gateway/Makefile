@@ -16,7 +16,7 @@ CFLAGS += -I./Core1121_XF_Demo/raspberrypi/src/lr1121/lr1121_printers
 CFLAGS += -I./Core1121_XF_Demo/raspberrypi/src/spi
 CFLAGS += -I./Core1121_XF_Demo/raspberrypi/src/gpio
 CFLAGS += -I./Core1121_XF_Demo/raspberrypi/examples
-LIBS   = -lwiringPi -lm
+LIBS   = -lwiringPi -lm -lssl -lcrypto
 
 DEMO_SRC := $(shell find Core1121_XF_Demo/raspberrypi/src -name "*.c")
 EXAMPLE_SRC := Core1121_XF_Demo/raspberrypi/examples/lr1121_config.c

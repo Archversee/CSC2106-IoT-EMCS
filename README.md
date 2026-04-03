@@ -214,10 +214,8 @@ Build outputs:
 sudo nano /etc/mosquitto/conf.d/local.conf
 
 Add:
-```
 listener 1883
 allow_anonymous true
-```
 
 sudo mosquitto -v -c /etc/mosquitto/conf.d/local.conf
 sudo systemctl stop mosquitto # if mosquitto auto runs on boot and port is in use

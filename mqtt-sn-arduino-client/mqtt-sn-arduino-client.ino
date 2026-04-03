@@ -151,6 +151,7 @@ void loop() {
         }
         if (g_pubcomp_pending) {
             g_pubcomp_pending = false;
+            delay(50);
             mqtt_sn_send_pubcomp(g_pubcomp_mid);
             break;
         }
@@ -223,6 +224,7 @@ void loop() {
         }
         if (g_pubcomp_pending) {
             g_pubcomp_pending = false;
+            delay(100); /* let radio settle after receiving PUBREL before TX */
             mqtt_sn_send_pubcomp(g_pubcomp_mid);
             break;
         }
