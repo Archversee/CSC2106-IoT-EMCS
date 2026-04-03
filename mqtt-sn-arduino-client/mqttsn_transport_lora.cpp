@@ -1,22 +1,6 @@
 /*
- * mqttsn_transport_lora.cpp — LoRa mesh transport with STATIC ROUTING
- *
- * Routing mode: each node has a compile-time routing table in config.h.
- * Format: { final_destination, next_hop }
- * The relay looks up the next hop for each packet's DST and forwards
- * to that specific node — no flooding, no broadcast rebroadcast.
- *
- * Compare with flooding mode (previous version) for your performance eval:
  *   Flooding : broadcasts to all, every relay forwards, dedup prevents loops
  *   Routing  : unicast to specific next hop, less air time, no duplicates
- *
- * MESH_MODE must be defined in config.h:
- *   #define MESH_MODE_FLOODING  0
- *   #define MESH_MODE_ROUTING   1
- *   #define MESH_MODE MESH_MODE_ROUTING   // or MESH_MODE_FLOODING
- *
- * RAM budget (same as flooding version):
- *   s_rx_buf[64] + s_tx_buf[64] + dedup[8*3] + misc = ~170 bytes
  */
 
 #include "config.h"
@@ -40,7 +24,7 @@ static int16_t s_last_rssi = 0;
 static uint8_t s_seq_num = 0;
 static uint8_t s_last_hop_count = 0;
 
-/* ── Dedup cache (used in flooding mode only, harmless in routing) ────────── */
+/* Dedup cache (used in flooding mode only, harmless in routing)*/
 typedef struct {
     uint8_t src_id;
     uint8_t seq_num;
@@ -68,16 +52,10 @@ static void dedup_add(uint8_t src, uint8_t seq) {
     s_dedup_head = (s_dedup_head + 1) % MESH_DEDUP_CACHE_SIZE;
 }
 
-/* ── Routing table lookup ─────────────────────────────────────────────────── */
+/* Routing table lookup */
 /*
  * Returns the next-hop node ID for a given final destination.
- * Table is defined in config.h as:
- *   static const uint8_t ROUTING_TABLE[][2] = {
- *       { MESH_ADDR_GATEWAY, 0x23 },  // to reach gateway, go via 0x23
- *   };
- *   #define ROUTING_TABLE_LEN (sizeof(ROUTING_TABLE)/sizeof(ROUTING_TABLE[0]))
- *
- * Returns dst directly if no entry found (attempt direct delivery).
+ * Table is defined in config.h
  */
 static uint8_t mesh_next_hop(uint8_t dst) {
 #if MESH_MODE == MESH_MODE_ROUTING
@@ -85,10 +63,10 @@ static uint8_t mesh_next_hop(uint8_t dst) {
         if (ROUTING_TABLE[i][0] == dst)
             return ROUTING_TABLE[i][1];
 #endif
-    return dst; /* no entry or flooding mode — use dst as next hop */
+    return dst; /* no entry or flooding mode - use dst as next hop */
 }
 
-/* ── Low-level TX ─────────────────────────────────────────────────────────── */
+/* Low-level TX */
 /*
  * In ROUTING mode:  sets RadioHead TO = next_hop (unicast).
  * In FLOODING mode: sets RadioHead TO = RH_BROADCAST_ADDRESS.
@@ -140,7 +118,7 @@ static int radio_tx(const uint8_t *raw, uint8_t raw_len, uint8_t next_hop) {
     return ok ? 0 : -1;
 }
 
-/* ── Init ─────────────────────────────────────────────────────────────────── */
+/* Init */
 void mqttsn_transport_init(void) {
     memset(s_dedup, 0, sizeof(s_dedup));
     s_seq_num = 0;
@@ -192,7 +170,7 @@ void mqttsn_transport_init(void) {
     s_rf95.setModeRx();
 }
 
-/* ── Send ─────────────────────────────────────────────────────────────────── */
+/* Send */
 int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     if (!buf || len == 0)
         return -1;
@@ -205,9 +183,7 @@ int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     dedup_add(LORA_MY_NODE_ID, s_seq_num);
 
     /* In routing mode: DST field carries the FINAL destination (gateway).
-     * The RadioHead TO header carries the NEXT HOP.
-     * The relay reads DST to know where to forward, reads TO to know
-     * the packet is meant for it to relay. */
+     * The RadioHead TO header carries the NEXT HOP. */
     uint8_t next_hop = mesh_next_hop(MESH_ADDR_GATEWAY);
 
     s_tx_buf[MESH_OFF_SRC] = LORA_MY_NODE_ID;
@@ -234,7 +210,7 @@ int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     return rc;
 }
 
-/* ── Receive ──────────────────────────────────────────────────────────────── */
+/* Receive */
 uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_ms) {
     if (!buf)
         return 0;
@@ -280,7 +256,7 @@ uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_m
             continue;
         }
 
-        /* ── Deliver if addressed to us ───────────────────────────────── */
+        /* Deliver if addressed to us */
         bool for_me = (dst == LORA_MY_NODE_ID || dst == MESH_ADDR_BROADCAST);
         if (for_me) {
             if (payload_len == 0 || payload_len > buf_size)
@@ -291,7 +267,7 @@ uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_m
             return payload_len;
         }
 
-        /* ── Relay / forward ──────────────────────────────────────────── */
+        /* Relay / forward */
 #if MY_NODE_ROLE == NODE_ROLE_RELAY
         if (ttl == 0) {
             Serial.println(F("[relay] TTL=0, drop"));

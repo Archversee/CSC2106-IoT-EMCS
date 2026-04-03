@@ -56,7 +56,7 @@ static const uint8_t ROUTING_TABLE[][2] = {
 #error "NODE_SELECT must be 2, 3, 4, or 5"
 #endif
 
-/* ── RELAY_ONLY: defined AFTER MY_NODE_ROLE is set above ── */
+/* RELAY_ONLY */
 #if MY_NODE_ROLE == NODE_ROLE_RELAY
 #define MESH_RELAY_ONLY 1
 #else

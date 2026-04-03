@@ -83,7 +83,7 @@
 #define QOS_RETRY_INTERVAL_MS 10000UL
 #define QOS_MAX_RETRIES 3U
 
-// Was: 2,208 bytes on Pico -> RAM: 132 bytes on Arduino Uno
+// 2,208 bytes on Pico -> RAM: 132 bytes on Arduino Uno
 typedef struct {
     uint16_t msg_id;
     uint8_t qos;
@@ -96,7 +96,7 @@ typedef struct {
     bool in_use;
 } qos_msg_t;
 
-// Was: 800 bytes on Pico -> RAM: 168 bytes on Arduino Uno
+// 800 bytes on Pico -> RAM: 168 bytes on Arduino Uno
 typedef struct {
     char topic_name[TOPIC_NAME_MAX_LEN];
     uint16_t topic_id;
@@ -108,7 +108,7 @@ typedef struct {
     bool in_use;
 } topic_entry_t;
 
-// Was: 840 bytes on Pico -> RAM: 170 bytes on Arduino Uno
+// 840 bytes on Pico -> RAM: 170 bytes on Arduino Uno
 typedef struct {
     bool drop_acks; //  Test hook to simulate ACK loss for retries
     topic_entry_t custom_topics[MAX_CUSTOM_TOPICS];
