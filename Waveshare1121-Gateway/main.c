@@ -347,6 +347,14 @@ static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payloa
 
 /* ── LoRa RX handler ─────────────────────────────────────────────────────── */
 
+static void gw_dedup_clear_src(uint8_t src) {
+    for (int i = 0; i < GW_DEDUP_SIZE; i++) {
+        if (gw_dedup[i].valid && gw_dedup[i].src == src) {
+            gw_dedup[i].valid = false; // Clear all entries for this src
+        }
+    }
+}
+
 /*
  * on_rx_done()
  *
@@ -451,7 +459,12 @@ static void on_rx_done(void) {
     }
     LOG("[rx] MQTT-SN type=%s src=0x%02X", msg_type, pkt.src_id);
 
-    bool is_connect = (pkt.payload_len >= 2 && pkt.payload[0] == 0x10 && pkt.payload[1] == 0x04);
+    bool is_connect = (pkt.payload_len >= 2 && pkt.payload[1] == 0x04);
+
+    if (is_connect) {
+        gw_dedup_clear_src(pkt.src_id); // Allow fresh connection attempt
+        LOG("[rx] CONNECT from src=0x%02X — cleared dedup cache", pkt.src_id);
+    }
 
     /* ── Forward to Paho, keyed on SRC_ID ───────────────────────────── */
     pthread_mutex_lock(&clients_lock);
