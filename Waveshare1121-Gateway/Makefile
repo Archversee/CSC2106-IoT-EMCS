@@ -1,4 +1,4 @@
-# Makefile — Waveshare1121-Gateway
+# Makefile - Waveshare1121-Gateway
 # Compiles main.c with the full Waveshare LR1121 driver stack
 # Usage:
 #   make        → build
@@ -18,8 +18,6 @@ CFLAGS += -I./Core1121_XF_Demo/raspberrypi/src/gpio
 CFLAGS += -I./Core1121_XF_Demo/raspberrypi/examples
 LIBS   = -lwiringPi -lm
 
-# All demo driver sources EXCEPT the ping-pong example itself
-# (our main.c replaces it — we still need lr1121_config.c for lora_radio_init etc.)
 DEMO_SRC := $(shell find Core1121_XF_Demo/raspberrypi/src -name "*.c")
 EXAMPLE_SRC := Core1121_XF_Demo/raspberrypi/examples/lr1121_config.c
 

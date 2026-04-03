@@ -5,29 +5,16 @@
  * Upstream : Paho MQTT-SN Gateway localhost:10000 (UDP)
  * Nodes    : Arduino + Cytron RFM95
  *
- * ── What changed vs original ──────────────────────────────────────────────
- *
- * UPLINK (Node → Gateway):
- *   Packets now carry a 4-byte mesh header before the MQTT-SN payload.
- *   on_rx_done() strips this header, uses SRC_ID as the stable client key,
- *   and logs TTL/hop_count for performance analysis.
- *
- * DOWNLINK (Gateway → Node):
- *   Paho sends raw MQTT-SN bytes (SUBACK, CONNACK, REGACK etc.) back via UDP.
- *   The downstream thread now WRAPS these with a mesh header before sending
- *   over LoRa so that relay nodes can forward them if needed.
- *   Header: src=GATEWAY(0x00), dst=target_node, ttl=MESH_TTL_DEFAULT, seq=dn_seq
- *
  * ── Wire format ───────────────────────────────────────────────────────────
  *   RadioHead header (4B): TO | FROM | ID | FLAGS
  *   Mesh header      (4B): SRC_ID | DST_ID | TTL | SEQ_NUM
  *   MQTT-SN payload  (NB)
  *
  * ── Threading ─────────────────────────────────────────────────────────────
- *   Main thread       — polls irq_flag → irq_process() → on_rx_done()
- *   Downstream thread — select() on per-client UDP sockets → lora_send()
- *   clients_lock      — protects client table
- *   radio_lock        — serialises all SPI/radio access
+ *   Main thread       - polls irq_flag → irq_process() → on_rx_done()
+ *   Downstream thread - select() on per-client UDP sockets → lora_send()
+ *   clients_lock      - protects client table
+ *   radio_lock        - serialises all SPI/radio access
  */
 
 #include <arpa/inet.h>
@@ -46,10 +33,10 @@
 #include <unistd.h>
 
 #include "lr1121_config.h"
-#include "mesh_protocol.h" /* shared with Arduino nodes */
+#include "mesh_protocol.h"
 #include "wavesahre_lora_1121.h"
 
-/* ── Configuration ───────────────────────────────────────────────────────── */
+/* Configuration */
 #define PAHO_GW_IP "127.0.0.1"
 #define PAHO_GW_PORT 10000
 
@@ -60,7 +47,7 @@
 #define RX_CONTINUOUS 0xFFFFFF
 #define DN_SPACING_US 800000ULL
 
-/* ── RadioHead header layout ─────────────────────────────────────────────── */
+/* RadioHead header layout */
 #define RH_TO 0
 #define RH_FROM 1
 #define RH_ID 2
@@ -70,16 +57,16 @@
 /* Total overhead per outgoing LoRa frame */
 #define FRAME_HDR_TOTAL (RH_HDR + MESH_HEADER_SIZE)
 
-/* ── IRQ mask ────────────────────────────────────────────────────────────── */
+/* IRQ mask */
 #define IRQ_MASK                                                                                   \
     (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_TIMEOUT |           \
      LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_HEADER_ERROR)
 
-/* ── Range simulation */
+/* Range simulation */
 #define SIMULATE_RANGE_LIMIT 1                      /* set to 0 to disable */
 static const uint8_t OUT_OF_RANGE[] = {0x22, 0x24}; /* arduino-02, arduino-04 */
 
-/* ── Per-client state ────────────────────────────────────────────────────── */
+/* Per-client state */
 typedef struct {
     uint8_t node_id; /* SRC_ID of the originating end-device          */
     int udp_sock;
@@ -88,7 +75,6 @@ typedef struct {
     uint8_t last_seq;
     time_t last_seen;
     bool active;
-    /* Performance counters */
     uint32_t pkt_count;
     uint32_t hop_total; /* sum of (TTL_DEFAULT - remaining TTL) per pkt  */
     uint8_t dn_seq;     // per-client downlink sequence number
@@ -98,7 +84,7 @@ static client_t clients[MAX_CLIENTS];
 static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t radio_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/* ── Globals ─────────────────────────────────────────────────────────────── */
+/* Globals */
 lr1121_t lr1121;
 
 static volatile bool irq_flag = false;
@@ -106,10 +92,7 @@ static volatile int running = 1;
 static volatile int pkt_rx_count = 0;
 static volatile int pkt_tx_count = 0;
 
-/* ── Gateway-side dedup ───────────────────────────────────────────────────── */
-/* Prevents duplicate uplink packets (flooding sends same pkt via multiple
-   paths) from being forwarded to Paho twice, which causes double REGACKs
-   that confuse endpoint nodes during topic registration.               */
+/* Gateway-side dedup */
 #define GW_DEDUP_SIZE 16
 typedef struct {
     uint8_t src;
@@ -130,7 +113,7 @@ static void gw_dedup_add(uint8_t src, uint8_t seq) {
     gw_dedup_head = (gw_dedup_head + 1) % GW_DEDUP_SIZE;
 }
 
-/* ── Logging ─────────────────────────────────────────────────────────────── */
+/* Logging */
 static void print_ts(void) {
     time_t t = time(NULL);
     struct tm *tm_info = localtime(&t);
@@ -145,7 +128,7 @@ static void print_ts(void) {
         fflush(stdout);                                                                            \
     } while (0)
 
-/* ── ISR / signal ────────────────────────────────────────────────────────── */
+/* ISR / signal */
 static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
 static void on_rx_crc_error(void) { LOG("[rx] CRC error"); }
 void isr(void) { irq_flag = true; }
@@ -154,10 +137,7 @@ static void on_signal(int sig) {
     running = 0;
 }
 
-/* ── Client registry ─────────────────────────────────────────────────────── */
-
-/* Keyed on mesh SRC_ID (original end-device), not RadioHead FROM.
-   Must be called with clients_lock held. */
+/* Client registry  */
 static client_t *get_or_create_client(uint8_t src_id, bool is_connect) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].node_id == src_id) {
@@ -252,8 +232,7 @@ static void expire_clients(void) {
     }
 }
 
-/* ── LoRa TX ─────────────────────────────────────────────────────────────── */
-
+/* LoRa TX  */
 /*
  * lora_send()
  * Sends a DOWNLINK packet to a specific node, wrapped with:
@@ -345,7 +324,7 @@ static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payloa
     return 0;
 }
 
-/* ── LoRa RX handler ─────────────────────────────────────────────────────── */
+/* LoRa RX handlers */
 
 static void gw_dedup_clear_src(uint8_t src) {
     for (int i = 0; i < GW_DEDUP_SIZE; i++) {
@@ -362,9 +341,6 @@ static void gw_dedup_clear_src(uint8_t src) {
  *   [RH_TO][RH_FROM][RH_ID][RH_FLAGS]          ← RadioHead header (4B)
  *   [SRC_ID][DST_ID][TTL][SEQ_NUM]              ← Mesh header (4B)
  *   [MQTT-SN payload...]                        ← N bytes
- *
- * We strip both headers and forward bare MQTT-SN bytes to Paho,
- * using SRC_ID as the stable client identity.
  */
 static void on_rx_done(void) {
     uint8_t buf[GW_PAYLOAD_MAX + 1];
@@ -383,12 +359,12 @@ static void on_rx_done(void) {
     lr11xx_regmem_read_buffer8(&lr1121, buf, rx_buf.buffer_start_pointer, size);
     lr11xx_radio_get_lora_pkt_status(&lr1121, &pkt_status);
 
-    /* ── Strip RadioHead header ──────────────────────────────────────── */
+    /* Strip RadioHead header */
     uint8_t rh_seq = buf[RH_ID];
     uint8_t *mesh = buf + RH_HDR;  /* pointer to mesh header   */
     uint8_t msize = size - RH_HDR; /* bytes from mesh hdr on   */
 
-    /* ── Decode mesh header ─────────────────────────────────────────── */
+    /* Decode mesh header */
     mesh_packet_t pkt;
     if (!mesh_decode(mesh, msize, &pkt)) {
         LOG("[rx] mesh_decode failed, dropping");
@@ -397,7 +373,7 @@ static void on_rx_done(void) {
 
     uint8_t hops_taken = MESH_TTL_DEFAULT - pkt.ttl;
 
-/* ── Range simulation ── */
+/* Range simulation */
 #if SIMULATE_RANGE_LIMIT
     for (int i = 0; i < (int)(sizeof(OUT_OF_RANGE) / sizeof(OUT_OF_RANGE[0])); i++) {
         if (pkt.src_id == OUT_OF_RANGE[i] && hops_taken == 0) {
@@ -422,7 +398,7 @@ static void on_rx_done(void) {
         return;
     }
 
-    /* ── Gateway dedup: drop if already forwarded this (src, seq) ───── */
+    /* Gateway dedup: drop if already forwarded this (src, seq) */
     if (gw_dedup_seen(pkt.src_id, pkt.seq_num)) {
         LOG("[rx] dedup hit src=0x%02X seq=%d, dropping duplicate uplink", pkt.src_id, pkt.seq_num);
         return;
@@ -436,7 +412,6 @@ static void on_rx_done(void) {
     // printf("\n");
     // fflush(stdout);
 
-    // After gw_dedup_add():
     const char *msg_type = "UNKNOWN";
     if (pkt.payload_len >= 2) {
         switch (pkt.payload[1]) {
@@ -466,7 +441,7 @@ static void on_rx_done(void) {
         LOG("[rx] CONNECT from src=0x%02X — cleared dedup cache", pkt.src_id);
     }
 
-    /* ── Forward to Paho, keyed on SRC_ID ───────────────────────────── */
+    /* Forward to Paho, keyed on SRC_ID */
     pthread_mutex_lock(&clients_lock);
     client_t *client = get_or_create_client(pkt.src_id, is_connect);
     if (!client) {
@@ -489,7 +464,7 @@ static void on_rx_done(void) {
             sent, pkt.src_id, hops_taken);
 }
 
-/* ── IRQ dispatcher ──────────────────────────────────────────────────────── */
+/* IRQ dispatcher */
 static void irq_process(void) {
     irq_flag = false;
     lr11xx_system_irq_mask_t irq_regs = 0;
@@ -512,7 +487,7 @@ static void irq_process(void) {
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 }
 
-/* ── Downstream thread (Paho → LoRa) ─────────────────────────────────────── */
+/* Downstream thread (Paho → LoRa) */
 static uint64_t last_dn_tx_us = 0;
 
 static void *downstream_thread(void *arg) {
@@ -524,7 +499,7 @@ static void *downstream_thread(void *arg) {
     clock_gettime(CLOCK_MONOTONIC, &ts);
     last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 
-    /* Staging buffers — filled under clients_lock, sent after releasing it */
+    /* Staging buffers - filled under clients_lock, sent after releasing it */
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
     uint8_t d_len[MAX_CLIENTS];
     uint8_t d_node[MAX_CLIENTS];
@@ -605,7 +580,7 @@ static void *downstream_thread(void *arg) {
     return NULL;
 }
 
-/* ── Radio init ──────────────────────────────────────────────────────────── */
+/* Radio init */
 static void radio_init(void) {
     lora_init_io_context(&lr1121);
     lora_init_io(&lr1121);
@@ -640,7 +615,6 @@ static void radio_init(void) {
     LOG("[init] SF7 BW125 CR4/5 | 915 MHz | SW=private | CRC ON | MaxPld=%d", GW_PAYLOAD_MAX);
 }
 
-/* ── main ────────────────────────────────────────────────────────────────── */
 int main(void) {
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
