@@ -138,23 +138,8 @@ void loop() {
     }
     // Register topics, wait for REGACKs and topic IDs.
     case STATE_REGISTERING: {
-        // Drain any ACKs that arrived during registration
-        if (g_puback_pending) {
-            g_puback_pending = false;
-            mqtt_sn_send_puback(g_puback_tid, g_puback_mid, MQTTSN_RETURN_ACCEPTED);
-            break;
-        }
-        if (g_pubrec_pending) {
-            g_pubrec_pending = false;
-            mqtt_sn_send_pubrec(g_pubrec_mid);
-            break;
-        }
-        if (g_pubcomp_pending) {
-            g_pubcomp_pending = false;
-            delay(50);
-            mqtt_sn_send_pubcomp(g_pubcomp_mid);
-            break;
-        }
+        // Note: PUBACK/PUBREC/PUBCOMP are now sent immediately in mqtt-sn-udp.cpp
+        // No deferred ACK handling needed here.
 
         // Check if any topic has been sent but not yet acknowledged
         bool waiting_for_ack = false;
@@ -208,32 +193,8 @@ void loop() {
         uint16_t tid1 = mqtt_sn_get_topic_id(&g_ctx, TOPIC_DATA_1);
         uint16_t tid2 = mqtt_sn_get_topic_id(&g_ctx, TOPIC_DATA_2);
 
-        bool ack_pending = g_puback_pending || g_pubrec_pending || g_pubcomp_pending;
-
-        // If any ACK is pending, defer all publish timers to prevent
-        // outgoing TX from grabbing the radio before ACK fires
-        if (ack_pending) {
-            g_last_pub_qos0 = now; // reset so they don't fire immediately after ACK
-            g_last_pub_qos1 = now;
-        }
-
-        if (g_pubrec_pending) {
-            g_pubrec_pending = false;
-            mqtt_sn_send_pubrec(g_pubrec_mid);
-            break;
-        }
-        if (g_pubcomp_pending) {
-            g_pubcomp_pending = false;
-            delay(100); /* let radio settle after receiving PUBREL before TX */
-            mqtt_sn_send_pubcomp(g_pubcomp_mid);
-            break;
-        }
-
-        if (g_puback_pending) {
-            g_puback_pending = false;
-            mqtt_sn_send_puback(g_puback_tid, g_puback_mid, MQTTSN_RETURN_ACCEPTED);
-            break;
-        }
+        // Note: PUBACK/PUBREC/PUBCOMP are now sent immediately in mqtt-sn-udp.cpp
+        // No deferred ACK handling needed here.
 
         // QoS 0 publish phase (3 times)
         if (seq_phase < 3) {

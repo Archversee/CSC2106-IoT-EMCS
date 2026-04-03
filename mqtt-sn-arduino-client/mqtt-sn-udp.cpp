@@ -214,7 +214,7 @@ void mqtt_sn_send_puback(uint16_t topic_id, uint16_t msg_id, uint8_t return_code
     buf[4] = (msg_id >> 8) & 0xFF;
     buf[5] = msg_id & 0xFF;
     buf[6] = return_code;
-    mqttsn_transport_send(buf, MQTTSN_PUBACK_LEN);
+    mqttsn_transport_send_ack(buf, MQTTSN_PUBACK_LEN);
 }
 
 void mqtt_sn_send_pubrec(uint16_t msg_id) {
@@ -224,7 +224,7 @@ void mqtt_sn_send_pubrec(uint16_t msg_id) {
     buf[2] = (msg_id >> 8) & 0xFF;
     buf[3] = msg_id & 0xFF;
     buf[4] = MQTTSN_RETURN_ACCEPTED;
-    mqttsn_transport_send(buf, MQTTSN_PUBREC_LEN);
+    mqttsn_transport_send_ack(buf, MQTTSN_PUBREC_LEN);
 }
 
 void mqtt_sn_send_pubcomp(uint16_t msg_id) {
@@ -234,7 +234,7 @@ void mqtt_sn_send_pubcomp(uint16_t msg_id) {
     buf[2] = (msg_id >> 8) & 0xFF;
     buf[3] = msg_id & 0xFF;
     buf[4] = MQTTSN_RETURN_ACCEPTED;
-    mqttsn_transport_send(buf, MQTTSN_PUBCOMP_LEN);
+    mqttsn_transport_send_ack(buf, MQTTSN_PUBCOMP_LEN);
 }
 
 void mqtt_sn_send_pubrel(uint16_t msg_id) {
@@ -527,9 +527,10 @@ static void handle_pubcomp(const uint8_t *d, uint8_t len) {
 static void handle_pubrel(const uint8_t *d, uint8_t len) {
     (void)len;
     uint16_t mid = ((uint16_t)d[2] << 8) | d[3];
-    // Queue instead of sending inline
-    g_pubcomp_pending = true;
-    g_pubcomp_mid = mid;
+    /* Send PUBCOMP immediately — deferring to main loop causes collisions
+     * when multiple nodes receive QoS2 broadcasts simultaneously. */
+    g_pubcomp_pending = false;
+    mqtt_sn_send_pubcomp(mid);
 }
 
 static void handle_publish(mqtt_sn_context_t *ctx, const uint8_t *d, uint8_t len) {
@@ -558,22 +559,13 @@ static void handle_publish(mqtt_sn_context_t *ctx, const uint8_t *d, uint8_t len
     cmd_str[copy] = '\0';
     oledShowCmd(cmd_str);
 
-    // ACK if QoS > 0
+    // ACK immediately — do not defer to main loop flags (causes overwrite and latency)
     if (qos == QOS_LEVEL_1) {
-        if (g_puback_pending) {
-            Serial.println(F("WARN: PUBACK overwrite"));
-        }
-        g_puback_pending = true;
-        g_puback_tid = tid;
-        g_puback_mid = mid;
+        mqtt_sn_send_puback(tid, mid, MQTTSN_RETURN_ACCEPTED);
     }
     if (qos == QOS_LEVEL_2) {
-        if (g_pubrec_pending || g_pubcomp_pending) {
-            Serial.println(F("WARN: QoS2 overwrite, previous handshake incomplete"));
-        }
-        g_pubrec_pending = true;
-        g_pubrec_mid = mid;
         g_pubcomp_pending = false; // clear stale pubcomp from previous handshake
+        mqtt_sn_send_pubrec(mid);
     }
 }
 
