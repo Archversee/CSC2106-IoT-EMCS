@@ -162,11 +162,32 @@ static client_t *get_or_create_client(uint8_t src_id, bool is_connect) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].node_id == src_id) {
             if (is_connect) {
-                // Fresh connect — reset counters but keep socket
+                // Check if client ID changed (different node reusing same port)
                 clients[i].pkt_count = 0;
                 clients[i].hop_total = 0;
                 clients[i].last_seq = 0;
                 clients[i].dn_seq = 0;
+
+                // Force Paho to see a fresh connection by closing/reopening socket
+                close(clients[i].udp_sock);
+
+                // Rebind to same port
+                clients[i].udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+                int reuse = 1;
+                setsockopt(clients[i].udp_sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+                struct sockaddr_in local = {0};
+                local.sin_family = AF_INET;
+                local.sin_port = htons(clients[i].local_port);
+                local.sin_addr.s_addr = INADDR_ANY;
+                bind(clients[i].udp_sock, (struct sockaddr *)&local, sizeof(local));
+
+                // Reset Paho address
+                memset(&clients[i].paho_addr, 0, sizeof(clients[i].paho_addr));
+                clients[i].paho_addr.sin_family = AF_INET;
+                clients[i].paho_addr.sin_port = htons(PAHO_GW_PORT);
+                inet_pton(AF_INET, PAHO_GW_IP, &clients[i].paho_addr.sin_addr);
+
+                LOG("[client] Reset socket for src=0x%02X port=%d", src_id, clients[i].local_port);
             }
             clients[i].last_seen = time(NULL);
             return &clients[i];

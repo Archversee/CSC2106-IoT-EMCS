@@ -1,1117 +1,455 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSC2106 — LoRa Mesh Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ── Variables ─────────────────────────────────────────────────────────── */
-:root {
-  --bg:      #0d0e11;
-  --bg2:     #12141a;
-  --bg3:     #181c24;
-  --bg4:     #1e2330;
-  --line:    #252b38;
-  --line2:   #2e3648;
-  --dim:     #3d4a62;
-  --muted:   #6b7a96;
-  --body:    #a8b4cc;
-  --hi:      #dce6f5;
-  --flood:   #f97316;   /* orange — flooding */
-  --flood2:  #7c3200;
-  --route:   #22d3ee;   /* cyan — routing */
-  --route2:  #0e4a5a;
-  --green:   #4ade80;
-  --red:     #f87171;
-  --amber:   #fbbf24;
-  --mono:    'IBM Plex Mono', monospace;
-  --sans:    'IBM Plex Sans', sans-serif;
-}
-
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { height:100%; }
-body {
-  background: var(--bg);
-  color: var(--body);
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-x: hidden;
-}
-
-/* scanline overlay */
-body::after {
-  content:'';
-  position:fixed;
-  inset:0;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 3px,
-    rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
-  );
-  pointer-events:none;
-  z-index:9999;
-}
-
-/* ── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background: var(--bg2); }
-::-webkit-scrollbar-thumb { background: var(--line2); }
-
-/* ── Layout ────────────────────────────────────────────────────────────── */
-.shell {
-  display:grid;
-  grid-template-rows: 52px 1fr;
-  height:100vh;
-}
-
-/* ── Topbar ────────────────────────────────────────────────────────────── */
-.topbar {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 20px;
-  border-bottom:1px solid var(--line);
-  background: var(--bg2);
-  gap:16px;
-}
-.topbar-left { display:flex; align-items:center; gap:14px; }
-.logo {
-  width:28px; height:28px;
-  border:1px solid var(--route);
-  display:grid; place-items:center;
-  flex-shrink:0;
-}
-.logo-dot {
-  width:10px; height:10px;
-  background: var(--route);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.5)} }
-.brand { font-family:var(--sans); font-weight:600; font-size:14px; color:var(--hi); letter-spacing:-.01em; }
-.brand-sub { font-size:10px; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; }
-
-.topbar-right { display:flex; align-items:center; gap:12px; }
-.clock { font-size:11px; color:var(--muted); }
-.conn-badge {
-  padding:2px 8px; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
-  border:1px solid var(--dim); color:var(--muted);
-}
-.conn-badge.live { border-color:rgba(74,222,128,.4); color:var(--green); background:rgba(74,222,128,.06); }
-
-/* Mode pills */
-.mode-bar { display:flex; align-items:center; gap:2px; border:1px solid var(--line2); }
-.mode-pill {
-  padding:5px 14px; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
-  cursor:pointer; background:transparent; border:none; font-family:var(--mono);
-  color:var(--muted); transition:all .2s;
-}
-.mode-pill:hover { color:var(--body); }
-.mode-pill.active-flood { background:rgba(249,115,22,.15); color:var(--flood); }
-.mode-pill.active-route { background:rgba(34,211,238,.15); color:var(--route); }
-
-.current-mode {
-  display:flex; align-items:center; gap:6px;
-  padding:4px 10px; border:1px solid var(--line2);
-  font-size:10px; letter-spacing:.1em; text-transform:uppercase;
-}
-.mode-led {
-  width:7px; height:7px; border-radius:50%;
-  animation: blink 1.8s ease-in-out infinite;
-}
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
-.mode-led.flood { background:var(--flood); box-shadow:0 0 6px var(--flood); }
-.mode-led.route { background:var(--route); box-shadow:0 0 6px var(--route); }
-
-/* ── Main body ─────────────────────────────────────────────────────────── */
-.body {
-  display:grid;
-  grid-template-columns: 220px 1fr 240px;
-  overflow:hidden;
-}
-
-/* ── Sidebar ───────────────────────────────────────────────────────────── */
-.sidebar {
-  border-right:1px solid var(--line);
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-}
-.sidebar-section { padding:16px; border-bottom:1px solid var(--line); }
-.sec-label {
-  font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim);
-  margin-bottom:12px; display:flex; align-items:center; gap:6px;
-}
-.sec-label::after { content:''; flex:1; height:1px; background:var(--line2); }
-
-/* Device cards */
-.dev {
-  border:1px solid var(--line2);
-  padding:10px 12px;
-  margin-bottom:8px;
-  position:relative;
-  transition:border-color .3s;
-}
-.dev.online { border-color:rgba(74,222,128,.3); }
-.dev-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-.dev-name { font-size:12px; color:var(--hi); font-weight:500; }
-.dev-id { font-size:9px; color:var(--dim); }
-.dev-dot { width:6px; height:6px; border-radius:50%; background:var(--line2); }
-.dev-dot.on { background:var(--green); box-shadow:0 0 6px rgba(74,222,128,.6); animation:blink 2s ease-in-out infinite; }
-.dev-rows { display:flex; flex-direction:column; gap:2px; }
-.dev-row { display:flex; justify-content:space-between; font-size:10px; }
-.dev-k { color:var(--muted); }
-.dev-v { color:var(--body); }
-
-/* Traffic bar */
-.tbar-wrap { margin-top:6px; }
-.tbar-track { height:3px; background:var(--bg4); }
-.tbar-fill { height:100%; width:0%; transition:width .4s; }
-.tbar-fill.a02 { background:var(--route); }
-.tbar-fill.a03 { background:var(--flood); }
-.tbar-fill.a04 { background:var(--green); }
-.tbar-fill.a05 { background:#a78bfa; }
-.tbar-fill.pico { background:var(--amber); }
-
-/* Run controls */
-.run-box { border:1px solid var(--line2); padding:12px; margin-bottom:8px; }
-.run-box-header {
-  font-size:10px; font-weight:500; margin-bottom:8px;
-  display:flex; align-items:center; gap:6px;
-}
-.run-box.flood-box .run-box-header { color:var(--flood); }
-.run-box.route-box .run-box-header { color:var(--route); }
-.run-timer { font-size:22px; font-weight:600; text-align:center; margin:4px 0 6px; letter-spacing:.04em; }
-.run-timer.idle { color:var(--dim); }
-.run-timer.flood { color:var(--flood); }
-.run-timer.route { color:var(--route); }
-.run-status { font-size:10px; color:var(--muted); text-align:center; margin-bottom:8px; }
-
-.rbtn {
-  width:100%; padding:7px; font-family:var(--mono); font-size:10px; letter-spacing:.08em;
-  text-transform:uppercase; background:transparent; cursor:pointer; border:1px solid;
-  transition:all .2s; margin-bottom:4px;
-}
-.rbtn:last-child { margin-bottom:0; }
-.rbtn.start-flood { color:var(--flood); border-color:rgba(249,115,22,.4); }
-.rbtn.start-flood:hover { background:rgba(249,115,22,.1); }
-.rbtn.start-route { color:var(--route); border-color:rgba(34,211,238,.4); }
-.rbtn.start-route:hover { background:rgba(34,211,238,.1); }
-.rbtn.stop { color:var(--red); border-color:rgba(248,113,113,.4); }
-.rbtn.stop:hover { background:rgba(248,113,113,.08); }
-.rbtn.export { color:var(--green); border-color:rgba(74,222,128,.3); background:rgba(74,222,128,.04); }
-.rbtn.export:hover { background:rgba(74,222,128,.1); }
-.rbtn.reset { color:var(--muted); border-color:var(--line2); }
-.rbtn.reset:hover { color:var(--body); border-color:var(--dim); }
-
-/* Cmd buttons */
-.cmd-btn {
-  width:100%; padding:7px 10px; border:1px solid var(--line2); background:transparent;
-  color:var(--muted); font-family:var(--mono); font-size:11px; cursor:pointer;
-  display:flex; align-items:center; gap:7px; margin-bottom:5px; transition:all .2s; text-align:left;
-}
-.cmd-btn:hover { border-color:var(--route); color:var(--route); background:rgba(34,211,238,.04); }
-.cmd-btn.danger:hover { border-color:var(--red); color:var(--red); background:rgba(248,113,113,.04); }
-.cmd-btn .dot { width:4px; height:4px; border-radius:50%; background:currentColor; }
-
-/* ── Centre ────────────────────────────────────────────────────────────── */
-.centre {
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  border-right:1px solid var(--line);
-}
-
-/* Stat bar */
-.statbar {
-  display:grid;
-  grid-template-columns: repeat(6, 1fr);
-  border-bottom:1px solid var(--line);
-  flex-shrink:0;
-}
-.stat {
-  padding:12px 14px;
-  border-right:1px solid var(--line);
-  position:relative;
-}
-.stat:last-child { border-right:none; }
-.stat::after {
-  content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--line);
-}
-.stat.flood-stat::after { background:var(--flood); opacity:.6; }
-.stat.route-stat::after { background:var(--route); opacity:.6; }
-.stat-label { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); }
-.stat-val { font-size:20px; font-weight:600; color:var(--hi); line-height:1.1; margin:2px 0; }
-.stat-val.f { color:var(--flood); }
-.stat-val.r { color:var(--route); }
-.stat-sub { font-size:9px; color:var(--dim); }
-
-/* Tabs */
-.tabs-row { display:flex; border-bottom:1px solid var(--line); flex-shrink:0; }
-.tab {
-  padding:8px 16px; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
-  cursor:pointer; background:transparent; border:none; font-family:var(--mono);
-  color:var(--muted); border-bottom:2px solid transparent; transition:all .2s;
-}
-.tab:hover { color:var(--body); }
-.tab.on { color:var(--route); border-bottom-color:var(--route); }
-
-.tab-area { flex:1; overflow:hidden; position:relative; }
-.tab-pane { display:none; height:100%; overflow-y:auto; padding:16px; }
-.tab-pane.on { display:block; }
-
-/* ── Compare pane ──────────────────────────────────────────────────────── */
-.cmp-cols {
-  display:grid; grid-template-columns:1fr 1fr; gap:1px;
-  background:var(--line); margin-bottom:14px;
-}
-.cmp-col {
-  background:var(--bg2); padding:14px;
-  position:relative; overflow:hidden;
-}
-.cmp-col::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:3px;
-}
-.cmp-col.fc::before { background:var(--flood); }
-.cmp-col.rc::before { background:var(--route); }
-
-.cmp-title {
-  font-family:var(--sans); font-weight:600; font-size:14px; margin-bottom:10px;
-}
-.fc .cmp-title { color:var(--flood); }
-.rc .cmp-title { color:var(--route); }
-
-.cmp-metric { display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid var(--line); font-size:11px; }
-.cmp-metric:last-child { border-bottom:none; }
-.cmp-k { color:var(--muted); }
-.cmp-v { font-size:13px; font-weight:600; }
-.fc .cmp-v { color:var(--flood); }
-.rc .cmp-v { color:var(--route); }
-.cmp-v.na { color:var(--dim); font-size:11px; font-weight:400; }
-
-/* Per-node traffic bars */
-.node-section { margin-bottom:14px; }
-.sec-title { font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
-.ntc { margin-bottom:8px; }
-.ntc-name { font-size:10px; color:var(--body); margin-bottom:4px; }
-.ntc-row { display:flex; align-items:center; gap:8px; margin-bottom:3px; font-size:10px; }
-.ntc-lbl { width:44px; color:var(--muted); flex-shrink:0; }
-.ntc-track { flex:1; height:6px; background:var(--bg4); overflow:hidden; }
-.ntc-bar { height:100%; width:0%; transition:width .5s; }
-.ntc-bar.f { background:var(--flood); }
-.ntc-bar.r { background:var(--route); }
-.ntc-val { width:28px; text-align:right; color:var(--muted); }
-
-/* Delivery cards */
-.del-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-bottom:14px; }
-.del-card { border:1px solid var(--line2); padding:10px; text-align:center; }
-.del-node { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-bottom:6px; }
-.del-pair { display:flex; justify-content:center; gap:16px; }
-.del-val { font-size:18px; font-weight:600; }
-.del-val.f { color:var(--flood); }
-.del-val.r { color:var(--route); }
-.del-lbl { font-size:9px; color:var(--dim); }
-
-/* Dupe/gap event log */
-.evt-log { display:flex; flex-direction:column; gap:3px; max-height:200px; overflow-y:auto; }
-.evt { display:grid; grid-template-columns:56px 70px 1fr 60px auto; gap:8px; align-items:center; padding:5px 8px; background:var(--bg3); font-size:10px; animation:fadeIn .3s; }
-@keyframes fadeIn { from{opacity:0;transform:translateX(4px)} to{opacity:1;transform:translateX(0)} }
-.evt-time { color:var(--dim); }
-.evt-node { color:var(--body); }
-.evt-topic { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.evt-seq { color:var(--dim); text-align:right; }
-.badge { padding:1px 6px; font-size:9px; letter-spacing:.06em; border:1px solid; text-transform:uppercase; }
-.badge.dupe { color:var(--flood); border-color:rgba(249,115,22,.4); background:rgba(249,115,22,.08); }
-.badge.gap  { color:var(--red);   border-color:rgba(248,113,113,.4); background:rgba(248,113,113,.08); }
-.badge.ok   { color:var(--green); border-color:rgba(74,222,128,.3);  background:rgba(74,222,128,.05); }
-.badge.f    { color:var(--flood); border-color:rgba(249,115,22,.3); }
-.badge.r    { color:var(--route); border-color:rgba(34,211,238,.3); }
-
-/* Rate chart */
-.chart-box { border:1px solid var(--line2); padding:12px; margin-bottom:10px; }
-.chart-title { font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
-.chart-wrap { position:relative; height:110px; }
-
-/* ── Graph pane ────────────────────────────────────────────────────────── */
-.graph-wrap { position:relative; height:200px; margin-bottom:14px; }
-.graph-wrap canvas { border:1px solid var(--line2); }
-
-/* ── Live feed (right panel) ───────────────────────────────────────────── */
-.feed-panel {
-  overflow-y:auto;
-  padding:14px;
-  display:flex;
-  flex-direction:column;
-  gap:3px;
-}
-.feed-label { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
-.feed-label::after { content:''; flex:1; height:1px; background:var(--line2); }
-.feed-entry {
-  padding:6px 8px; border-left:2px solid transparent; font-size:10px; line-height:1.5;
-  animation:fadeIn .25s;
-}
-.feed-entry.flood { border-color:var(--flood); }
-.feed-entry.route { border-color:var(--route); }
-.feed-entry.cmd   { border-color:var(--amber); }
-.feed-entry.dupe  { border-color:var(--red); }
-.feed-t    { color:var(--dim); font-size:9px; }
-.feed-top  { color:var(--muted); }
-.feed-msg  { color:var(--body); }
-.feed-meta { font-size:9px; color:var(--dim); margin-top:1px; }
-
-/* ── Message list (Arduino/Pico tabs) ──────────────────────────────────── */
-.msg-list { display:flex; flex-direction:column; gap:3px; }
-.msg-row {
-  display:grid; grid-template-columns:54px 1fr auto;
-  gap:10px; align-items:center; padding:6px 10px; background:var(--bg3); font-size:11px;
-  animation:fadeIn .25s;
-}
-.msg-t   { color:var(--dim); font-size:9px; }
-.msg-top { color:var(--route2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); }
-.msg-val { color:var(--green); font-weight:500; white-space:nowrap; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSC2106 LoRa Mesh Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
 </head>
+
 <body>
-<div class="shell">
+  <div class="shell">
 
-<!-- ── Topbar ─────────────────────────────────────────────────────────── -->
-<header class="topbar">
-  <div class="topbar-left">
-    <div class="logo"><div class="logo-dot"></div></div>
-    <div>
-      <div class="brand">LoRa Mesh Dashboard</div>
-      <div class="brand-sub">MQTT-SN · Group 11 · CSC2106</div>
-    </div>
-    <div class="mode-bar">
-      <button class="mode-pill active-flood" id="pill-flood" onclick="setMode('flooding')">⊕ Flooding</button>
-      <button class="mode-pill" id="pill-route" onclick="setMode('routing')">⇢ Routing</button>
-    </div>
-    <div class="current-mode">
-      <div class="mode-led flood" id="mode-led"></div>
-      <span id="mode-txt" style="color:var(--flood)">FLOODING</span>
-    </div>
-  </div>
-  <div class="topbar-right">
-    <span class="clock" id="clock">--:--:--</span>
-    <div class="conn-badge" id="conn">● CONNECTING</div>
-  </div>
-</header>
-
-<!-- ── Body ───────────────────────────────────────────────────────────── -->
-<div class="body">
-
-  <!-- ── Left sidebar ────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-
-    <div class="sidebar-section">
-      <div class="sec-label">Devices</div>
-
-      <div class="dev" id="dev-pico">
-        <div class="dev-header">
-          <span class="dev-name">Pico W</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="dev-id">Wi-Fi</span>
-            <div class="dev-dot" id="dot-pico"></div>
-          </div>
+    <!-- ── Topbar ─────────────────────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo">
+          <div class="logo-dot"></div>
         </div>
-        <div class="dev-rows">
-          <div class="dev-row"><span class="dev-k">Role</span><span class="dev-v">Client</span></div>
-          <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-pico">0</span></div>
+        <div>
+          <div class="brand">LoRa Mesh Dashboard</div>
+          <div class="brand-sub">MQTT-SN · Group 11 · CSC2106</div>
         </div>
-        <div class="tbar-wrap"><div class="tbar-track"><div class="tbar-fill pico" id="tbar-pico"></div></div></div>
-      </div>
-
-      <div class="dev" id="dev-a03">
-        <div class="dev-header">
-          <span class="dev-name">Arduino-03</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="dev-id">0x23 · Relay</span>
-            <div class="dev-dot" id="dot-a03"></div>
-          </div>
+        <div class="mode-bar">
+          <button class="mode-pill active-flood" id="pill-flood" onclick="setMode('flooding')">⊕ Flooding</button>
+          <button class="mode-pill" id="pill-route" onclick="setMode('routing')">⇢ Routing</button>
         </div>
-        <div class="dev-rows">
-          <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
-          <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a03">0</span></div>
-          <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a03">—</span></div>
+        <div class="current-mode">
+          <div class="mode-led flood" id="mode-led"></div>
+          <span id="mode-txt" style="color:var(--flood)">FLOODING</span>
         </div>
-        <div class="tbar-wrap"><div class="tbar-track"><div class="tbar-fill a03" id="tbar-a03"></div></div></div>
       </div>
-
-      <div class="dev" id="dev-a02">
-        <div class="dev-header">
-          <span class="dev-name">Arduino-02</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="dev-id">0x22 · Endpoint</span>
-            <div class="dev-dot" id="dot-a02"></div>
-          </div>
-        </div>
-        <div class="dev-rows">
-          <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
-          <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a02">0</span></div>
-          <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a02">—</span></div>
-        </div>
-        <div class="tbar-wrap"><div class="tbar-track"><div class="tbar-fill a02" id="tbar-a02"></div></div></div>
+      <div class="topbar-right">
+        <span class="clock" id="clock">--:--:--</span>
+        <div class="conn-badge" id="conn">● CONNECTING</div>
       </div>
+    </header>
 
-      <div class="dev" id="dev-a04">
-        <div class="dev-header">
-          <span class="dev-name">Arduino-04</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="dev-id">0x24 · Endpoint</span>
-            <div class="dev-dot" id="dot-a04"></div>
-          </div>
-        </div>
-        <div class="dev-rows">
-          <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
-          <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a04">0</span></div>
-          <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a04">—</span></div>
-        </div>
-        <div class="tbar-wrap"><div class="tbar-track"><div class="tbar-fill a04" id="tbar-a04"></div></div></div>
-      </div>
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <div class="body">
 
-      <div class="dev" id="dev-a05">
-        <div class="dev-header">
-          <span class="dev-name">Arduino-05</span>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="dev-id">0x25 · Relay</span>
-            <div class="dev-dot" id="dot-a05"></div>
-          </div>
-        </div>
-        <div class="dev-rows">
-          <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
-          <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a05">0</span></div>
-          <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a05">—</span></div>
-        </div>
-        <div class="tbar-wrap"><div class="tbar-track"><div class="tbar-fill a05" id="tbar-a05"></div></div></div>
-      </div>
-    </div>
+      <!-- ── Left sidebar ────────────────────────────────────────────────── -->
+      <aside class="sidebar">
 
-    <div class="sidebar-section">
-      <div class="sec-label">Test Runs</div>
+        <!-- Devices — endpoint nodes only (a03 / a05 are relay-only) -->
+        <div class="sidebar-section">
+          <div class="sec-label">Devices</div>
 
-      <div class="run-box flood-box">
-        <div class="run-box-header">⊕ Run A — Flooding</div>
-        <div class="run-timer idle" id="timer-flood">00:00</div>
-        <div class="run-status" id="status-flood">Idle</div>
-        <button class="rbtn start-flood" onclick="startRun('flooding')">▶ Start Flood Run</button>
-        <button class="rbtn stop" id="stop-btn" style="display:none" onclick="stopRun()">■ Stop</button>
-      </div>
-
-      <div class="run-box route-box">
-        <div class="run-box-header">⇢ Run B — Routing</div>
-        <div class="run-timer idle" id="timer-route">00:00</div>
-        <div class="run-status" id="status-route">Idle</div>
-        <button class="rbtn start-route" onclick="startRun('routing')">▶ Start Route Run</button>
-      </div>
-
-      <button class="rbtn export" onclick="exportData()" style="margin-top:4px">⬇ Export JSON</button>
-      <button class="rbtn reset"  onclick="resetAll()"   style="margin-top:4px">↺ Reset All</button>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sec-label">Commands</div>
-      <button class="cmd-btn" onclick="sendCmd('led on')"><span class="dot"></span>LED ON — all</button>
-      <button class="cmd-btn danger" onclick="sendCmd('led off')"><span class="dot"></span>LED OFF — all</button>
-      <button class="cmd-btn" onclick="sendCmd('led on arduino')"><span class="dot"></span>LED ON — arduino</button>
-    </div>
-
-  </aside>
-
-  <!-- ── Centre ──────────────────────────────────────────────────────── -->
-  <main class="centre">
-
-    <!-- Stat bar -->
-    <div class="statbar">
-      <div class="stat">
-        <div class="stat-label">Total Msgs</div>
-        <div class="stat-val" id="s-total">0</div>
-        <div class="stat-sub">all time</div>
-      </div>
-      <div class="stat flood-stat">
-        <div class="stat-label">Flood Pkts</div>
-        <div class="stat-val f" id="s-flood-pkts">0</div>
-        <div class="stat-sub">Run A</div>
-      </div>
-      <div class="stat route-stat">
-        <div class="stat-label">Route Pkts</div>
-        <div class="stat-val r" id="s-route-pkts">0</div>
-        <div class="stat-sub">Run B</div>
-      </div>
-      <div class="stat flood-stat">
-        <div class="stat-label">Flood Dupes</div>
-        <div class="stat-val f" id="s-flood-dupes">0</div>
-        <div class="stat-sub">retransmissions</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Delivery (A)</div>
-        <div class="stat-val f" id="s-flood-del">—</div>
-        <div class="stat-sub">flood success%</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Delivery (B)</div>
-        <div class="stat-val r" id="s-route-del">—</div>
-        <div class="stat-sub">route success%</div>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tabs-row">
-      <button class="tab on" onclick="switchTab('compare',this)">Compare</button>
-      <button class="tab"    onclick="switchTab('graph',this)">Graph</button>
-      <button class="tab"    onclick="switchTab('events',this)">Events</button>
-      <button class="tab"    onclick="switchTab('arduino',this)">Arduino</button>
-      <button class="tab"    onclick="switchTab('pico',this)">Pico</button>
-    </div>
-
-    <div class="tab-area">
-
-      <!-- ── Compare tab ──────────────────────────────────────────────── -->
-      <div class="tab-pane on" id="pane-compare">
-
-        <div class="cmp-cols">
-          <div class="cmp-col fc">
-            <div class="cmp-title">⊕ Run A — Flooding</div>
-            <div class="cmp-metric"><span class="cmp-k">Packets received</span><span class="cmp-v" id="c-f-pkts">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Forwarding mode</span><span class="cmp-v">Broadcast flood</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Inferred hop count</span><span class="cmp-v" id="c-f-hops">2</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Retransmissions / dupes</span><span class="cmp-v" id="c-f-dupes">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Lost packets (gaps)</span><span class="cmp-v" id="c-f-gaps">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Delivery success</span><span class="cmp-v" id="c-f-del">—</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Avg msg interval (s)</span><span class="cmp-v" id="c-f-intv">—</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Run duration</span><span class="cmp-v" id="c-f-dur">—</span></div>
-          </div>
-          <div class="cmp-col rc">
-            <div class="cmp-title">⇢ Run B — Routing</div>
-            <div class="cmp-metric"><span class="cmp-k">Packets received</span><span class="cmp-v" id="c-r-pkts">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Forwarding mode</span><span class="cmp-v">Static next-hop</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Inferred hop count</span><span class="cmp-v" id="c-r-hops">1</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Retransmissions / dupes</span><span class="cmp-v" id="c-r-dupes">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Lost packets (gaps)</span><span class="cmp-v" id="c-r-gaps">0</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Delivery success</span><span class="cmp-v" id="c-r-del">—</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Avg msg interval (s)</span><span class="cmp-v" id="c-r-intv">—</span></div>
-            <div class="cmp-metric"><span class="cmp-k">Run duration</span><span class="cmp-v" id="c-r-dur">—</span></div>
-          </div>
-        </div>
-
-        <div class="node-section">
-          <div class="sec-title">Per-node traffic volume</div>
-          <div class="ntc" id="ntc-a02">
-            <div class="ntc-name">Arduino-02 (endpoint)</div>
-            <div class="ntc-row"><span class="ntc-lbl">Flood</span><div class="ntc-track"><div class="ntc-bar f" id="nb-f-a02"></div></div><span class="ntc-val" id="nv-f-a02">0</span></div>
-            <div class="ntc-row"><span class="ntc-lbl">Route</span><div class="ntc-track"><div class="ntc-bar r" id="nb-r-a02"></div></div><span class="ntc-val" id="nv-r-a02">0</span></div>
-          </div>
-          <div class="ntc" id="ntc-a03">
-            <div class="ntc-name">Arduino-03 (relay)</div>
-            <div class="ntc-row"><span class="ntc-lbl">Flood</span><div class="ntc-track"><div class="ntc-bar f" id="nb-f-a03"></div></div><span class="ntc-val" id="nv-f-a03">0</span></div>
-            <div class="ntc-row"><span class="ntc-lbl">Route</span><div class="ntc-track"><div class="ntc-bar r" id="nb-r-a03"></div></div><span class="ntc-val" id="nv-r-a03">0</span></div>
-          </div>
-          <div class="ntc" id="ntc-a04">
-            <div class="ntc-name">Arduino-04 (endpoint)</div>
-            <div class="ntc-row"><span class="ntc-lbl">Flood</span><div class="ntc-track"><div class="ntc-bar f" id="nb-f-a04"></div></div><span class="ntc-val" id="nv-f-a04">0</span></div>
-            <div class="ntc-row"><span class="ntc-lbl">Route</span><div class="ntc-track"><div class="ntc-bar r" id="nb-r-a04"></div></div><span class="ntc-val" id="nv-r-a04">0</span></div>
-          </div>
-          <div class="ntc" id="ntc-a05">
-            <div class="ntc-name">Arduino-05 (relay)</div>
-            <div class="ntc-row"><span class="ntc-lbl">Flood</span><div class="ntc-track"><div class="ntc-bar f" id="nb-f-a05"></div></div><span class="ntc-val" id="nv-f-a05">0</span></div>
-            <div class="ntc-row"><span class="ntc-lbl">Route</span><div class="ntc-track"><div class="ntc-bar r" id="nb-r-a05"></div></div><span class="ntc-val" id="nv-r-a05">0</span></div>
-          </div>
-          <div class="ntc" id="ntc-pico">
-            <div class="ntc-name">Pico W</div>
-            <div class="ntc-row"><span class="ntc-lbl">Flood</span><div class="ntc-track"><div class="ntc-bar f" id="nb-f-pico"></div></div><span class="ntc-val" id="nv-f-pico">0</span></div>
-            <div class="ntc-row"><span class="ntc-lbl">Route</span><div class="ntc-track"><div class="ntc-bar r" id="nb-r-pico"></div></div><span class="ntc-val" id="nv-r-pico">0</span></div>
-          </div>
-        </div>
-
-        <div class="sec-title" style="margin-bottom:8px;">Delivery success by node</div>
-        <div class="del-grid">
-          <div class="del-card">
-            <div class="del-node">Arduino-02</div>
-            <div class="del-pair">
-              <div><div class="del-val f" id="del-f-a02">—</div><div class="del-lbl">Flood</div></div>
-              <div><div class="del-val r" id="del-r-a02">—</div><div class="del-lbl">Route</div></div>
+          <div class="dev" id="dev-pico">
+            <div class="dev-header">
+              <span class="dev-name">Pico W</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="dev-id">Wi-Fi</span>
+                <div class="dev-dot" id="dot-pico"></div>
+              </div>
+            </div>
+            <div class="dev-rows">
+              <div class="dev-row"><span class="dev-k">Role</span><span class="dev-v">Endpoint</span></div>
+              <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-pico">0</span></div>
+              <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-pico">—</span></div>
+            </div>
+            <div class="tbar-wrap">
+              <div class="tbar-track">
+                <div class="tbar-fill pico" id="tbar-pico"></div>
+              </div>
             </div>
           </div>
-          <div class="del-card">
-            <div class="del-node">Arduino-03</div>
-            <div class="del-pair">
-              <div><div class="del-val f" id="del-f-a03">—</div><div class="del-lbl">Flood</div></div>
-              <div><div class="del-val r" id="del-r-a03">—</div><div class="del-lbl">Route</div></div>
+
+          <div class="dev" id="dev-a02">
+            <div class="dev-header">
+              <span class="dev-name">Arduino-02</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="dev-id">0x22 · Endpoint</span>
+                <div class="dev-dot" id="dot-a02"></div>
+              </div>
+            </div>
+            <div class="dev-rows">
+              <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
+              <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a02">0</span></div>
+              <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a02">—</span></div>
+            </div>
+            <div class="tbar-wrap">
+              <div class="tbar-track">
+                <div class="tbar-fill a02" id="tbar-a02"></div>
+              </div>
             </div>
           </div>
-          <div class="del-card">
-            <div class="del-node">Arduino-04</div>
-            <div class="del-pair">
-              <div><div class="del-val f" id="del-f-a04">—</div><div class="del-lbl">Flood</div></div>
-              <div><div class="del-val r" id="del-r-a04">—</div><div class="del-lbl">Route</div></div>
+
+          <div class="dev" id="dev-a04">
+            <div class="dev-header">
+              <span class="dev-name">Arduino-04</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="dev-id">0x24 · Endpoint</span>
+                <div class="dev-dot" id="dot-a04"></div>
+              </div>
             </div>
-          </div>
-          <div class="del-card">
-            <div class="del-node">Arduino-05</div>
-            <div class="del-pair">
-              <div><div class="del-val f" id="del-f-a05">—</div><div class="del-lbl">Flood</div></div>
-              <div><div class="del-val r" id="del-r-a05">—</div><div class="del-lbl">Route</div></div>
+            <div class="dev-rows">
+              <div class="dev-row"><span class="dev-k">Transport</span><span class="dev-v">LoRa Mesh</span></div>
+              <div class="dev-row"><span class="dev-k">Pkts</span><span class="dev-v" id="dpkts-a04">0</span></div>
+              <div class="dev-row"><span class="dev-k">Last</span><span class="dev-v" id="dlast-a04">—</span></div>
             </div>
-          </div>
-          <div class="del-card">
-            <div class="del-node">Pico W</div>
-            <div class="del-pair">
-              <div><div class="del-val f" id="del-f-pico">—</div><div class="del-lbl">Flood</div></div>
-              <div><div class="del-val r" id="del-r-pico">—</div><div class="del-lbl">Route</div></div>
+            <div class="tbar-wrap">
+              <div class="tbar-track">
+                <div class="tbar-fill a04" id="tbar-a04"></div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div class="chart-box">
-            <div class="chart-title">Packet rate (10s buckets)</div>
-            <div class="chart-wrap"><canvas id="rateChart"></canvas></div>
+        <!-- Test Runs -->
+        <div class="sidebar-section">
+          <div class="sec-label">Test Runs</div>
+
+          <div class="run-box flood-box">
+            <div class="run-box-header">⊕ Run A — Flooding</div>
+            <div class="run-timer idle" id="timer-flooding">00:00</div>
+            <div class="run-status" id="status-flooding">Idle</div>
+            <button class="rbtn start-flood" onclick="startRun('flooding')">▶ Start Flood Run</button>
+            <button class="rbtn stop" id="stop-btn" style="display:none" onclick="stopRun()">■ Stop</button>
           </div>
-          <div class="chart-box">
-            <div class="chart-title">Dupe vs gap count</div>
-            <div class="chart-wrap"><canvas id="dupeChart"></canvas></div>
+
+          <div class="run-box route-box">
+            <div class="run-box-header">⇢ Run B — Routing</div>
+            <div class="run-timer idle" id="timer-routing">00:00</div>
+            <div class="run-status" id="status-routing">Idle</div>
+            <button class="rbtn start-route" onclick="startRun('routing')">▶ Start Route Run</button>
+          </div>
+
+          <button class="rbtn export" onclick="exportData()" style="margin-top:4px">⬇ Export JSON</button>
+          <button class="rbtn reset" onclick="resetAll()" style="margin-top:4px">↺ Reset All</button>
+        </div>
+
+        <!-- Commands -->
+        <div class="sidebar-section">
+          <div class="sec-label">Commands</div>
+
+          <!-- All nodes → sensors/cmd -->
+          <div class="sec-label" style="margin-bottom:6px;margin-top:4px;">All nodes</div>
+          <button class="cmd-btn" onclick="sendCmd('led on', 'sensors/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmd('led off', 'sensors/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn amber" onclick="sendCmdQoS('led on', 1, 'sensors/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS1</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmdQoS('led off', 1, 'sensors/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS1</span>
+          </button>
+
+          <!-- Arduino only → sensors/arduino/cmd (subscribed at QoS 2) -->
+          <div class="sec-label" style="margin-bottom:6px;margin-top:8px;">Arduino only</div>
+          <button class="cmd-btn" onclick="sendCmd('led on', 'sensors/arduino/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmd('led off', 'sensors/arduino/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn amber" onclick="sendCmdQoS('led on', 2, 'sensors/arduino/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS2</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmdQoS('led off', 2, 'sensors/arduino/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS2</span>
+          </button>
+
+          <!-- Pico only → sensors/pico/cmd (subscribed at QoS 2) -->
+          <div class="sec-label" style="margin-bottom:6px;margin-top:8px;">Pico only</div>
+          <button class="cmd-btn" onclick="sendCmd('led on', 'sensors/pico/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmd('led off', 'sensors/pico/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS0</span>
+          </button>
+          <button class="cmd-btn amber" onclick="sendCmdQoS('led on', 2, 'sensors/pico/cmd')">
+            <span class="dot"></span>LED ON
+            <span class="qos-badge">QoS2</span>
+          </button>
+          <button class="cmd-btn danger" onclick="sendCmdQoS('led off', 2, 'sensors/pico/cmd')">
+            <span class="dot"></span>LED OFF
+            <span class="qos-badge">QoS2</span>
+          </button>
+        </div>
+
+      </aside>
+
+      <!-- ── Centre ──────────────────────────────────────────────────────── -->
+      <main class="centre">
+
+        <!-- Stat bar -->
+        <div class="statbar">
+          <div class="stat">
+            <div class="stat-label">Total Msgs</div>
+            <div class="stat-val" id="s-total">0</div>
+            <div class="stat-sub">all time</div>
+          </div>
+          <div class="stat flood-stat">
+            <div class="stat-label">Flood Pkts</div>
+            <div class="stat-val f" id="s-flood-pkts">0</div>
+            <div class="stat-sub">Run A</div>
+          </div>
+          <div class="stat route-stat">
+            <div class="stat-label">Route Pkts</div>
+            <div class="stat-val r" id="s-route-pkts">0</div>
+            <div class="stat-sub">Run B</div>
+          </div>
+          <div class="stat flood-stat">
+            <div class="stat-label">Flood Dupes</div>
+            <div class="stat-val f" id="s-flood-dupes">0</div>
+            <div class="stat-sub">retransmissions</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Delivery (A)</div>
+            <div class="stat-val f" id="s-flood-del">—</div>
+            <div class="stat-sub">flood success%</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Delivery (B)</div>
+            <div class="stat-val r" id="s-route-del">—</div>
+            <div class="stat-sub">route success%</div>
           </div>
         </div>
-      </div>
 
-      <!-- ── Graph tab ────────────────────────────────────────────────── -->
-      <div class="tab-pane" id="pane-graph">
-        <div class="graph-wrap"><canvas id="sensorChart"></canvas></div>
-        <div class="chart-box" style="margin-top:10px;">
-          <div class="chart-title">Message interval over time (s)</div>
-          <div class="chart-wrap"><canvas id="intChart"></canvas></div>
+        <!-- Tabs -->
+        <div class="tabs-row">
+          <button class="tab on" onclick="switchTab('compare',this)">Compare</button>
+          <button class="tab" onclick="switchTab('graph',this)">Graph</button>
+          <button class="tab" onclick="switchTab('events',this)">Events</button>
+          <button class="tab" onclick="switchTab('arduino',this)">Arduino</button>
+          <button class="tab" onclick="switchTab('pico',this)">Pico</button>
+          <button class="tab" onclick="switchTab('topics',this)">Topics</button>
         </div>
-      </div>
 
-      <!-- ── Events tab ───────────────────────────────────────────────── -->
-      <div class="tab-pane" id="pane-events">
-        <div class="sec-title" style="margin-bottom:8px;">Packet event log (dupes, gaps, normal)</div>
-        <div class="evt-log" id="evt-log"></div>
-      </div>
+        <div class="tab-area">
 
-      <!-- ── Arduino tab ─────────────────────────────────────────────── -->
-      <div class="tab-pane" id="pane-arduino">
-        <div class="msg-list" id="list-arduino"></div>
-      </div>
+          <!-- ── Compare tab ────────────────────────────────────────────── -->
+          <div class="tab-pane on" id="pane-compare">
 
-      <!-- ── Pico tab ─────────────────────────────────────────────────── -->
-      <div class="tab-pane" id="pane-pico">
-        <div class="msg-list" id="list-pico"></div>
-      </div>
+            <div class="cmp-cols">
+              <div class="cmp-col fc">
+                <div class="cmp-title">⊕ Run A — Flooding</div>
+                <div class="cmp-metric"><span class="cmp-k">Packets received</span><span class="cmp-v"
+                    id="c-f-pkts">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Forwarding mode</span><span class="cmp-v">Broadcast
+                    flood</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Inferred hop count</span><span class="cmp-v"
+                    id="c-f-hops">2</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Retransmissions / dupes</span><span class="cmp-v"
+                    id="c-f-dupes">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Lost packets (gaps)</span><span class="cmp-v"
+                    id="c-f-gaps">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Delivery success</span><span class="cmp-v"
+                    id="c-f-del">—</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Avg msg interval (s)</span><span class="cmp-v"
+                    id="c-f-intv">—</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Run duration</span><span class="cmp-v" id="c-f-dur">—</span>
+                </div>
+              </div>
+              <div class="cmp-col rc">
+                <div class="cmp-title">⇢ Run B — Routing</div>
+                <div class="cmp-metric"><span class="cmp-k">Packets received</span><span class="cmp-v"
+                    id="c-r-pkts">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Forwarding mode</span><span class="cmp-v">Static
+                    next-hop</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Inferred hop count</span><span class="cmp-v"
+                    id="c-r-hops">1</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Retransmissions / dupes</span><span class="cmp-v"
+                    id="c-r-dupes">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Lost packets (gaps)</span><span class="cmp-v"
+                    id="c-r-gaps">0</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Delivery success</span><span class="cmp-v"
+                    id="c-r-del">—</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Avg msg interval (s)</span><span class="cmp-v"
+                    id="c-r-intv">—</span></div>
+                <div class="cmp-metric"><span class="cmp-k">Run duration</span><span class="cmp-v" id="c-r-dur">—</span>
+                </div>
+              </div>
+            </div>
 
-    </div><!-- tab-area -->
-  </main>
+            <!-- Per-node traffic — endpoint nodes only -->
+            <div class="node-section">
+              <div class="sec-title">Per-node traffic volume</div>
+              <div class="ntc" id="ntc-a02">
+                <div class="ntc-name">Arduino-02 (endpoint)</div>
+                <div class="ntc-row"><span class="ntc-lbl">Flood</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar f" id="nb-f-a02"></div>
+                  </div><span class="ntc-val" id="nv-f-a02">0</span>
+                </div>
+                <div class="ntc-row"><span class="ntc-lbl">Route</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar r" id="nb-r-a02"></div>
+                  </div><span class="ntc-val" id="nv-r-a02">0</span>
+                </div>
+              </div>
+              <div class="ntc" id="ntc-a04">
+                <div class="ntc-name">Arduino-04 (endpoint)</div>
+                <div class="ntc-row"><span class="ntc-lbl">Flood</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar f" id="nb-f-a04"></div>
+                  </div><span class="ntc-val" id="nv-f-a04">0</span>
+                </div>
+                <div class="ntc-row"><span class="ntc-lbl">Route</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar r" id="nb-r-a04"></div>
+                  </div><span class="ntc-val" id="nv-r-a04">0</span>
+                </div>
+              </div>
+              <div class="ntc" id="ntc-pico">
+                <div class="ntc-name">Pico W (endpoint)</div>
+                <div class="ntc-row"><span class="ntc-lbl">Flood</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar f" id="nb-f-pico"></div>
+                  </div><span class="ntc-val" id="nv-f-pico">0</span>
+                </div>
+                <div class="ntc-row"><span class="ntc-lbl">Route</span>
+                  <div class="ntc-track">
+                    <div class="ntc-bar r" id="nb-r-pico"></div>
+                  </div><span class="ntc-val" id="nv-r-pico">0</span>
+                </div>
+              </div>
+            </div>
 
-  <!-- ── Right: live feed ─────────────────────────────────────────────── -->
-  <aside class="feed-panel" id="feed">
-    <div class="feed-label">Live Feed</div>
-  </aside>
+            <!-- Delivery cards — endpoint nodes only (3-col) -->
+            <div class="sec-title" style="margin-bottom:8px;">Delivery success by node</div>
+            <div class="del-grid">
+              <div class="del-card">
+                <div class="del-node">Arduino-02</div>
+                <div class="del-pair">
+                  <div>
+                    <div class="del-val f" id="del-f-a02">—</div>
+                    <div class="del-lbl">Flood</div>
+                  </div>
+                  <div>
+                    <div class="del-val r" id="del-r-a02">—</div>
+                    <div class="del-lbl">Route</div>
+                  </div>
+                </div>
+              </div>
+              <div class="del-card">
+                <div class="del-node">Arduino-04</div>
+                <div class="del-pair">
+                  <div>
+                    <div class="del-val f" id="del-f-a04">—</div>
+                    <div class="del-lbl">Flood</div>
+                  </div>
+                  <div>
+                    <div class="del-val r" id="del-r-a04">—</div>
+                    <div class="del-lbl">Route</div>
+                  </div>
+                </div>
+              </div>
+              <div class="del-card">
+                <div class="del-node">Pico W</div>
+                <div class="del-pair">
+                  <div>
+                    <div class="del-val f" id="del-f-pico">—</div>
+                    <div class="del-lbl">Flood</div>
+                  </div>
+                  <div>
+                    <div class="del-val r" id="del-r-pico">—</div>
+                    <div class="del-lbl">Route</div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-</div><!-- body -->
-</div><!-- shell -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="chart-box">
+                <div class="chart-title">Packet rate (10s buckets)</div>
+                <div class="chart-wrap"><canvas id="rateChart"></canvas></div>
+              </div>
+              <div class="chart-box">
+                <div class="chart-title">Dupe vs gap count</div>
+                <div class="chart-wrap"><canvas id="dupeChart"></canvas></div>
+              </div>
+            </div>
+          </div>
 
-<script>
-// ── Socket ────────────────────────────────────────────────────────────────
-const socket = io();
+          <!-- ── Graph tab ──────────────────────────────────────────────── -->
+          <div class="tab-pane" id="pane-graph">
+            <div class="graph-wrap"><canvas id="sensorChart"></canvas></div>
+            <div class="chart-box" style="margin-top:10px;">
+              <div class="chart-title">Message interval over time (s)</div>
+              <div class="chart-wrap"><canvas id="intChart"></canvas></div>
+            </div>
+          </div>
 
-socket.on('connect', () => {
-  const el = document.getElementById('conn');
-  el.textContent = '● LIVE'; el.className = 'conn-badge live';
-});
-socket.on('disconnect', () => {
-  const el = document.getElementById('conn');
-  el.textContent = '● OFFLINE'; el.className = 'conn-badge';
-});
+          <!-- ── Events tab ─────────────────────────────────────────────── -->
+          <div class="tab-pane" id="pane-events">
+            <div class="sec-title" style="margin-bottom:8px;">Packet event log (dupes, gaps, normal)</div>
+            <div class="evt-log" id="evt-log"></div>
+          </div>
 
-// ── Clock ─────────────────────────────────────────────────────────────────
-setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
-}, 1000);
+          <!-- ── Arduino tab ────────────────────────────────────────────── -->
+          <div class="tab-pane" id="pane-arduino">
+            <div class="msg-list" id="list-arduino"></div>
+          </div>
 
-// ── State ─────────────────────────────────────────────────────────────────
-let currentMode = 'flooding';
-let activeRun   = null;
-let runTimerIv  = null;
-// Store run start times so the timer can be restarted after page reload
-const runStartMs = { flooding: null, routing: null };
+          <!-- ── Pico tab ───────────────────────────────────────────────── -->
+          <div class="tab-pane" id="pane-pico">
+            <div class="msg-list" id="list-pico"></div>
+          </div>
 
-// Track device last-seen and total pkts for sidebar bars
-const devState = { a02: { pkts: 0 }, a03: { pkts: 0 }, pico: { pkts: 0 } };
+          <!-- ── Topics tab ─────────────────────────────────────────────── -->
+          <!-- Contents are built dynamically by topics.js -->
+          <div class="tab-pane" id="pane-topics"></div>
 
-// Rate chart buckets
-let bucketFlood = 0, bucketRoute = 0, lastFlush = Date.now();
+        </div><!-- tab-area -->
+      </main>
 
-// Interval chart: last msg timestamp per mode
-const lastMsgTime = { flooding: null, routing: null };
+      <!-- ── Right: live feed ───────────────────────────────────────────── -->
+      <aside class="feed-panel" id="feed">
+        <div class="feed-label">Live Feed</div>
+      </aside>
 
-// ── Charts ────────────────────────────────────────────────────────────────
-const MAXPTS = 25;
-const chartCfg = (datasets) => ({
-  type: 'line',
-  data: { labels: [], datasets },
-  options: {
-    animation: false, responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#6b7a96', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10 } } },
-    scales: {
-      x: { ticks: { color: '#3d4a62', font: { family: 'IBM Plex Mono', size: 9 }, maxTicksLimit: 5 }, grid: { color: 'rgba(37,43,56,.8)' } },
-      y: { beginAtZero: true, ticks: { color: '#3d4a62', font: { family: 'IBM Plex Mono', size: 9 } }, grid: { color: 'rgba(37,43,56,.8)' } }
-    }
-  }
-});
+    </div><!-- body -->
+  </div><!-- shell -->
 
-const sensorChart = new Chart(
-  document.getElementById('sensorChart').getContext('2d'),
-  chartCfg([
-    { label: 'Arduino-02', data: [], borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.05)', borderWidth: 1.5, pointRadius: 3, tension: .3, fill: true },
-    { label: 'Arduino-03', data: [], borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.05)',  borderWidth: 1.5, pointRadius: 3, tension: .3, fill: true },
-    { label: 'Arduino-04', data: [], borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,.05)', borderWidth: 1.5, pointRadius: 3, tension: .3, fill: false },
-    { label: 'Arduino-05', data: [], borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.05)',borderWidth: 1.5, pointRadius: 3, tension: .3, fill: false }
-  ])
-);
+  <!-- ── Scripts — load order matters ──────────────────────────────────────
+     1. socket.js    — io() + shared state vars
+     2. ui.js        — DOM helpers (addFeed, etc.)
+     3. commands.js  — sendCmd / sendCmdQoS
+     4. charts.js    — Chart instances (needs canvas already in DOM)
+     5. runs.js      — startRun / stopRun / applyMode
+     6. topics.js    — topics pane builder + ingest
+     7. handlers.js  — socket event handlers (uses all of the above)
+  -->
+  <script src="js/socket.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/commands.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/runs.js"></script>
+  <script src="js/topics.js"></script>
+  <script src="js/handlers.js"></script>
 
-const rateChart = new Chart(
-  document.getElementById('rateChart').getContext('2d'),
-  chartCfg([
-    { label: 'Flooding', data: [], borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.07)', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: true },
-    { label: 'Routing',  data: [], borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.07)', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: true }
-  ])
-);
-
-const dupeChart = new Chart(
-  document.getElementById('dupeChart').getContext('2d'),
-  {
-    type: 'bar',
-    data: {
-      labels: ['Dupes', 'Gaps'],
-      datasets: [
-        { label: 'Flooding', data: [0, 0], backgroundColor: 'rgba(249,115,22,.7)' },
-        { label: 'Routing',  data: [0, 0], backgroundColor: 'rgba(34,211,238,.7)' }
-      ]
-    },
-    options: {
-      animation: false, responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#6b7a96', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10 } } },
-      scales: {
-        x: { ticks: { color: '#3d4a62', font: { family: 'IBM Plex Mono', size: 9 } }, grid: { color: 'rgba(37,43,56,.8)' } },
-        y: { beginAtZero: true, ticks: { color: '#3d4a62', font: { family: 'IBM Plex Mono', size: 9 } }, grid: { color: 'rgba(37,43,56,.8)' } }
-      }
-    }
-  }
-);
-
-const intChart = new Chart(
-  document.getElementById('intChart').getContext('2d'),
-  chartCfg([
-    { label: 'Flooding interval (s)', data: [], borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.05)', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: false },
-    { label: 'Routing interval (s)',  data: [], borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,.05)', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: false }
-  ])
-);
-
-function pushChart(ch, lbl, ...datasetVals) {
-  ch.data.labels.push(lbl);
-  datasetVals.forEach((v, i) => ch.data.datasets[i].data.push(v));
-  if (ch.data.labels.length > MAXPTS) {
-    ch.data.labels.shift();
-    ch.data.datasets.forEach(d => d.data.shift());
-  }
-  ch.update();
-}
-
-// ── Mode ──────────────────────────────────────────────────────────────────
-function setMode(mode) {
-  fetch('/mode/' + mode);
-  applyMode(mode);
-}
-
-function applyMode(mode) {
-  currentMode = mode;
-  document.getElementById('pill-flood').className = 'mode-pill' + (mode === 'flooding' ? ' active-flood' : '');
-  document.getElementById('pill-route').className = 'mode-pill' + (mode === 'routing'  ? ' active-route' : '');
-  const led = document.getElementById('mode-led');
-  const txt = document.getElementById('mode-txt');
-  led.className = 'mode-led ' + (mode === 'flooding' ? 'flood' : 'route');
-  txt.style.color = mode === 'flooding' ? 'var(--flood)' : 'var(--route)';
-  txt.textContent = mode === 'flooding' ? 'FLOODING' : 'ROUTING';
-}
-
-socket.on('mode_change', (data) => applyMode(data.mode));
-
-// ── Run control ───────────────────────────────────────────────────────────
-function startRun(mode) {
-  fetch('/run/start/' + mode);
-  applyMode(mode);
-  activeRun = mode;
-  runStartMs[mode] = Date.now();
-  document.getElementById('stop-btn').style.display = 'block';
-  document.getElementById('status-' + mode).textContent = 'Running…';
-  document.getElementById('timer-' + mode).className = 'run-timer ' + (mode === 'flooding' ? 'flood' : 'route');
-  _startTimerInterval(mode);
-}
-
-function _startTimerInterval(mode) {
-  clearInterval(runTimerIv);
-  runTimerIv = setInterval(() => {
-    if (!runStartMs[mode]) return;
-    const e = Math.floor((Date.now() - runStartMs[mode]) / 1000);
-    document.getElementById('timer-' + mode).textContent =
-      String(Math.floor(e / 60)).padStart(2, '0') + ':' + String(e % 60).padStart(2, '0');
-  }, 1000);
-}
-
-function stopRun() {
-  fetch('/run/stop');
-  clearInterval(runTimerIv);
-  document.getElementById('stop-btn').style.display = 'none';
-  if (activeRun) {
-    document.getElementById('status-' + activeRun).textContent = 'Done';
-    document.getElementById('timer-' + activeRun).className = 'run-timer idle';
-    activeRun = null;
-  }
-}
-
-function resetAll() {
-  if (!confirm('Reset all run data?')) return;
-  fetch('/reset');
-}
-
-function exportData() {
-  window.open('/export', '_blank');
-}
-
-socket.on('run_started', (data) => {
-  activeRun = data.mode;
-  runStartMs[data.mode] = data.startTime;
-  document.getElementById('stop-btn').style.display = 'block';
-  document.getElementById('status-' + data.mode).textContent = 'Running…';
-  document.getElementById('timer-' + data.mode).className =
-    'run-timer ' + (data.mode === 'flooding' ? 'flood' : 'route');
-  _startTimerInterval(data.mode);
-});
-
-socket.on('run_stopped', (data) => {
-  document.getElementById('status-' + data.mode).textContent = 'Done';
-  document.getElementById('timer-' + data.mode).className    = 'run-timer idle';
-  if (activeRun === data.mode) { activeRun = null; document.getElementById('stop-btn').style.display = 'none'; }
-});
-
-// ── run_update: full state from server ────────────────────────────────────
-socket.on('run_update', (data) => {
-  const f = data.flooding, r = data.routing;
-
-  // Stat bar
-  document.getElementById('s-total').textContent       = data.allTime.total;
-  document.getElementById('s-flood-pkts').textContent  = f.pkts;
-  document.getElementById('s-route-pkts').textContent  = r.pkts;
-  document.getElementById('s-flood-dupes').textContent = f.dupes;
-  document.getElementById('s-flood-del').textContent   = f.deliveryPct ? f.deliveryPct + '%' : '—';
-  document.getElementById('s-route-del').textContent   = r.deliveryPct ? r.deliveryPct + '%' : '—';
-
-  // Compare cols
-  set('c-f-pkts',  f.pkts);
-  set('c-f-hops',  f.inferredHops);
-  set('c-f-dupes', f.dupes);
-  set('c-f-gaps',  f.gaps);
-  set('c-f-del',   f.deliveryPct ? f.deliveryPct + '%' : '—');
-  set('c-f-intv',  f.avgInterval || '—');
-  set('c-f-dur',   fmtDur(f.duration));
-  set('c-r-pkts',  r.pkts);
-  set('c-r-hops',  r.inferredHops);
-  set('c-r-dupes', r.dupes);
-  set('c-r-gaps',  r.gaps);
-  set('c-r-del',   r.deliveryPct ? r.deliveryPct + '%' : '—');
-  set('c-r-intv',  r.avgInterval || '—');
-  set('c-r-dur',   fmtDur(r.duration));
-
-  // Per-node traffic bars — all 5 Arduino nodes + pico
-  const ALL_NODES = ['a02', 'a03', 'a04', 'a05', 'pico'];
-  const maxN = Math.max(...ALL_NODES.map(n => Math.max(f.perNode[n]||0, r.perNode[n]||0)), 1);
-  ALL_NODES.forEach(n => {
-    const fv = f.perNode[n] || 0, rv = r.perNode[n] || 0;
-    setBar('nb-f-' + n, fv / maxN * 100);
-    setBar('nb-r-' + n, rv / maxN * 100);
-    set('nv-f-' + n, fv);
-    set('nv-r-' + n, rv);
-    const fTot = f.pkts + f.gaps || 1, rTot = r.pkts + r.gaps || 1;
-    set('del-f-' + n, fv > 0 ? Math.round(fv / fTot * 100) + '%' : '—');
-    set('del-r-' + n, rv > 0 ? Math.round(rv / rTot * 100) + '%' : '—');
-  });
-
-  // Dupe chart
-  dupeChart.data.datasets[0].data = [f.dupes, f.gaps];
-  dupeChart.data.datasets[1].data = [r.dupes, r.gaps];
-  dupeChart.update();
-
-  // Sidebar device bars
-  const at = data.allTime;
-  const atMax = Math.max(...ALL_NODES.map(n => at.perNode[n] || 0), 1);
-  ALL_NODES.forEach(n => {
-    setBar('tbar-' + n, (at.perNode[n] || 0) / atMax * 100);
-    set('dpkts-' + n, at.perNode[n] || 0);
-  });
-
-  // Restore timer if server has an active run that browser doesn't know about
-  // (e.g. page was reloaded mid-run)
-  if (data.activeRun && data.activeRun !== activeRun) {
-    const runInfo = data[data.activeRun];
-    if (runInfo && runInfo.startTime && !runTimerIv) {
-      activeRun = data.activeRun;
-      runStartMs[data.activeRun] = runInfo.startTime;
-      document.getElementById('stop-btn').style.display = 'block';
-      document.getElementById('status-' + data.activeRun).textContent = 'Running…';
-      document.getElementById('timer-' + data.activeRun).className =
-        'run-timer ' + (data.activeRun === 'flooding' ? 'flood' : 'route');
-      _startTimerInterval(data.activeRun);
-    }
-  }
-
-  applyMode(data.currentMode);
-});
-
-// ── mqtt_message ──────────────────────────────────────────────────────────
-socket.on('mqtt_message', (data) => {
-  const { topic, message: msg, time, node, seq, isDupe, gap, isCmd, mode } = data;
-
-  if (isCmd) {
-    addFeed(time, topic, msg, 'cmd');
-    return;
-  }
-
-  // Determine node bucket
-  const isA02  = node === 'arduino-02';
-  const isA03  = node === 'arduino-03';
-  const isA04  = node === 'arduino-04';
-  const isA05  = node === 'arduino-05';
-  const isPico = node && node.startsWith('pico');
-  const bkt    = isA02 ? 'a02' : isA03 ? 'a03' : isA04 ? 'a04' : isA05 ? 'a05' : isPico ? 'pico' : null;
-
-  // Update device status
-  if (bkt) {
-    const dot   = document.getElementById('dot-' + bkt);
-    const devEl = document.getElementById('dev-' + bkt);
-    if (dot)   { dot.className   = 'dev-dot on'; }
-    if (devEl) { devEl.className = 'dev online'; }
-    const lastEl = document.getElementById('dlast-' + bkt);
-    if (lastEl) lastEl.textContent = time;
-  }
-
-  // Sensor chart: seq number over time
-  const lbl = time;
-  if (seq !== null && (isA02 || isA03 || isA04 || isA05)) {
-    sensorChart.data.labels.push(lbl);
-    sensorChart.data.datasets[0].data.push(isA02 ? seq : null);
-    sensorChart.data.datasets[1].data.push(isA03 ? seq : null);
-    sensorChart.data.datasets[2].data.push(isA04 ? seq : null);
-    sensorChart.data.datasets[3].data.push(isA05 ? seq : null);
-    if (sensorChart.data.labels.length > MAXPTS) {
-      sensorChart.data.labels.shift();
-      sensorChart.data.datasets.forEach(d => d.data.shift());
-    }
-    sensorChart.update();
-  }
-
-  // Interval chart
-  const now = Date.now();
-  if (activeRun && lastMsgTime[activeRun] !== null) {
-    const intv = (now - lastMsgTime[activeRun]) / 1000;
-    if (intv < 60) {  // sanity cap
-      const d0 = activeRun === 'flooding' ? intv : null;
-      const d1 = activeRun === 'routing'  ? intv : null;
-      pushChart(intChart, time, d0, d1);
-    }
-  }
-  if (activeRun) lastMsgTime[activeRun] = now;
-
-  // Rate buckets
-  if (mode === 'flooding') bucketFlood++;
-  else if (mode === 'routing') bucketRoute++;
-
-  // Events tab
-  addEvent(time, node, topic, seq, isDupe, gap, mode);
-
-  // Live feed
-  const feedClass = isDupe ? 'dupe' : mode === 'flooding' ? 'flood' : 'route';
-  const metaTxt   = isDupe ? '⚠ DUPLICATE forward' : gap > 0 ? `⚠ GAP: ${gap} pkt(s) lost` : '';
-  addFeed(time, topic, msg, feedClass, mode ? mode.toUpperCase() : '', metaTxt);
-
-  // Arduino / pico lists
-  const listId = isPico ? 'list-pico' : 'list-arduino';
-  addMsgRow(listId, time, topic, msg);
-});
-
-// ── Rate chart flush ──────────────────────────────────────────────────────
-setInterval(() => {
-  const lbl = new Date().toLocaleTimeString('en-GB');
-  pushChart(rateChart, lbl, bucketFlood, bucketRoute);
-  bucketFlood = 0; bucketRoute = 0;
-}, 10000);
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-function set(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-function setBar(id, pct) {
-  const el = document.getElementById(id);
-  if (el) el.style.width = Math.min(100, pct) + '%';
-}
-function fmtDur(ms) {
-  if (!ms) return '—';
-  const s = Math.floor(ms / 1000);
-  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
-}
-
-function addFeed(time, topic, msg, cls, meta1='', meta2='') {
-  const feed = document.getElementById('feed');
-  const el   = document.createElement('div');
-  el.className = 'feed-entry ' + cls;
-  el.innerHTML = `<div class="feed-t">${time}</div>`
-               + `<div class="feed-top">${topic}</div>`
-               + `<div class="feed-msg">${msg}</div>`
-               + (meta1 || meta2 ? `<div class="feed-meta">${[meta1,meta2].filter(Boolean).join(' · ')}</div>` : '');
-  // Insert after label
-  const label = feed.querySelector('.feed-label');
-  label ? label.after(el) : feed.prepend(el);
-  if (feed.children.length > 82) feed.lastChild.remove();
-}
-
-function addEvent(time, node, topic, seq, isDupe, gap, mode) {
-  const log = document.getElementById('evt-log');
-  const el  = document.createElement('div');
-  el.className = 'evt';
-  const badgeClass = isDupe ? 'dupe' : gap > 0 ? 'gap' : 'ok';
-  const badgeTxt   = isDupe ? 'DUPE' : gap > 0 ? `GAP+${gap}` : 'OK';
-  const modeBadge  = `<span class="badge ${mode === 'flooding' ? 'f' : 'r'}">${mode === 'flooding' ? '⊕' : '⇢'}</span>`;
-  el.innerHTML = `<span class="evt-time">${time}</span>`
-               + `<span class="evt-node">${node || '—'}</span>`
-               + `<span class="evt-topic">${topic}</span>`
-               + `<span class="evt-seq">seq ${seq !== null ? seq : '—'}</span>`
-               + `<span class="badge ${badgeClass}">${badgeTxt}</span>`;
-  log.prepend(el);
-  if (log.children.length > 80) log.lastChild.remove();
-}
-
-function addMsgRow(listId, time, topic, msg) {
-  const list = document.getElementById(listId);
-  const el   = document.createElement('div');
-  el.className = 'msg-row';
-  el.innerHTML = `<span class="msg-t">${time}</span><span class="msg-top">${topic}</span><span class="msg-val">${msg}</span>`;
-  list.prepend(el);
-  if (list.children.length > 50) list.lastChild.remove();
-}
-
-function sendCmd(msg) {
-  fetch('/cmd/' + encodeURIComponent(msg));
-  addFeed(new Date().toLocaleTimeString('en-GB'), 'sensors/cmd', '→ ' + msg, 'cmd');
-}
-
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
-  btn.classList.add('on');
-  document.getElementById('pane-' + name).classList.add('on');
-}
-</script>
 </body>
+
 </html>

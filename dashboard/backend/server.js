@@ -29,7 +29,7 @@ const server = http.createServer(app);
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("../frontend"));
+app.use(express.static(require("path").join(__dirname, "../frontend")));
 
 const io = socketIo(server, { cors: { origin: "*" } });
 
@@ -302,11 +302,48 @@ app.get("/reset", (_req, res) => {
     res.json({ ok: true });
 });
 
+// GET /cmd/qos0?topic=sensors/cmd&message=led+on  (QoS 0, topic-aware)
+app.get("/cmd/qos0", (req, res) => {
+    const topic = req.query.topic || "sensors/cmd";
+    const message = req.query.message || "";
+    if (!["sensors/cmd", "sensors/arduino/cmd", "sensors/pico/cmd"].includes(topic))
+        return res.status(400).json({ error: "Invalid topic" });
+    mqttClient.publish(topic, message, { qos: 0 });
+    console.log(`[CMD QoS0] ${topic} : ${message}`);
+    io.emit("mqtt_message", {
+        topic, message,
+        time: new Date().toLocaleTimeString("en-GB"),
+        isCmd: true, mode: currentMode
+    });
+    res.json({ ok: true, topic, message, qos: 0 });
+});
+
 app.get("/cmd/:msg", (req, res) => {
     const msg = decodeURIComponent(req.params.msg);
     mqttClient.publish("sensors/cmd", msg);
     console.log(`[CMD] ${msg}`);
     res.json({ ok: true, cmd: msg });
+});
+
+// POST /cmd/qos — publish with explicit QoS level (1 or 2)
+// Body: { topic: "sensors/cmd", message: "led on", qos: 1 }
+app.post("/cmd/qos", (req, res) => {
+    const { topic = "sensors/cmd", message, qos } = req.body;
+    if (!message) return res.status(400).json({ error: "message required" });
+    const q = [0, 1, 2].includes(Number(qos)) ? Number(qos) : 0;
+    mqttClient.publish(topic, message, { qos: q }, (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        console.log(`[CMD QoS${q}] ${topic} : ${message}`);
+        // Echo to all websocket clients so the feed updates
+        io.emit("mqtt_message", {
+            topic,
+            message,
+            time: new Date().toLocaleTimeString("en-GB"),
+            isCmd: true,
+            mode: currentMode
+        });
+        res.json({ ok: true, topic, message, qos: q });
+    });
 });
 
 app.get("/export", (_req, res) => {
