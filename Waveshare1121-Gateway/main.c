@@ -48,7 +48,7 @@
 #define GW_PAYLOAD_MAX 255
 #define RX_CONTINUOUS 0xFFFFFF
 #define DN_SPACING_US                                                                              \
-    150000ULL /* 150ms — covers full LoRa airtime (~65ms) plus relay forwarding margin */
+    400000ULL /* 400ms — full LoRa RTT: airtime(65ms) + relay(65ms) + node processing + margin */
 
 /* RadioHead header layout */
 #define RH_TO 0
