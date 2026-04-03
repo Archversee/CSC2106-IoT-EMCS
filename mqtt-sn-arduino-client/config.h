@@ -5,7 +5,6 @@
 
 /* 1. SELECT NODE */
 #define NODE_SELECT 4
-
 /* 2. SELECT MODE */
 #define MESH_MODE_FLOODING 0
 #define MESH_MODE_ROUTING 1

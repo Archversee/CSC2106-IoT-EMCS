@@ -32,9 +32,11 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "aes_payload.h"
 #include "lr1121_config.h"
 #include "mesh_protocol.h"
 #include "wavesahre_lora_1121.h"
+#include <openssl/evp.h>
 
 /* Configuration */
 #define PAHO_GW_IP "127.0.0.1"
@@ -45,7 +47,8 @@
 #define CLIENT_TIMEOUT_S 300
 #define GW_PAYLOAD_MAX 255
 #define RX_CONTINUOUS 0xFFFFFF
-#define DN_SPACING_US 800000ULL
+#define DN_SPACING_US                                                                              \
+    150000ULL /* 150ms — covers full LoRa airtime (~65ms) plus relay forwarding margin */
 
 /* RadioHead header layout */
 #define RH_TO 0
@@ -127,6 +130,63 @@ static void print_ts(void) {
         printf(fmt "\n", ##__VA_ARGS__);                                                           \
         fflush(stdout);                                                                            \
     } while (0)
+
+/* ── AES-128 ECB helpers (OpenSSL EVP) — matches Arduino inline AES ──────── */
+
+static uint8_t gw_aes_decrypt(const uint8_t *enc, uint8_t enc_len, uint8_t *out, uint8_t out_max) {
+    if (enc_len == 0 || enc_len % 16 != 0) {
+        LOG("[aes] decrypt: bad length %d", enc_len);
+        return 0;
+    }
+    int out_len1 = 0, out_len2 = 0;
+    uint8_t tmp[256];
+    if (enc_len > sizeof(tmp)) {
+        LOG("[aes] decrypt: too large");
+        return 0;
+    }
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, AES_SHARED_KEY, NULL);
+    EVP_CIPHER_CTX_set_padding(ctx, 0); /* manual PKCS#7 */
+    EVP_DecryptUpdate(ctx, tmp, &out_len1, enc, enc_len);
+    EVP_DecryptFinal_ex(ctx, tmp + out_len1, &out_len2);
+    EVP_CIPHER_CTX_free(ctx);
+
+    uint8_t pad = tmp[enc_len - 1];
+    if (pad == 0 || pad > 16) {
+        LOG("[aes] decrypt: bad pad 0x%02X", pad);
+        return 0;
+    }
+    uint8_t plain_len = enc_len - pad;
+    if (plain_len > out_max) {
+        LOG("[aes] decrypt: output too large");
+        return 0;
+    }
+    memcpy(out, tmp, plain_len);
+    return plain_len;
+}
+
+static uint8_t gw_aes_encrypt(const uint8_t *src, uint8_t len, uint8_t *dst, uint8_t dst_max) {
+    uint8_t pad = 16 - (len % 16);
+    uint8_t enc_len = len + pad;
+    if (enc_len > dst_max) {
+        LOG("[aes] encrypt: output too large");
+        return 0;
+    }
+
+    uint8_t tmp[256];
+    memcpy(tmp, src, len);
+    memset(tmp + len, pad, pad); /* PKCS#7 */
+
+    int out_len1 = 0, out_len2 = 0;
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, AES_SHARED_KEY, NULL);
+    EVP_CIPHER_CTX_set_padding(ctx, 0); /* manual PKCS#7 */
+    EVP_EncryptUpdate(ctx, dst, &out_len1, tmp, enc_len);
+    EVP_EncryptFinal_ex(ctx, dst + out_len1, &out_len2);
+    EVP_CIPHER_CTX_free(ctx);
+    return enc_len;
+}
 
 /* ISR / signal */
 static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
@@ -244,19 +304,28 @@ static void expire_clients(void) {
  */
 static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payload,
                      uint8_t mqttsn_len) {
-    if (mqttsn_len + FRAME_HDR_TOTAL > GW_PAYLOAD_MAX) {
-        LOG("[tx] Payload too large (%d bytes), dropping", mqttsn_len);
+    /* Encrypt MQTT-SN payload before wrapping in mesh frame */
+    uint8_t enc_buf[GW_PAYLOAD_MAX];
+    uint8_t enc_len = gw_aes_encrypt(mqttsn_payload, mqttsn_len, enc_buf, sizeof(enc_buf));
+    if (enc_len == 0) {
+        LOG("[aes] encrypt failed for dst=0x%02X, dropping", dst_node);
+        return -1;
+    }
+    LOG("[aes] enc ok plain=%dB enc=%dB", mqttsn_len, enc_len);
+
+    if (enc_len + FRAME_HDR_TOTAL > GW_PAYLOAD_MAX) {
+        LOG("[tx] Encrypted payload too large (%d bytes), dropping", enc_len);
         return -1;
     }
 
-    /* Build mesh header */
+    /* Build mesh header using encrypted payload */
     mesh_packet_t mesh_pkt;
     mesh_pkt.src_id = MESH_ADDR_GATEWAY;
     mesh_pkt.dst_id = dst_node;
     mesh_pkt.ttl = MESH_TTL_DEFAULT;
     mesh_pkt.seq_num = seq;
-    mesh_pkt.payload_len = mqttsn_len;
-    memcpy(mesh_pkt.payload, mqttsn_payload, mqttsn_len);
+    mesh_pkt.payload_len = enc_len;
+    memcpy(mesh_pkt.payload, enc_buf, enc_len);
 
     /* Encode mesh header + payload */
     uint8_t mesh_buf[GW_PAYLOAD_MAX];
@@ -319,8 +388,8 @@ static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payloa
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 
     pkt_tx_count++;
-    LOG("[tx] %dB -> node=0x%02X seq=%d (rh=%dB mesh=%dB mqttsn=%dB)", total, dst_node, seq, RH_HDR,
-        MESH_HEADER_SIZE, mqttsn_len);
+    LOG("[tx] %dB -> node=0x%02X seq=%d (rh=%dB mesh=%dB mqttsn=%dB enc=%dB)", total, dst_node, seq,
+        RH_HDR, MESH_HEADER_SIZE, mqttsn_len, enc_len);
     return 0;
 }
 
@@ -398,23 +467,32 @@ static void on_rx_done(void) {
         return;
     }
 
-    /* Gateway dedup: drop if already forwarded this (src, seq) */
+    /* Decrypt first so we can identify CONNECT before dedup check */
+    uint8_t plain_buf[GW_PAYLOAD_MAX];
+    uint8_t plain_len = gw_aes_decrypt(pkt.payload, pkt.payload_len, plain_buf, sizeof(plain_buf));
+    if (plain_len == 0) {
+        LOG("[aes] decrypt failed for src=0x%02X, dropping", pkt.src_id);
+        return;
+    }
+
+    bool is_connect = (plain_len >= 2 && plain_buf[1] == 0x04);
+
+    /* If this is a CONNECT, clear stale dedup entries so reconnect isn't dropped */
+    if (is_connect) {
+        gw_dedup_clear_src(pkt.src_id);
+        LOG("[rx] CONNECT from src=0x%02X — cleared dedup cache", pkt.src_id);
+    }
+
+    /* Gateway dedup: drop duplicate uplinks (after CONNECT clears cache) */
     if (gw_dedup_seen(pkt.src_id, pkt.seq_num)) {
-        LOG("[rx] dedup hit src=0x%02X seq=%d, dropping duplicate uplink", pkt.src_id, pkt.seq_num);
+        LOG("[rx] dedup hit src=0x%02X seq=%d, dropping", pkt.src_id, pkt.seq_num);
         return;
     }
     gw_dedup_add(pkt.src_id, pkt.seq_num);
 
-    /* Debug: raw MQTT-SN bytes */
-    // printf("  MQTT-SN (%dB): ", pkt.payload_len);
-    // for (int i = 0; i < pkt.payload_len; i++)
-    //     printf("%02X ", pkt.payload[i]);
-    // printf("\n");
-    // fflush(stdout);
-
     const char *msg_type = "UNKNOWN";
-    if (pkt.payload_len >= 2) {
-        switch (pkt.payload[1]) {
+    if (plain_len >= 2) {
+        switch (plain_buf[1]) {
         case 0x04:
             msg_type = "CONNECT";
             break;
@@ -434,13 +512,6 @@ static void on_rx_done(void) {
     }
     LOG("[rx] MQTT-SN type=%s src=0x%02X", msg_type, pkt.src_id);
 
-    bool is_connect = (pkt.payload_len >= 2 && pkt.payload[1] == 0x04);
-
-    if (is_connect) {
-        gw_dedup_clear_src(pkt.src_id); // Allow fresh connection attempt
-        LOG("[rx] CONNECT from src=0x%02X — cleared dedup cache", pkt.src_id);
-    }
-
     /* Forward to Paho, keyed on SRC_ID */
     pthread_mutex_lock(&clients_lock);
     client_t *client = get_or_create_client(pkt.src_id, is_connect);
@@ -453,7 +524,9 @@ static void on_rx_done(void) {
     client->pkt_count++;
     client->hop_total += hops_taken;
 
-    ssize_t sent = sendto(client->udp_sock, pkt.payload, pkt.payload_len, 0,
+    LOG("[aes] dec ok enc=%dB plain=%dB", pkt.payload_len, plain_len);
+
+    ssize_t sent = sendto(client->udp_sock, plain_buf, plain_len, 0,
                           (struct sockaddr *)&client->paho_addr, sizeof(client->paho_addr));
     pthread_mutex_unlock(&clients_lock);
 
@@ -553,21 +626,20 @@ static void *downstream_thread(void *arg) {
         }
         pthread_mutex_unlock(&clients_lock);
 
-        /* Transmit each staged downlink packet with mesh wrapper */
+        /* Transmit each staged downlink packet with mesh wrapper.
+         * We fire packets back-to-back with minimal spacing — the Arduino
+         * nodes use per-node jitter in their TX to avoid uplink collisions. */
         for (int p = 0; p < count; p++) {
             clock_gettime(CLOCK_MONOTONIC, &ts);
             uint64_t now = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
             uint64_t elapsed = now - last_dn_tx_us;
 
-            if (elapsed < DN_SPACING_US) {
-                uint64_t wait = DN_SPACING_US - elapsed;
-                LOG("[dn] Spacing wait %llums", (unsigned long long)(wait / 1000));
-                usleep((useconds_t)wait);
-            }
+            if (elapsed < DN_SPACING_US)
+                usleep((useconds_t)(DN_SPACING_US - elapsed));
 
             pthread_mutex_lock(&radio_lock);
             irq_flag = false;
-            lora_send(d_node[p], d_seq[p], d_data[p], d_len[p]); // ← use d_seq[p]
+            lora_send(d_node[p], d_seq[p], d_data[p], d_len[p]);
             irq_flag = false;
             pthread_mutex_unlock(&radio_lock);
 
