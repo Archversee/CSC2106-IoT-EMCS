@@ -48,7 +48,7 @@
 #define GW_PAYLOAD_MAX 255
 #define RX_CONTINUOUS 0xFFFFFF
 #define DN_SPACING_US                                                                              \
-    400000ULL /* 400ms — full LoRa RTT: airtime(65ms) + relay(65ms) + node processing + margin */
+    150000ULL /* 150ms — covers full LoRa airtime (~65ms) plus relay forwarding margin */
 
 /* RadioHead header layout */
 #define RH_TO 0
@@ -131,7 +131,7 @@ static void print_ts(void) {
         fflush(stdout);                                                                            \
     } while (0)
 
-/* AES-128 ECB helpers (OpenSSL EVP) - matches Arduino inline AES */
+/* ── AES-128 ECB helpers (OpenSSL EVP) — matches Arduino inline AES ──────── */
 
 static uint8_t gw_aes_decrypt(const uint8_t *enc, uint8_t enc_len, uint8_t *out, uint8_t out_max) {
     if (enc_len == 0 || enc_len % 16 != 0) {
@@ -627,7 +627,7 @@ static void *downstream_thread(void *arg) {
         pthread_mutex_unlock(&clients_lock);
 
         /* Transmit each staged downlink packet with mesh wrapper.
-         * We fire packets back-to-back with minimal spacing as the Arduino
+         * We fire packets back-to-back with minimal spacing — the Arduino
          * nodes use per-node jitter in their TX to avoid uplink collisions. */
         for (int p = 0; p < count; p++) {
             clock_gettime(CLOCK_MONOTONIC, &ts);

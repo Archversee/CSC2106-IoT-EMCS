@@ -3,7 +3,7 @@
  *   Routing  : unicast to specific next hop, less air time, no duplicates
  *
  *   AES-128 ECB encryption on MQTT-SN payload.
- *   No external AES library, tiny inline implementation saves ~600B RAM.
+ *   No external AES library — tiny inline implementation saves ~600B RAM.
  *   Relay nodes forward ciphertext unchanged (no decrypt needed).
  */
 
@@ -31,7 +31,7 @@ static int16_t s_last_rssi = 0;
 static uint8_t s_seq_num = 0;
 static uint8_t s_last_hop_count = 0;
 
-/* Tiny AES-128 ECB - correct column-major state layout */
+/* ── Tiny AES-128 ECB — correct column-major state layout ───────────────── */
 /* S-box and rcon in flash (PROGMEM) to save RAM */
 static const uint8_t PROGMEM sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -73,7 +73,7 @@ static const uint8_t PROGMEM rcon[10] = {0x01, 0x02, 0x04, 0x08, 0x10,
 #define RSB(x) pgm_read_byte(&rsbox[(x)])
 #define RC(i) pgm_read_byte(&rcon[(i)])
 
-/* Round keys - 176 bytes static */
+/* Round keys — 176 bytes static */
 static uint8_t s_rk[176];
 static bool s_rk_ready = false;
 
@@ -201,7 +201,7 @@ static void aes_decrypt_block(uint8_t *blk) {
     memcpy(blk, s_st, 16);
 }
 
-/* AES encrypt/decrypt payload (ECB, PKCS#7) */
+/* ── AES encrypt/decrypt payload (ECB, PKCS#7) ──────────────────────────── */
 
 static uint8_t aes_encrypt_payload(const uint8_t *src, uint8_t len, uint8_t *dst, uint8_t dst_max) {
     uint8_t pad = 16 - (len % 16);
@@ -227,7 +227,7 @@ static uint8_t aes_decrypt_payload(const uint8_t *src, uint8_t len, uint8_t *dst
     return len - pad;
 }
 
-/* Dedup cache */
+/* ── Dedup cache ────────────────────────────────────────────────────────── */
 
 typedef struct {
     uint8_t src_id;
@@ -254,7 +254,7 @@ static void dedup_add(uint8_t src, uint8_t seq) {
     s_dedup_head = (s_dedup_head + 1) % MESH_DEDUP_CACHE_SIZE;
 }
 
-/* Routing table lookup */
+/* ── Routing table lookup ───────────────────────────────────────────────── */
 
 static uint8_t mesh_next_hop(uint8_t dst) {
 #if MESH_MODE == MESH_MODE_ROUTING
@@ -265,7 +265,7 @@ static uint8_t mesh_next_hop(uint8_t dst) {
     return dst;
 }
 
-/* Low-level TX */
+/* ── Low-level TX ───────────────────────────────────────────────────────── */
 
 static int radio_tx(const uint8_t *raw, uint8_t raw_len, uint8_t next_hop) {
     if (!raw || raw_len == 0)
@@ -275,8 +275,8 @@ static int radio_tx(const uint8_t *raw, uint8_t raw_len, uint8_t next_hop) {
 
     /*
      * CSMA listen-before-talk window.
-     * Relay: short window, just check channel is clear before forwarding.
-     * Endpoint: short window, per-node jitter in mqttsn_transport_send()
+     * Relay: short window — just check channel is clear before forwarding.
+     * Endpoint: short window — per-node jitter in mqttsn_transport_send()
      *           already staggers multiple nodes; CSMA just catches any
      *           residual activity on the channel.
      */
@@ -317,7 +317,7 @@ static int radio_tx(const uint8_t *raw, uint8_t raw_len, uint8_t next_hop) {
     return ok ? 0 : -1;
 }
 
-/* Init */
+/* ── Init ───────────────────────────────────────────────────────────────── */
 
 void mqttsn_transport_init(void) {
     memset(s_dedup, 0, sizeof(s_dedup));
@@ -375,7 +375,7 @@ void mqttsn_transport_init(void) {
     s_rf95.setModeRx();
 }
 
-/* Send (encrypt payload before transmitting) */
+/* ── Send (encrypt payload before transmitting) ─────────────────────────── */
 
 int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     if (!buf || len == 0)
@@ -387,13 +387,14 @@ int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
      * they'd all respond simultaneously without this stagger.
      * Node 0x22 → (2 × 10) = 20ms
      * Node 0x24 → (4 × 10) = 40ms
-     * Relay nodes (0x23) skip this, they just forward, not respond.
+     * Node 0x25 → (5 × 10) = 50ms
+     * Relay nodes (0x23) skip this — they just forward, not respond.
      */
 #if MY_NODE_ROLE != NODE_ROLE_RELAY
     delay((uint32_t)(LORA_MY_NODE_ID & 0x0F) * 10);
 #endif
 
-    /* Encrypt MQTT-SN payload into static buffer, no stack allocation */
+    /* Encrypt MQTT-SN payload into static buffer — no stack allocation */
     uint8_t enc_len = aes_encrypt_payload(buf, len, s_enc_buf, sizeof(s_enc_buf));
     if (enc_len == 0)
         return -1;
@@ -424,33 +425,7 @@ int mqttsn_transport_send(const uint8_t *buf, uint8_t len) {
     return rc;
 }
 
-/* Send ACK fast-path (no node jitter we try to make sure ACKs must be sent promptly) */
-
-int mqttsn_transport_send_ack(const uint8_t *buf, uint8_t len) {
-    if (!buf || len == 0)
-        return -1;
-
-    uint8_t enc_len = aes_encrypt_payload(buf, len, s_enc_buf, sizeof(s_enc_buf));
-    if (enc_len == 0)
-        return -1;
-
-    if ((uint8_t)(MESH_HEADER_SIZE + enc_len) > LORA_BUF_SIZE)
-        return -1;
-
-    s_seq_num++;
-    dedup_add(LORA_MY_NODE_ID, s_seq_num);
-
-    uint8_t next_hop = mesh_next_hop(MESH_ADDR_GATEWAY);
-    s_tx_buf[MESH_OFF_SRC] = LORA_MY_NODE_ID;
-    s_tx_buf[MESH_OFF_DST] = MESH_ADDR_GATEWAY;
-    s_tx_buf[MESH_OFF_TTL] = MESH_TTL_DEFAULT;
-    s_tx_buf[MESH_OFF_SEQ] = s_seq_num;
-    memcpy(s_tx_buf + MESH_HEADER_SIZE, s_enc_buf, enc_len);
-
-    int rc = radio_tx(s_tx_buf, MESH_HEADER_SIZE + enc_len, next_hop);
-    s_rf95.setModeRx();
-    return rc;
-}
+/* ── Receive (decrypt payload after mesh header stripped) ───────────────── */
 
 uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_ms) {
     if (!buf)

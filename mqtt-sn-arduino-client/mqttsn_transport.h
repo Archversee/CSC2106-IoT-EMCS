@@ -12,9 +12,6 @@ extern "C" {
 // Send raw MQTT-SN bytes. Replaces udp_sendto().
 int mqttsn_transport_send(const uint8_t *buf, uint8_t len);
 
-// Fast-path for ACK packets (PUBACK, PUBREC, PUBCOMP) — skips node jitter delay.
-int mqttsn_transport_send_ack(const uint8_t *buf, uint8_t len);
-
 // Non-blocking receive.
 uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_ms);
 
