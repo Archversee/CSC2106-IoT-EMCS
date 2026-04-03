@@ -1,24 +1,10 @@
-/**
- * handlers.js — Socket event handlers for run_update and mqtt_message
- * Depends on: socket.js, charts.js, ui.js, topics.js
- *
- * Node roles:
- *   a02, a04       — endpoint arduinos (connect to broker, appear in sidebar)
- *   a03, a05       — relay-only arduinos (never connect to broker; their names
- *                    can still appear as the `node` field in forwarded payloads)
- *   pico           — Pico W endpoint
- *
- * Sidebar devices show endpoint nodes only (a02, a04, pico).
- * Charts, event log, feed, and Arduino tab show ALL nodes.
- */
-
 // Nodes that have sidebar device cards + traffic bars
 const SIDEBAR_NODES = ['a02', 'a04', 'pico'];
 
 // Nodes tracked in the compare tab per-node section
 const ENDPOINT_NODES = ['a02', 'a04', 'pico'];
 
-// ── Node name → bucket key ────────────────────────────────────────────────
+// Node name → bucket key
 function nodeToBkt(node) {
     if (!node) return null;
     if (node === 'arduino-02') return 'a02';
@@ -29,7 +15,7 @@ function nodeToBkt(node) {
     return null;
 }
 
-// ── run_update ────────────────────────────────────────────────────────────
+// run_update 
 socket.on('run_update', (data) => {
     const f = data.flooding, r = data.routing;
 
@@ -100,7 +86,7 @@ socket.on('run_update', (data) => {
     applyMode(data.currentMode);
 });
 
-// ── mqtt_message ──────────────────────────────────────────────────────────
+// mqtt_message 
 socket.on('mqtt_message', (data) => {
     const { topic, message: msg, time, node, seq, isDupe, gap, isCmd, mode } = data;
 
@@ -115,7 +101,7 @@ socket.on('mqtt_message', (data) => {
     const bkt = nodeToBkt(node);
     const isPico = bkt === 'pico';
 
-    // Update sidebar device status — only nodes that have a card
+    // Update sidebar device status - only nodes that have a card
     if (SIDEBAR_NODES.includes(bkt)) {
         const dot = document.getElementById('dot-' + bkt);
         const devEl = document.getElementById('dev-' + bkt);
@@ -125,7 +111,7 @@ socket.on('mqtt_message', (data) => {
         if (lastEl) lastEl.textContent = time;
     }
 
-    // Sensor chart — datasets: [a02, a04, pico] (matches charts.js order)
+    // Sensor chart - datasets: [a02, a04, pico] (matches charts.js order)
     if (seq !== null && bkt) {
         sensorChart.data.labels.push(time);
         sensorChart.data.datasets[0].data.push(bkt === 'a02' ? seq : null);
@@ -155,14 +141,14 @@ socket.on('mqtt_message', (data) => {
     if (mode === 'flooding') bucketFlood++;
     else if (mode === 'routing') bucketRoute++;
 
-    // Events tab — all nodes
+    // Events tab - all nodes
     addEvent(time, node, topic, seq, isDupe, gap, mode);
 
-    // Live feed — all nodes
+    // Live feed - all nodes
     const feedClass = isDupe ? 'dupe' : mode === 'flooding' ? 'flood' : 'route';
     const metaTxt = isDupe ? '⚠ DUPLICATE forward' : gap > 0 ? `⚠ GAP: ${gap} pkt(s) lost` : '';
     addFeed(time, topic, msg, feedClass, mode ? mode.toUpperCase() : '', metaTxt);
 
-    // Arduino / Pico message list tabs — all nodes
+    // Arduino / Pico message list tabs - all nodes
     addMsgRow(isPico ? 'list-pico' : 'list-arduino', time, topic, msg);
 });

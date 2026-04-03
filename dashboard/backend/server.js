@@ -3,13 +3,11 @@
 /**
  * server.js — CSC2106 IoT Dashboard Backend
  *
- * Real MQTT message format (confirmed from lora_singlehop CSV):
  *   topic:   sensors/arduino/data   payload: "arduino-02 <N>"  (QoS0, 3x per cycle)
  *   topic:   sensors/data           payload: "arduino-02 <N>"  (QoS1, 1x per cycle)
  *   topic:   sensors/pico/data      payload: "pico_w_iot <N>"
  *   topic:   sensors/cmd            (commands to nodes)
- *
- * What we derive from MQTT alone (no gateway changes needed):
+
  *   - forwarding mode label  (set by operator before each run)
  *   - seq gaps  → lost packets → delivery rate per node
  *   - seq dupes → duplicate forwards (flooding artifact)
@@ -33,7 +31,7 @@ app.use(express.static(require("path").join(__dirname, "../frontend")));
 
 const io = socketIo(server, { cors: { origin: "*" } });
 
-// ── MQTT ──────────────────────────────────────────────────────────────────
+// MQTT
 const MQTT_BROKER = "mqtt://172.20.10.13:1883"; // "mqtt://localhost:1883" if running locally
 const mqttClient = mqtt.connect(MQTT_BROKER, {
     clientId: "csc2106_dashboard_" + Math.random().toString(16).slice(2, 8),
@@ -50,8 +48,7 @@ mqttClient.on("connect", () => {
 mqttClient.on("error", (e) => console.error("[MQTT] Error:", e.message));
 mqttClient.on("reconnect", () => console.log("[MQTT] Reconnecting..."));
 
-// ── Payload parser ────────────────────────────────────────────────────────
-// "arduino-02 5"  →  { node: "arduino-02", seq: 5 }
+// Payload parser 
 function parsePayload(raw) {
     const parts = raw.trim().split(/\s+/);
     const node = parts[0] || "";
@@ -69,7 +66,7 @@ function bucket(node) {
     return null;
 }
 
-// ── Per-run state ─────────────────────────────────────────────────────────
+// Per-run state 
 function freshRun(mode) {
     return {
         mode,
@@ -96,10 +93,7 @@ const runs = {
 
 const allTime = { total: 0, perNode: { a02: 0, a03: 0, a04: 0, a05: 0, pico: 0 } };
 
-// ── Sequence gap/dupe detection ───────────────────────────────────────────
-// Key is "topic::node" so each node's counter is tracked independently.
-// arduino-02 and arduino-03 both publish to sensors/arduino/data with their
-// own counters starting from 1 — without the node key they look like dupes.
+// Sequence gap/dupe detection
 function trackSeq(run, topic, node, seq) {
     if (seq === null) return { isDupe: false, gap: 0 };
 
@@ -124,7 +118,7 @@ function trackSeq(run, topic, node, seq) {
     return { isDupe: false, gap };
 }
 
-// ── Summary builder ───────────────────────────────────────────────────────
+// Summary builder
 function buildSummary(mode) {
     const r = runs[mode];
 
@@ -172,7 +166,7 @@ function broadcastUpdate() {
     });
 }
 
-// ── MQTT incoming ─────────────────────────────────────────────────────────
+// MQTT incoming
 mqttClient.on("message", (topic, message) => {
     const raw = message.toString().trim();
     const time = new Date().toLocaleTimeString("en-GB");
@@ -215,7 +209,7 @@ mqttClient.on("message", (topic, message) => {
     });
 });
 
-// ── WebSocket ─────────────────────────────────────────────────────────────
+// WebSocket 
 io.on("connection", (socket) => {
     console.log("[WS] Client connected");
     socket.emit("mode_change", { mode: currentMode });
@@ -227,7 +221,7 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => console.log("[WS] Client disconnected"));
 });
 
-// ── REST API ──────────────────────────────────────────────────────────────
+// REST API 
 
 app.get("/mode/:mode", (req, res) => {
     const mode = req.params.mode;
@@ -363,7 +357,7 @@ app.get("/health", (_req, res) => res.json({
     currentMode, activeRun, uptime: process.uptime()
 }));
 
-// ── Start ─────────────────────────────────────────────────────────────────
+// Start 
 server.listen(3000, () => {
     console.log("\n[SERVER] http://localhost:3000");
     console.log("  GET /mode/flooding|routing      set mode label");

@@ -1,8 +1,3 @@
-/**
- * charts.js — Chart.js instances and chart helpers
- * Depends on: socket.js (for shared state refs)
- */
-
 const MAXPTS = 25;
 
 const chartCfg = (datasets) => ({
@@ -29,7 +24,7 @@ const chartCfg = (datasets) => ({
     }
 });
 
-// Sequence chart — endpoint nodes only (a02, a04, pico)
+// Sequence chart - endpoint nodes only (a02, a04, pico)
 const sensorChart = new Chart(
     document.getElementById('sensorChart').getContext('2d'),
     chartCfg([
@@ -87,7 +82,7 @@ function pushChart(ch, lbl, ...datasetVals) {
     ch.update();
 }
 
-// Rate flush — every 10 s
+// Rate flush - every 10 s
 setInterval(() => {
     const lbl = new Date().toLocaleTimeString('en-GB');
     pushChart(rateChart, lbl, bucketFlood, bucketRoute);

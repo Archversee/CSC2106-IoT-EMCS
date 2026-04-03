@@ -1,7 +1,5 @@
 /**
- * topics.js — Topics tab: per-topic message streams
- *
- * Tracked topics (matching mosquitto_sub from your README):
+ * Tracked topics:
  *   sensors/data          — all nodes
  *   sensors/arduino/data  — arduino only
  *   sensors/pico/data     — pico only
@@ -21,7 +19,7 @@ TOPICS.forEach(t => { topicStore[t.id] = []; });
 
 let activeTopicId = 'all';
 
-// ── Incoming messages → store ─────────────────────────────────────────────
+// Incoming messages → store
 function topicsIngest(topic, msg, time) {
   const match = TOPICS.find(t => t.topic === topic);
   if (!match) return;
@@ -50,7 +48,7 @@ function prependTopicMsg(topicId, time, msg) {
   if (stream.children.length > 60) stream.lastChild.remove();
 }
 
-// ── Switch active topic tab ───────────────────────────────────────────────
+// Switch active topic tab
 function switchTopicTab(topicId) {
   activeTopicId = topicId;
 
@@ -70,7 +68,7 @@ function switchTopicTab(topicId) {
   });
 }
 
-// ── Build the topics pane DOM ─────────────────────────────────────────────
+// Build the topics pane DOM
 function buildTopicsPane() {
   const pane = document.getElementById('pane-topics');
   if (!pane) return;
@@ -134,5 +132,5 @@ function switchTopicTab(topicId) {
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
+// Init
 document.addEventListener('DOMContentLoaded', buildTopicsPane);

@@ -1,8 +1,4 @@
-/**
- * ui.js — DOM helpers, feed, event log, message rows, tab switching
- */
-
-// ── Generic DOM helpers ───────────────────────────────────────────────────
+// Generic DOM helpers
 function set(id, val) {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
@@ -19,7 +15,7 @@ function fmtDur(ms) {
     return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 }
 
-// ── Live feed ─────────────────────────────────────────────────────────────
+// Live feed
 function addFeed(time, topic, msg, cls, meta1 = '', meta2 = '') {
     const feed = document.getElementById('feed');
     const el = document.createElement('div');
@@ -33,7 +29,7 @@ function addFeed(time, topic, msg, cls, meta1 = '', meta2 = '') {
     if (feed.children.length > 82) feed.lastChild.remove();
 }
 
-// ── Event log ─────────────────────────────────────────────────────────────
+// Event log
 function addEvent(time, node, topic, seq, isDupe, gap, mode) {
     const log = document.getElementById('evt-log');
     const el = document.createElement('div');
@@ -49,7 +45,7 @@ function addEvent(time, node, topic, seq, isDupe, gap, mode) {
     if (log.children.length > 80) log.lastChild.remove();
 }
 
-// ── Arduino / Pico message rows ───────────────────────────────────────────
+// Arduino / Pico message rows
 function addMsgRow(listId, time, topic, msg) {
     const list = document.getElementById(listId);
     const el = document.createElement('div');
@@ -61,7 +57,7 @@ function addMsgRow(listId, time, topic, msg) {
     if (list.children.length > 50) list.lastChild.remove();
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────
+// Tab switching 
 function switchTab(name, btn) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));

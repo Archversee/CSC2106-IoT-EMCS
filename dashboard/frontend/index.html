@@ -17,7 +17,7 @@
 <body>
   <div class="shell">
 
-    <!-- ── Topbar ─────────────────────────────────────────────────────────── -->
+    <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
         <div class="logo">
@@ -42,10 +42,10 @@
       </div>
     </header>
 
-    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <!-- Body -->
     <div class="body">
 
-      <!-- ── Left sidebar ────────────────────────────────────────────────── -->
+      <!-- Left sidebar -->
       <aside class="sidebar">
 
         <!-- Devices — endpoint nodes only (a03 / a05 are relay-only) -->
@@ -200,7 +200,7 @@
 
       </aside>
 
-      <!-- ── Centre ──────────────────────────────────────────────────────── -->
+      <!-- Centre -->
       <main class="centre">
 
         <!-- Stat bar -->
@@ -249,7 +249,7 @@
 
         <div class="tab-area">
 
-          <!-- ── Compare tab ────────────────────────────────────────────── -->
+          <!-- Compare tab -->
           <div class="tab-pane on" id="pane-compare">
 
             <div class="cmp-cols">
@@ -337,7 +337,7 @@
               </div>
             </div>
 
-            <!-- Delivery cards — endpoint nodes only (3-col) -->
+            <!-- Delivery cards - endpoint nodes only (3-col) -->
             <div class="sec-title" style="margin-bottom:8px;">Delivery success by node</div>
             <div class="del-grid">
               <div class="del-card">
@@ -393,7 +393,7 @@
             </div>
           </div>
 
-          <!-- ── Graph tab ──────────────────────────────────────────────── -->
+          <!-- Graph tab -->
           <div class="tab-pane" id="pane-graph">
             <div class="graph-wrap"><canvas id="sensorChart"></canvas></div>
             <div class="chart-box" style="margin-top:10px;">
@@ -402,30 +402,30 @@
             </div>
           </div>
 
-          <!-- ── Events tab ─────────────────────────────────────────────── -->
+          <!-- Events tab -->
           <div class="tab-pane" id="pane-events">
             <div class="sec-title" style="margin-bottom:8px;">Packet event log (dupes, gaps, normal)</div>
             <div class="evt-log" id="evt-log"></div>
           </div>
 
-          <!-- ── Arduino tab ────────────────────────────────────────────── -->
+          <!-- Arduino tab -->
           <div class="tab-pane" id="pane-arduino">
             <div class="msg-list" id="list-arduino"></div>
           </div>
 
-          <!-- ── Pico tab ───────────────────────────────────────────────── -->
+          <!-- Pico tab -->
           <div class="tab-pane" id="pane-pico">
             <div class="msg-list" id="list-pico"></div>
           </div>
 
-          <!-- ── Topics tab ─────────────────────────────────────────────── -->
+          <!-- Topics tab -->
           <!-- Contents are built dynamically by topics.js -->
           <div class="tab-pane" id="pane-topics"></div>
 
         </div><!-- tab-area -->
       </main>
 
-      <!-- ── Right: live feed ───────────────────────────────────────────── -->
+      <!-- Right: live feed -->
       <aside class="feed-panel" id="feed">
         <div class="feed-label">Live Feed</div>
       </aside>
@@ -433,15 +433,7 @@
     </div><!-- body -->
   </div><!-- shell -->
 
-  <!-- ── Scripts — load order matters ──────────────────────────────────────
-     1. socket.js    — io() + shared state vars
-     2. ui.js        — DOM helpers (addFeed, etc.)
-     3. commands.js  — sendCmd / sendCmdQoS
-     4. charts.js    — Chart instances (needs canvas already in DOM)
-     5. runs.js      — startRun / stopRun / applyMode
-     6. topics.js    — topics pane builder + ingest
-     7. handlers.js  — socket event handlers (uses all of the above)
-  -->
+  <!-- Scripts -->
   <script src="js/socket.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/commands.js"></script>

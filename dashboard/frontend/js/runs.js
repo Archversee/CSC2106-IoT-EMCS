@@ -1,9 +1,4 @@
-/**
- * runs.js — Mode switching + run start/stop controls
- * Depends on: socket.js
- */
-
-// ── Mode ──────────────────────────────────────────────────────────────────
+// Mode
 function setMode(mode) {
     fetch('/mode/' + mode);
     applyMode(mode);
@@ -22,7 +17,7 @@ function applyMode(mode) {
 
 socket.on('mode_change', (data) => applyMode(data.mode));
 
-// ── Run control ───────────────────────────────────────────────────────────
+// Run control
 function startRun(mode) {
     fetch('/run/start/' + mode);
     applyMode(mode);
@@ -64,7 +59,7 @@ function exportData() {
     window.open('/export', '_blank');
 }
 
-// ── Run socket events ─────────────────────────────────────────────────────
+// Run socket events
 socket.on('run_started', (data) => {
     activeRun = data.mode;
     runStartMs[data.mode] = data.startTime;
