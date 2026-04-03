@@ -211,8 +211,15 @@ Build outputs:
 
 #### Step 1: Start MQTT Broker (Mosquitto) (Teminal 1)
 ```bash
-mosquitto -v
+sudo nano /etc/mosquitto/conf.d/local.conf
 
+Add:
+```
+listener 1883
+allow_anonymous true
+```
+
+sudo mosquitto -v -c /etc/mosquitto/conf.d/local.conf
 sudo systemctl stop mosquitto # if mosquitto auto runs on boot and port is in use
 ```
 
@@ -245,6 +252,7 @@ make run
 cd dashboard/backend
 npm install  # First time only
 node server.js
+
 ```
 
 ### Device Setup
@@ -287,7 +295,7 @@ The Pico W firmware runs a FreeRTOS-based MQTT-SN client over Wi-Fi (UDP). Once 
 The Arduino runs an MQTT-SN client over LoRa radio. Packets are forwarded via the `Waveshare1121-Gateway` on the Raspberry Pi, which bridges LoRa → UDP → MQTT-SN Gateway → Mosquitto broker.
 
 THe Arduino LoRa sends
- QoS 1 publish to sensors/data every 30s
+QoS 1 publish to sensors/data every 30s
 QoS 0 publish to sensors/arduino/data every 10s
 Payload: "<client_id> <pub_count>"
 

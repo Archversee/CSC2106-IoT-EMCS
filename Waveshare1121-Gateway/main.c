@@ -46,71 +46,78 @@
 #include <unistd.h>
 
 #include "lr1121_config.h"
-#include "mesh_protocol.h"      /* shared with Arduino nodes */
+#include "mesh_protocol.h" /* shared with Arduino nodes */
 #include "wavesahre_lora_1121.h"
 
 /* ── Configuration ───────────────────────────────────────────────────────── */
-#define PAHO_GW_IP    "127.0.0.1"
-#define PAHO_GW_PORT  10000
+#define PAHO_GW_IP "127.0.0.1"
+#define PAHO_GW_PORT 10000
 
-#define MAX_CLIENTS       30
-#define CLIENT_PORT_BASE  20000
-#define CLIENT_TIMEOUT_S  300
-#define GW_PAYLOAD_MAX    255
-#define RX_CONTINUOUS     0xFFFFFF
-#define DN_SPACING_US     1500000ULL
+#define MAX_CLIENTS 30
+#define CLIENT_PORT_BASE 20000
+#define CLIENT_TIMEOUT_S 300
+#define GW_PAYLOAD_MAX 255
+#define RX_CONTINUOUS 0xFFFFFF
+#define DN_SPACING_US 800000ULL
 
 /* ── RadioHead header layout ─────────────────────────────────────────────── */
-#define RH_TO    0
-#define RH_FROM  1
-#define RH_ID    2
+#define RH_TO 0
+#define RH_FROM 1
+#define RH_ID 2
 #define RH_FLAGS 3
-#define RH_HDR   4
+#define RH_HDR 4
 
 /* Total overhead per outgoing LoRa frame */
-#define FRAME_HDR_TOTAL  (RH_HDR + MESH_HEADER_SIZE)
+#define FRAME_HDR_TOTAL (RH_HDR + MESH_HEADER_SIZE)
 
 /* ── IRQ mask ────────────────────────────────────────────────────────────── */
-#define IRQ_MASK \
-    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | \
-     LR11XX_SYSTEM_IRQ_TIMEOUT | LR11XX_SYSTEM_IRQ_CRC_ERROR | \
-     LR11XX_SYSTEM_IRQ_HEADER_ERROR)
+#define IRQ_MASK                                                                                   \
+    (LR11XX_SYSTEM_IRQ_TX_DONE | LR11XX_SYSTEM_IRQ_RX_DONE | LR11XX_SYSTEM_IRQ_TIMEOUT |           \
+     LR11XX_SYSTEM_IRQ_CRC_ERROR | LR11XX_SYSTEM_IRQ_HEADER_ERROR)
+
+/* ── Range simulation */
+#define SIMULATE_RANGE_LIMIT 1                      /* set to 0 to disable */
+static const uint8_t OUT_OF_RANGE[] = {0x22, 0x24}; /* arduino-02, arduino-04 */
 
 /* ── Per-client state ────────────────────────────────────────────────────── */
 typedef struct {
-    uint8_t  node_id;       /* SRC_ID of the originating end-device          */
-    int      udp_sock;
+    uint8_t node_id; /* SRC_ID of the originating end-device          */
+    int udp_sock;
     uint16_t local_port;
     struct sockaddr_in paho_addr;
-    uint8_t  last_seq;
-    time_t   last_seen;
-    bool     active;
+    uint8_t last_seq;
+    time_t last_seen;
+    bool active;
     /* Performance counters */
     uint32_t pkt_count;
-    uint32_t hop_total;     /* sum of (TTL_DEFAULT - remaining TTL) per pkt  */
+    uint32_t hop_total; /* sum of (TTL_DEFAULT - remaining TTL) per pkt  */
+    uint8_t dn_seq;     // per-client downlink sequence number
 } client_t;
 
-static client_t        clients[MAX_CLIENTS];
+static client_t clients[MAX_CLIENTS];
 static pthread_mutex_t clients_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t radio_lock   = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t radio_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* ── Globals ─────────────────────────────────────────────────────────────── */
 lr1121_t lr1121;
 
-static volatile bool irq_flag     = false;
-static volatile int  running      = 1;
-static volatile int  pkt_rx_count = 0;
-static volatile int  pkt_tx_count = 0;
-static volatile uint8_t dn_seq    = 0;   /* downlink sequence number */
+static volatile bool irq_flag = false;
+static volatile int running = 1;
+static volatile int pkt_rx_count = 0;
+static volatile int pkt_tx_count = 0;
 
 /* ── Gateway-side dedup ───────────────────────────────────────────────────── */
 /* Prevents duplicate uplink packets (flooding sends same pkt via multiple
    paths) from being forwarded to Paho twice, which causes double REGACKs
    that confuse endpoint nodes during topic registration.               */
 #define GW_DEDUP_SIZE 16
-typedef struct { uint8_t src; uint8_t seq; bool valid; } gw_dedup_t;
+typedef struct {
+    uint8_t src;
+    uint8_t seq;
+    bool valid;
+} gw_dedup_t;
 static gw_dedup_t gw_dedup[GW_DEDUP_SIZE];
-static uint8_t    gw_dedup_head = 0;
+static uint8_t gw_dedup_head = 0;
 
 static bool gw_dedup_seen(uint8_t src, uint8_t seq) {
     for (int i = 0; i < GW_DEDUP_SIZE; i++)
@@ -131,35 +138,50 @@ static void print_ts(void) {
     strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm_info);
     printf("[%s] ", ts);
 }
-#define LOG(fmt, ...) \
-    do { print_ts(); printf(fmt "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
+#define LOG(fmt, ...)                                                                              \
+    do {                                                                                           \
+        print_ts();                                                                                \
+        printf(fmt "\n", ##__VA_ARGS__);                                                           \
+        fflush(stdout);                                                                            \
+    } while (0)
 
 /* ── ISR / signal ────────────────────────────────────────────────────────── */
-static void on_rx_timeout(void)   { LOG("[rx] Timeout"); }
+static void on_rx_timeout(void) { LOG("[rx] Timeout"); }
 static void on_rx_crc_error(void) { LOG("[rx] CRC error"); }
 void isr(void) { irq_flag = true; }
-static void on_signal(int sig) { (void)sig; running = 0; }
+static void on_signal(int sig) {
+    (void)sig;
+    running = 0;
+}
 
 /* ── Client registry ─────────────────────────────────────────────────────── */
 
 /* Keyed on mesh SRC_ID (original end-device), not RadioHead FROM.
    Must be called with clients_lock held. */
-static client_t *get_or_create_client(uint8_t src_id) {
+static client_t *get_or_create_client(uint8_t src_id, bool is_connect) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].node_id == src_id) {
+            if (is_connect) {
+                // Fresh connect — reset counters but keep socket
+                clients[i].pkt_count = 0;
+                clients[i].hop_total = 0;
+                clients[i].last_seq = 0;
+                clients[i].dn_seq = 0;
+            }
             clients[i].last_seen = time(NULL);
             return &clients[i];
         }
     }
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active) continue;
+        if (clients[i].active)
+            continue;
 
-        clients[i].node_id    = src_id;
-        clients[i].active     = true;
-        clients[i].last_seen  = time(NULL);
-        clients[i].last_seq   = 0;
-        clients[i].pkt_count  = 0;
-        clients[i].hop_total  = 0;
+        clients[i].node_id = src_id;
+        clients[i].active = true;
+        clients[i].last_seen = time(NULL);
+        clients[i].last_seq = 0;
+        clients[i].pkt_count = 0;
+        clients[i].hop_total = 0;
         clients[i].local_port = (uint16_t)(CLIENT_PORT_BASE + i);
 
         clients[i].udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -172,8 +194,8 @@ static client_t *get_or_create_client(uint8_t src_id) {
         setsockopt(clients[i].udp_sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
         struct sockaddr_in local = {0};
-        local.sin_family      = AF_INET;
-        local.sin_port        = htons(clients[i].local_port);
+        local.sin_family = AF_INET;
+        local.sin_port = htons(clients[i].local_port);
         local.sin_addr.s_addr = INADDR_ANY;
         if (bind(clients[i].udp_sock, (struct sockaddr *)&local, sizeof(local)) < 0) {
             LOG("[client] bind() port %d failed: %s", clients[i].local_port, strerror(errno));
@@ -184,7 +206,7 @@ static client_t *get_or_create_client(uint8_t src_id) {
 
         memset(&clients[i].paho_addr, 0, sizeof(clients[i].paho_addr));
         clients[i].paho_addr.sin_family = AF_INET;
-        clients[i].paho_addr.sin_port   = htons(PAHO_GW_PORT);
+        clients[i].paho_addr.sin_port = htons(PAHO_GW_PORT);
         inet_pton(AF_INET, PAHO_GW_IP, &clients[i].paho_addr.sin_addr);
 
         LOG("[client] New src=0x%02X -> port=%d", src_id, clients[i].local_port);
@@ -197,14 +219,13 @@ static client_t *get_or_create_client(uint8_t src_id) {
 static void expire_clients(void) {
     time_t now = time(NULL);
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (!clients[i].active) continue;
-        if ((now - clients[i].last_seen) < CLIENT_TIMEOUT_S) continue;
-        LOG("[client] Expiring src=0x%02X (idle %lds, pkts=%u, avg_hops=%.2f)",
-            clients[i].node_id,
-            (long)(now - clients[i].last_seen),
-            clients[i].pkt_count,
-            clients[i].pkt_count > 0
-                ? (double)clients[i].hop_total / clients[i].pkt_count : 0.0);
+        if (!clients[i].active)
+            continue;
+        if ((now - clients[i].last_seen) < CLIENT_TIMEOUT_S)
+            continue;
+        LOG("[client] Expiring src=0x%02X (idle %lds, pkts=%u, avg_hops=%.2f)", clients[i].node_id,
+            (long)(now - clients[i].last_seen), clients[i].pkt_count,
+            clients[i].pkt_count > 0 ? (double)clients[i].hop_total / clients[i].pkt_count : 0.0);
         close(clients[i].udp_sock);
         memset(&clients[i], 0, sizeof(clients[i]));
     }
@@ -221,9 +242,8 @@ static void expire_clients(void) {
  *
  * Caller must hold radio_lock; must NOT hold clients_lock.
  */
-static int lora_send(uint8_t dst_node, uint8_t seq,
-                     const uint8_t *mqttsn_payload, uint8_t mqttsn_len)
-{
+static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payload,
+                     uint8_t mqttsn_len) {
     if (mqttsn_len + FRAME_HDR_TOTAL > GW_PAYLOAD_MAX) {
         LOG("[tx] Payload too large (%d bytes), dropping", mqttsn_len);
         return -1;
@@ -231,23 +251,24 @@ static int lora_send(uint8_t dst_node, uint8_t seq,
 
     /* Build mesh header */
     mesh_packet_t mesh_pkt;
-    mesh_pkt.src_id      = MESH_ADDR_GATEWAY;
-    mesh_pkt.dst_id      = dst_node;
-    mesh_pkt.ttl         = MESH_TTL_DEFAULT;
-    mesh_pkt.seq_num     = seq;
+    mesh_pkt.src_id = MESH_ADDR_GATEWAY;
+    mesh_pkt.dst_id = dst_node;
+    mesh_pkt.ttl = MESH_TTL_DEFAULT;
+    mesh_pkt.seq_num = seq;
     mesh_pkt.payload_len = mqttsn_len;
     memcpy(mesh_pkt.payload, mqttsn_payload, mqttsn_len);
 
     /* Encode mesh header + payload */
     uint8_t mesh_buf[GW_PAYLOAD_MAX];
     uint8_t mesh_len = mesh_encode(&mesh_pkt, mesh_buf, sizeof(mesh_buf));
-    if (mesh_len == 0) return -1;
+    if (mesh_len == 0)
+        return -1;
 
     /* Prepend RadioHead header */
     uint8_t frame[GW_PAYLOAD_MAX];
-    frame[RH_TO]    = dst_node;
-    frame[RH_FROM]  = MESH_ADDR_GATEWAY;
-    frame[RH_ID]    = seq;
+    frame[RH_TO] = dst_node;
+    frame[RH_FROM] = MESH_ADDR_GATEWAY;
+    frame[RH_ID] = seq;
     frame[RH_FLAGS] = 0x00;
     memcpy(frame + RH_HDR, mesh_buf, mesh_len);
     uint8_t total = (uint8_t)(RH_HDR + mesh_len);
@@ -256,8 +277,10 @@ static int lora_send(uint8_t dst_node, uint8_t seq,
     lr11xx_system_set_standby(&lr1121, LR11XX_SYSTEM_STANDBY_CFG_RC);
 
     lr11xx_radio_mod_params_lora_t mod = {
-        .sf = LR11XX_RADIO_LORA_SF7, .bw = LR11XX_RADIO_LORA_BW_125,
-        .cr = LR11XX_RADIO_LORA_CR_4_5, .ldro = 0,
+        .sf = LR11XX_RADIO_LORA_SF7,
+        .bw = LR11XX_RADIO_LORA_BW_125,
+        .cr = LR11XX_RADIO_LORA_CR_4_5,
+        .ldro = 0,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_mod_params(&lr1121, &mod));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rf_freq(&lr1121, 915000000UL));
@@ -265,17 +288,20 @@ static int lora_send(uint8_t dst_node, uint8_t seq,
 
     lr11xx_radio_pkt_params_lora_t tx_pkt = {
         .preamble_len_in_symb = 8,
-        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes     = total,
-        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
-        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes = total,
+        .crc = LR11XX_RADIO_LORA_CRC_ON,
+        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &tx_pkt));
     lr11xx_regmem_write_buffer8(&lr1121, frame, total);
     ASSERT_LR11XX_RC(lr11xx_radio_set_tx(&lr1121, 5000));
 
     int waited = 0;
-    while (!irq_flag && waited < 600) { usleep(2000); waited += 2; }
+    while (!irq_flag && waited < 600) {
+        usleep(2000);
+        waited += 2;
+    }
 
     lr11xx_system_irq_mask_t irq_regs = 0;
     lr11xx_system_get_and_clear_irq_status(&lr1121, &irq_regs);
@@ -284,17 +310,17 @@ static int lora_send(uint8_t dst_node, uint8_t seq,
     /* Return to continuous RX */
     lr11xx_radio_pkt_params_lora_t rx_pkt = {
         .preamble_len_in_symb = 8,
-        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes     = GW_PAYLOAD_MAX,
-        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
-        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes = GW_PAYLOAD_MAX,
+        .crc = LR11XX_RADIO_LORA_CRC_ON,
+        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &rx_pkt));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 
     pkt_tx_count++;
-    LOG("[tx] %dB -> node=0x%02X seq=%d (rh=%dB mesh=%dB mqttsn=%dB)",
-        total, dst_node, seq, RH_HDR, MESH_HEADER_SIZE, mqttsn_len);
+    LOG("[tx] %dB -> node=0x%02X seq=%d (rh=%dB mesh=%dB mqttsn=%dB)", total, dst_node, seq, RH_HDR,
+        MESH_HEADER_SIZE, mqttsn_len);
     return 0;
 }
 
@@ -314,7 +340,7 @@ static int lora_send(uint8_t dst_node, uint8_t seq,
 static void on_rx_done(void) {
     uint8_t buf[GW_PAYLOAD_MAX + 1];
     lr11xx_radio_rx_buffer_status_t rx_buf;
-    lr11xx_radio_pkt_status_lora_t  pkt_status;
+    lr11xx_radio_pkt_status_lora_t pkt_status;
 
     lr11xx_radio_get_rx_buffer_status(&lr1121, &rx_buf);
     uint8_t size = rx_buf.pld_len_in_bytes;
@@ -329,9 +355,9 @@ static void on_rx_done(void) {
     lr11xx_radio_get_lora_pkt_status(&lr1121, &pkt_status);
 
     /* ── Strip RadioHead header ──────────────────────────────────────── */
-    uint8_t rh_seq  = buf[RH_ID];
-    uint8_t *mesh   = buf + RH_HDR;            /* pointer to mesh header   */
-    uint8_t  msize  = size - RH_HDR;           /* bytes from mesh hdr on   */
+    uint8_t rh_seq = buf[RH_ID];
+    uint8_t *mesh = buf + RH_HDR;  /* pointer to mesh header   */
+    uint8_t msize = size - RH_HDR; /* bytes from mesh hdr on   */
 
     /* ── Decode mesh header ─────────────────────────────────────────── */
     mesh_packet_t pkt;
@@ -342,11 +368,19 @@ static void on_rx_done(void) {
 
     uint8_t hops_taken = MESH_TTL_DEFAULT - pkt.ttl;
 
+/* ── Range simulation ── */
+#if SIMULATE_RANGE_LIMIT
+    for (int i = 0; i < (int)(sizeof(OUT_OF_RANGE) / sizeof(OUT_OF_RANGE[0])); i++) {
+        if (pkt.src_id == OUT_OF_RANGE[i] && hops_taken == 0) {
+            LOG("[range-sim] DROP direct pkt from 0x%02X — simulating out-of-range", pkt.src_id);
+            return;
+        }
+    }
+#endif
+
     pkt_rx_count++;
     LOG("[rx] #%d src=0x%02X dst=0x%02X ttl=%d seq=%d hops=%d len=%d RSSI=%ddBm SNR=%ddB",
-        pkt_rx_count,
-        pkt.src_id, pkt.dst_id, pkt.ttl, pkt.seq_num, hops_taken,
-        pkt.payload_len,
+        pkt_rx_count, pkt.src_id, pkt.dst_id, pkt.ttl, pkt.seq_num, hops_taken, pkt.payload_len,
         pkt_status.rssi_pkt_in_dbm, pkt_status.snr_pkt_in_db);
 
     /* Discard if not destined for the gateway */
@@ -361,37 +395,64 @@ static void on_rx_done(void) {
 
     /* ── Gateway dedup: drop if already forwarded this (src, seq) ───── */
     if (gw_dedup_seen(pkt.src_id, pkt.seq_num)) {
-        LOG("[rx] dedup hit src=0x%02X seq=%d, dropping duplicate uplink",
-            pkt.src_id, pkt.seq_num);
+        LOG("[rx] dedup hit src=0x%02X seq=%d, dropping duplicate uplink", pkt.src_id, pkt.seq_num);
         return;
     }
     gw_dedup_add(pkt.src_id, pkt.seq_num);
 
     /* Debug: raw MQTT-SN bytes */
-    printf("  MQTT-SN (%dB): ", pkt.payload_len);
-    for (int i = 0; i < pkt.payload_len; i++) printf("%02X ", pkt.payload[i]);
-    printf("\n"); fflush(stdout);
+    // printf("  MQTT-SN (%dB): ", pkt.payload_len);
+    // for (int i = 0; i < pkt.payload_len; i++)
+    //     printf("%02X ", pkt.payload[i]);
+    // printf("\n");
+    // fflush(stdout);
+
+    // After gw_dedup_add():
+    const char *msg_type = "UNKNOWN";
+    if (pkt.payload_len >= 2) {
+        switch (pkt.payload[1]) {
+        case 0x04:
+            msg_type = "CONNECT";
+            break;
+        case 0x0A:
+            msg_type = "REGISTER";
+            break;
+        case 0x0C:
+            msg_type = "PUBLISH";
+            break;
+        case 0x12:
+            msg_type = "SUBSCRIBE";
+            break;
+        case 0x16:
+            msg_type = "PINGREQ";
+            break;
+        }
+    }
+    LOG("[rx] MQTT-SN type=%s src=0x%02X", msg_type, pkt.src_id);
+
+    bool is_connect = (pkt.payload_len >= 2 && pkt.payload[0] == 0x10 && pkt.payload[1] == 0x04);
 
     /* ── Forward to Paho, keyed on SRC_ID ───────────────────────────── */
     pthread_mutex_lock(&clients_lock);
-    client_t *client = get_or_create_client(pkt.src_id);
-    if (!client) { pthread_mutex_unlock(&clients_lock); return; }
+    client_t *client = get_or_create_client(pkt.src_id, is_connect);
+    if (!client) {
+        pthread_mutex_unlock(&clients_lock);
+        return;
+    }
 
     client->last_seq = rh_seq;
     client->pkt_count++;
     client->hop_total += hops_taken;
 
-    ssize_t sent = sendto(client->udp_sock,
-                          pkt.payload, pkt.payload_len, 0,
-                          (struct sockaddr *)&client->paho_addr,
-                          sizeof(client->paho_addr));
+    ssize_t sent = sendto(client->udp_sock, pkt.payload, pkt.payload_len, 0,
+                          (struct sockaddr *)&client->paho_addr, sizeof(client->paho_addr));
     pthread_mutex_unlock(&clients_lock);
 
     if (sent < 0)
         LOG("[rx] sendto Paho failed: %s", strerror(errno));
     else
-        LOG("[rx] -> Paho:%d port=%d (%zdB) [src=0x%02X hops=%d]",
-            PAHO_GW_PORT, client->local_port, sent, pkt.src_id, hops_taken);
+        LOG("[rx] -> Paho:%d port=%d (%zdB) [src=0x%02X hops=%d]", PAHO_GW_PORT, client->local_port,
+            sent, pkt.src_id, hops_taken);
 }
 
 /* ── IRQ dispatcher ──────────────────────────────────────────────────────── */
@@ -402,12 +463,17 @@ static void irq_process(void) {
     irq_regs &= IRQ_MASK;
 
     if (irq_regs & LR11XX_SYSTEM_IRQ_RX_DONE) {
-        if (irq_regs & LR11XX_SYSTEM_IRQ_CRC_ERROR) on_rx_crc_error();
-        else                                         on_rx_done();
+        if (irq_regs & LR11XX_SYSTEM_IRQ_CRC_ERROR)
+            on_rx_crc_error();
+        else
+            on_rx_done();
     }
-    if (irq_regs & LR11XX_SYSTEM_IRQ_TIMEOUT)      on_rx_timeout();
-    if (irq_regs & LR11XX_SYSTEM_IRQ_HEADER_ERROR) LOG("[rx] Header error");
-    if (irq_regs & LR11XX_SYSTEM_IRQ_TX_DONE)      LOG("[tx] TX_DONE IRQ");
+    if (irq_regs & LR11XX_SYSTEM_IRQ_TIMEOUT)
+        on_rx_timeout();
+    if (irq_regs & LR11XX_SYSTEM_IRQ_HEADER_ERROR)
+        LOG("[rx] Header error");
+    if (irq_regs & LR11XX_SYSTEM_IRQ_TX_DONE)
+        LOG("[tx] TX_DONE IRQ");
 
     ASSERT_LR11XX_RC(lr11xx_radio_set_rx(&lr1121, RX_CONTINUOUS));
 }
@@ -428,6 +494,7 @@ static void *downstream_thread(void *arg) {
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
     uint8_t d_len[MAX_CLIENTS];
     uint8_t d_node[MAX_CLIENTS];
+    uint8_t d_seq[MAX_CLIENTS];
 
     while (running) {
         fd_set rfds;
@@ -438,31 +505,40 @@ static void *downstream_thread(void *arg) {
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if (clients[i].active && clients[i].udp_sock >= 0) {
                 FD_SET(clients[i].udp_sock, &rfds);
-                if (clients[i].udp_sock > maxfd) maxfd = clients[i].udp_sock;
+                if (clients[i].udp_sock > maxfd)
+                    maxfd = clients[i].udp_sock;
             }
         }
         pthread_mutex_unlock(&clients_lock);
 
-        if (maxfd < 0) { usleep(50000); continue; }
+        if (maxfd < 0) {
+            usleep(50000);
+            continue;
+        }
 
         struct timeval tv = {0, 50000};
-        if (select(maxfd + 1, &rfds, NULL, NULL, &tv) <= 0) continue;
+        if (select(maxfd + 1, &rfds, NULL, NULL, &tv) <= 0)
+            continue;
 
         int count = 0;
         pthread_mutex_lock(&clients_lock);
         for (int i = 0; i < MAX_CLIENTS && count < MAX_CLIENTS; i++) {
-            if (!clients[i].active) continue;
-            if (!FD_ISSET(clients[i].udp_sock, &rfds)) continue;
+            if (!clients[i].active)
+                continue;
+            if (!FD_ISSET(clients[i].udp_sock, &rfds))
+                continue;
 
             struct sockaddr_in src;
             socklen_t sl = sizeof(src);
             ssize_t n = recvfrom(clients[i].udp_sock, rxbuf, sizeof(rxbuf), 0,
                                  (struct sockaddr *)&src, &sl);
-            if (n <= 0) continue;
+            if (n <= 0)
+                continue;
 
             memcpy(d_data[count], rxbuf, n);
-            d_len[count]  = (uint8_t)n;
+            d_len[count] = (uint8_t)n;
             d_node[count] = clients[i].node_id;
+            d_seq[count] = clients[i].dn_seq++;
             count++;
             LOG("[dn] %zdB queued for node=0x%02X (will be mesh-wrapped)", n, clients[i].node_id);
         }
@@ -471,8 +547,7 @@ static void *downstream_thread(void *arg) {
         /* Transmit each staged downlink packet with mesh wrapper */
         for (int p = 0; p < count; p++) {
             clock_gettime(CLOCK_MONOTONIC, &ts);
-            uint64_t now     = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
-            uint8_t  seq     = dn_seq++;
+            uint64_t now = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
             uint64_t elapsed = now - last_dn_tx_us;
 
             if (elapsed < DN_SPACING_US) {
@@ -483,8 +558,7 @@ static void *downstream_thread(void *arg) {
 
             pthread_mutex_lock(&radio_lock);
             irq_flag = false;
-            /* lora_send() wraps the payload with mesh header internally */
-            lora_send(d_node[p], seq, d_data[p], d_len[p]);
+            lora_send(d_node[p], d_seq[p], d_data[p], d_len[p]); // ← use d_seq[p]
             irq_flag = false;
             pthread_mutex_unlock(&radio_lock);
 
@@ -507,8 +581,10 @@ static void radio_init(void) {
     lora_radio_init(&lr1121);
 
     lr11xx_radio_mod_params_lora_t mod = {
-        .sf = LR11XX_RADIO_LORA_SF7, .bw = LR11XX_RADIO_LORA_BW_125,
-        .cr = LR11XX_RADIO_LORA_CR_4_5, .ldro = 0,
+        .sf = LR11XX_RADIO_LORA_SF7,
+        .bw = LR11XX_RADIO_LORA_BW_125,
+        .cr = LR11XX_RADIO_LORA_CR_4_5,
+        .ldro = 0,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_mod_params(&lr1121, &mod));
     ASSERT_LR11XX_RC(lr11xx_radio_set_rf_freq(&lr1121, 915000000UL));
@@ -516,10 +592,10 @@ static void radio_init(void) {
 
     lr11xx_radio_pkt_params_lora_t pkt = {
         .preamble_len_in_symb = 8,
-        .header_type          = LR11XX_RADIO_LORA_PKT_EXPLICIT,
-        .pld_len_in_bytes     = GW_PAYLOAD_MAX,
-        .crc                  = LR11XX_RADIO_LORA_CRC_ON,
-        .iq                   = LR11XX_RADIO_LORA_IQ_STANDARD,
+        .header_type = LR11XX_RADIO_LORA_PKT_EXPLICIT,
+        .pld_len_in_bytes = GW_PAYLOAD_MAX,
+        .crc = LR11XX_RADIO_LORA_CRC_ON,
+        .iq = LR11XX_RADIO_LORA_IQ_STANDARD,
     };
     ASSERT_LR11XX_RC(lr11xx_radio_set_lora_pkt_params(&lr1121, &pkt));
 
@@ -532,7 +608,7 @@ static void radio_init(void) {
 
 /* ── main ────────────────────────────────────────────────────────────────── */
 int main(void) {
-    signal(SIGINT,  on_signal);
+    signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
 
     printf("  MQTT-SN LoRa <-> UDP Bridge  [mesh-aware v2]\n");
@@ -568,12 +644,13 @@ int main(void) {
                 pthread_mutex_lock(&clients_lock);
                 expire_clients();
                 for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (!clients[i].active) continue;
+                    if (!clients[i].active)
+                        continue;
                     printf("  src=0x%02X port=%d pkts=%u avg_hops=%.2f age=%lds\n",
-                           clients[i].node_id, clients[i].local_port,
-                           clients[i].pkt_count,
+                           clients[i].node_id, clients[i].local_port, clients[i].pkt_count,
                            clients[i].pkt_count > 0
-                               ? (double)clients[i].hop_total / clients[i].pkt_count : 0.0,
+                               ? (double)clients[i].hop_total / clients[i].pkt_count
+                               : 0.0,
                            (long)(time(NULL) - clients[i].last_seen));
                 }
                 pthread_mutex_unlock(&clients_lock);
