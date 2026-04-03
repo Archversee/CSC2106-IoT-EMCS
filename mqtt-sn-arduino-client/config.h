@@ -4,12 +4,13 @@
 #include "mesh_protocol.h"
 
 /* 1. SELECT NODE */
-#define NODE_SELECT 2
+#define NODE_SELECT 4
 
 /* 2. SELECT MODE */
 #define MESH_MODE_FLOODING 0
 #define MESH_MODE_ROUTING 1
-#define MESH_MODE MESH_MODE_FLOODING
+// #define MESH_MODE MESH_MODE_FLOODING
+#define MESH_MODE MESH_MODE_ROUTING
 
 /* Arduino-02 */
 #if NODE_SELECT == 2
