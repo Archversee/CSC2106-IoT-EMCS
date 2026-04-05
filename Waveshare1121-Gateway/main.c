@@ -48,7 +48,7 @@
 #define GW_PAYLOAD_MAX 255
 #define RX_CONTINUOUS 0xFFFFFF
 #define DN_SPACING_US                                                                              \
-    400000ULL /* 400ms — full LoRa RTT: airtime(65ms) + relay(65ms) + node processing + margin */
+    500000ULL /* 400ms — full LoRa RTT: airtime(65ms) + relay(65ms) + node processing + margin */
 
 /* RadioHead header layout */
 #define RH_TO 0
@@ -292,6 +292,18 @@ static void expire_clients(void) {
     }
 }
 
+/* Gateway routing table - mirrors the mesh topology */
+static uint8_t gw_next_hop(uint8_t dst) {
+    static const uint8_t GW_ROUTING_TABLE[][2] = {
+        {0x22, 0x23}, // reach node 2 via relay 3
+        {0x24, 0x23}, // reach node 4 via relay 3
+    };
+    for (int i = 0; i < (int)(sizeof(GW_ROUTING_TABLE) / sizeof(GW_ROUTING_TABLE[0])); i++)
+        if (GW_ROUTING_TABLE[i][0] == dst)
+            return GW_ROUTING_TABLE[i][1];
+    return dst; // direct if no route found
+}
+
 /* LoRa TX  */
 /*
  * lora_send()
@@ -335,7 +347,8 @@ static int lora_send(uint8_t dst_node, uint8_t seq, const uint8_t *mqttsn_payloa
 
     /* Prepend RadioHead header */
     uint8_t frame[GW_PAYLOAD_MAX];
-    frame[RH_TO] = dst_node;
+    uint8_t next_hop = gw_next_hop(dst_node);
+    frame[RH_TO] = next_hop;
     frame[RH_FROM] = MESH_ADDR_GATEWAY;
     frame[RH_ID] = seq;
     frame[RH_FLAGS] = 0x00;
@@ -561,7 +574,7 @@ static void irq_process(void) {
 }
 
 /* Downstream thread (Paho → LoRa) */
-static uint64_t last_dn_tx_us = 0;
+static uint64_t last_dn_tx_per_hop[256] = {0};
 
 static void *downstream_thread(void *arg) {
     (void)arg;
@@ -569,8 +582,6 @@ static void *downstream_thread(void *arg) {
 
     uint8_t rxbuf[GW_PAYLOAD_MAX];
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
 
     /* Staging buffers - filled under clients_lock, sent after releasing it */
     uint8_t d_data[MAX_CLIENTS][GW_PAYLOAD_MAX];
@@ -630,12 +641,26 @@ static void *downstream_thread(void *arg) {
          * We fire packets back-to-back with minimal spacing — the Arduino
          * nodes use per-node jitter in their TX to avoid uplink collisions. */
         for (int p = 0; p < count; p++) {
+            uint8_t nh = gw_next_hop(d_node[p]);
+
+            /* Count how many active clients share this next hop */
+            pthread_mutex_lock(&clients_lock);
+            int shared = 0;
+            for (int i = 0; i < MAX_CLIENTS; i++)
+                if (clients[i].active && gw_next_hop(clients[i].node_id) == nh)
+                    shared++;
+            pthread_mutex_unlock(&clients_lock);
+            if (shared < 1)
+                shared = 1;
+
+            uint64_t spacing = DN_SPACING_US * (uint64_t)shared;
+
             clock_gettime(CLOCK_MONOTONIC, &ts);
             uint64_t now = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
-            uint64_t elapsed = now - last_dn_tx_us;
+            uint64_t elapsed = now - last_dn_tx_per_hop[nh];
 
-            if (elapsed < DN_SPACING_US)
-                usleep((useconds_t)(DN_SPACING_US - elapsed));
+            if (elapsed < spacing)
+                usleep((useconds_t)(spacing - elapsed));
 
             pthread_mutex_lock(&radio_lock);
             irq_flag = false;
@@ -644,7 +669,7 @@ static void *downstream_thread(void *arg) {
             pthread_mutex_unlock(&radio_lock);
 
             clock_gettime(CLOCK_MONOTONIC, &ts);
-            last_dn_tx_us = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
+            last_dn_tx_per_hop[nh] = (uint64_t)ts.tv_sec * 1000000ULL + ts.tv_nsec / 1000;
         }
     }
 

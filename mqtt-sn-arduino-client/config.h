@@ -8,7 +8,7 @@
 /* 2. SELECT MODE */
 #define MESH_MODE_FLOODING 0
 #define MESH_MODE_ROUTING 1
-//#define MESH_MODE MESH_MODE_FLOODING
+// #define MESH_MODE MESH_MODE_FLOODING
 #define MESH_MODE MESH_MODE_ROUTING
 
 /* Arduino-02 */
@@ -27,7 +27,6 @@ static const uint8_t ROUTING_TABLE[][2] = {
 #define MY_NODE_ROLE NODE_ROLE_RELAY
 static const uint8_t ROUTING_TABLE[][2] = {
     {MESH_ADDR_GATEWAY, MESH_ADDR_GATEWAY},
-    {0x22, 0x22},
 };
 #define ROUTING_TABLE_LEN (sizeof(ROUTING_TABLE) / sizeof(ROUTING_TABLE[0]))
 
