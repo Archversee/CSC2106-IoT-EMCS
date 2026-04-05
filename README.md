@@ -1,98 +1,89 @@
 # CSC2106 IoT EMCS - Heterogeneous IoT Communication System
+# Group 11
 
-A comprehensive IoT communication system featuring multiple wireless protocols (MQTT-SN and LoRa), multi-hop mesh networking, heterogeneous gateway architecture, and real-time performance visualization dashboard.
-
----
-
-## 📋 Project Implementation Roadmap
-
-### MQTT-SN Implementation ✅ (COMPLETED)
-1. ✅ **Packet building and client side implementation** - FreeRTOS-based multithreaded architecture with MQTT-SN protocol over UDP
-2. ✅ **Multi-hop mesh layer (routing/forwarding)** - Sender (TX) and Receiver (RX) Pico W clients with QoS support
-3. ✅ **Heterogeneous Gateway for protocol translation on Raspberry Pi** - MQTT-SN Gateway bridging UDP to standard MQTT broker
-4. ✅ **Performance collection/eval of transport and comparison** - QoS levels (0, 1, 2) with threadsafe background Wi-Fi driver
-5. ✅ **Dashboard and visualisation of results** - Real-time web dashboard for monitoring and control
-
-### LoRa Implementation 🚧 (IN PROGRESS)
-1. ✅ **LoRa packet building and Arduino client side implementation** - Custom packet structure with Arduino-based MQTT-SN client (`mqtt-sn-arduino-client`)
-2. ⬜ **LoRa multi-hop mesh layer (routing/forwarding)** - Routing protocols and packet forwarding for extended range
-3. ✅ **Heterogeneous Gateway for protocol translation on Raspberry Pi** - LoRa to UDP Gateway (`Waveshare1121-Gateway`) bridging LoRa to MQTT-SN Gateway
-4. ✅ **Performance collection/eval of transport and comparison** - Transport layer benchmarking and MQTT-SN vs LoRa comparison analysis
-5. ✅ **Dashboard and visualisation of results** - Extended dashboard with protocol comparison charts and real-time LoRa metrics
-
----
+A heterogeneous IoT communication system evaluating MQTT-SN as a transport protocol across dual wireless networks: UDP over Wi-Fi and multi-hop LoRa mesh. The system features a Raspberry Pi 4 gateway bridging both transports into a unified MQTT broker, AES-128 payload encryption on the LoRa link, a lightweight mesh protocol supporting flooding and static routing, and a real-time performance dashboard.
 
 ## Key Features
 
-### MQTT-SN System Features
-- **FreeRTOS Integration**: Preemptive multitasking with separate MQTT and button handler tasks
-- **Thread-Safe Design**: Mutex-protected shared resources and inter-task communication via queues
-- **MQTT-SN Protocol**: Lightweight messaging protocol optimized for constrained devices over UDP
-- **QoS Levels**: Support for QoS 0 (at-most-once), QoS 1 (at-least-once), QoS 2 (exactly-once)
-- **Retry Logic**: Automatic retransmission on timeout with configurable retry limits
-- **Dual Client Architecture**: Separate TX (sender) and RX (receiver) builds
-- **Background Wi-Fi Processing**: Automatic network stack servicing via threadsafe background mode
+### Pico W (Wi-Fi) Client
+- **FreeRTOS Architecture**: Two concurrent tasks : MQTT state machine and button handler with mutex-protected shared state
+- **MQTT-SN over UDP**: Lightweight messaging over lwIP via the cyw43 threadsafe background Wi-Fi driver
+- **QoS Support**: QoS 0, 1, and 2 with automatic retransmission and configurable retry limits
+- **Runtime Control**: Three GPIO buttons for QoS level cycling, topic switching, and message publishing
+- **Auto-reconnect**: Retry loop in network initialisation handles first-boot Wi-Fi connection failures
 
-### LoRa System Features
-- **Arduino-based LoRa Client**: MQTT-SN over LoRa using the `mqtt-sn-arduino-client` sketch
-- **LoRa to UDP Gateway**: `Waveshare1121-Gateway` bridges LoRa packets to the MQTT-SN Gateway on the Raspberry Pi
-- **Unique Node Addressing**: Configurable LoRa node IDs per device via `config.h`
-- **Multi-topic Support**: Publishes and subscribes across multiple sensor topics
+### Arduino LoRa Mesh Client
+- **MQTT-SN over LoRa**: Custom MQTT-SN client using the RadioHead RFM95 library
+- **Mesh Protocol**: 4-byte mesh header (Source ID, Destination ID, TTL, Sequence Number) with TTL-based hop limiting
+- **Dual Forwarding Modes**: Flooding and static routing selectable at compile time via `MESH_MODE` in `config.h`
+- **AES-128 Encryption**: Payload encrypted before LoRa transmission using AESLib, decrypted at gateway via OpenSSL
+- **Deduplication**: Circular buffer of size 8 keyed on Source ID and Sequence Number prevents relay loops
+- **Node Roles**: Endpoint and relay-only roles configurable via `NODE_SELECT` in `config.h`
+- **OLED Display**: SSD1306 display for on-device status feedback
+- **Collision Avoidance**: Per-node jitter delays and CSMA listen-before-talk window
 
-### Dashboard Features
-- **Real-time Monitoring**: Live device status and message feeds
-- **Command Interface**: Send commands to devices with QoS selection
-- **Telemetry Charts**: Live data visualization for sensor readings
-- **WebSocket Communication**: Low-latency updates via Socket.IO
+### Raspberry Pi 4 Gateway
+- **Dual Transport Bridging**: Receives MQTT-SN from Pico W over UDP and from Arduino nodes over LoRa simultaneously
+- **LoRa–UDP Bridge**: Two POSIX threads - main thread polls LR1121 interrupt for uplink frames, downstream thread forwards Paho gateway responses back to LoRa nodes
+- **AES-128 Decryption**: Decrypts all incoming LoRa payloads using OpenSSL before forwarding to Paho gateway
+- **Client Table**: Maps node IDs to per-client UDP sockets with mutex protection
+- **Downlink Spacing**: 400ms delay between consecutive LoRa downlink transmissions to handle half-duplex radio timing
+- **Paho MQTT-SN Gateway**: Translates MQTT-SN messages into standard MQTT for the Mosquitto broker
+- **Mosquitto Broker**: Locally hosted, receives all translated MQTT traffic from both transport layers
+
+### Dashboard
+- **Real-time Monitoring**: Live device status, message feed, and per-node traffic visualisation
+- **Flooding vs Routing Comparison**: Side-by-side run comparison with packet delivery ratio, duplicate count, and throughput metrics
+- **Command Interface**: Send LED on/off commands to all nodes, Pico-only, or Arduino-only via selectable QoS levels
+- **WebSocket Updates**: Low-latency frontend updates via Socket.IO
+- **Data Export**: JSON export of collected run statistics
 
 ---
 
 ## Hardware Requirements
 
-### For Pico W Devices
-- **2x Raspberry Pi Pico W** (one for TX, one for RX)
-- **Breadboards and jumper wires**
-- **Push buttons** for testing message sending
-- **USB cables** for power and programming
+### Pico W Nodes
+- Raspberry Pi Pico W
+- USB cable for power and programming
 
-### For Arduino LoRa Devices
-- **Arduino board** with LoRa module (Waveshare or compatible)
-- **USB cable** for programming and power
+### Arduino LoRa Nodes
+- Maker UNO (Arduino-compatible)
+- Cytron LoRa-RFM Shield (RFM95, 915/923 MHz)
+- SSD1306 OLED display
+- USB cable for programming and power
 
-### For Dashboard/Gateway
-- **Raspberry Pi 4** running Mosquitto broker, Paho MQTT-SN Gateway, and LoRa–UDP Gateway
-- **Node.js** v16+ with npm (for dashboard)
+### Gateway
+- Raspberry Pi 4
+- Waveshare Core1121-HF LoRa transceiver (SPI-connected)
+- Node.js v16+ with npm
 
 ---
 
 ## Software Dependencies
 
 ### Pico W Firmware
-- **Pico SDK 2.2.0** (includes lwIP networking stack and FreeRTOS kernel)
-- **FreeRTOS Kernel** (included in Pico SDK, configured for SMP on RP2040)
-- **ARM GCC Toolchain** 14.2 Rel1
-- **CMake** 3.5+
-- **Paho MQTT-SN embedded C** (included in repository)
+- Pico SDK 2.2.0 (includes lwIP and FreeRTOS kernel)
+- ARM GCC Toolchain 14.2 Rel1
+- CMake 3.5+
 
 ### Arduino LoRa Client
-- **Arduino IDE** with board support for your Arduino target
-- **`mqtt-sn-arduino-client` sketch** — open in Arduino IDE and flash to device
+- Arduino IDE with Maker UNO board support
+- RadioHead library (RFM95 LoRa driver)
+- AESLib library (payload encryption)
+- SSD1306 ASCII library (OLED display)
 
-### MQTT-SN Gateway
-- **CMake** for building
-- **C++ compiler** (gcc/g++)
-
-### LoRa–UDP Gateway
-- **Make** — build and run via `make run` in `Waveshare1121-Gateway/`
+### Gateway
+- GCC/G++ compiler
+- Make
+- WiringPi (required for Waveshare1121-Gateway)
+- OpenSSL (AES-128 decryption)
+- Mosquitto MQTT broker
+- Paho MQTT-SN Gateway (built from source)
 
 ### Dashboard
-- **Node.js** v16+ and npm
-- **npm packages**: express, socket.io, mqtt, cors (auto-installed)
+- Node.js v16+ and npm
+- npm packages: express, socket.io, mqtt, cors (auto-installed via `npm install`)
 
-### MQTT Broker
-- **Mosquitto** or any MQTT broker supporting MQTT 3.1.1
-
----
 
 ## Configuration Guide
 
@@ -122,11 +113,10 @@ Edit `/mqtt-sn-arduino-client/config.h`
 
 ```cpp
 
-// Lora ID (Need to change to unique name (cant clash with other Arduino that uses LoRa))
-#define LORA_MY_NODE_ID 0x2X      
-
-// Arduino MQTT-SN ID  (Need to change to unique name (cant clash with other Pico or Arduino))
-#define MQTT_SN_CLIENT_ID "arduino-XX" 
+/* 1. SELECT NODE */
+#define NODE_SELECT 4 // SELECT 2(Endpoint) ,3(RELAY) ,4(ENDPOINT) ,5(RELAY)  FOR PRESET CONFIGS
+/* 2. SELECT MODE */
+#define MESH_MODE MESH_MODE_ROUTING // ALL NODES need to have the same mesh mode for mesh to work
 
 #endif
 ```
@@ -151,7 +141,7 @@ ClientAuthentication=NO
 
 ---
 
-## Build Instructions
+## RPI4 with Waveshare Core 1121-HF SPI Wiring Instructions
 Waveshare core1121-HF to RPI4 GPIO PINS
 | Core1121-HF | Connect To Pi 4 | GPIO
 | 3.3V        | 3.3V            | 1
@@ -193,7 +183,7 @@ make -j8
 ```
 
 Build outputs:
-- `build/pico-client-IoT.uf2` — Flash to Pico # (Remember to change config if running multiple)
+- `build/pico-client-IoT.uf2` - Flash to Pico # (Remember to change config if running multiple)
 
 ### Flash Arduino LoRa Client (115200 baud)
 1. Open the `mqtt-sn-arduino-client` sketch (`.ino` file) in **Arduino IDE**
@@ -276,16 +266,16 @@ Navigate to: `http://localhost:3000`
 ### Pico W (`pico-client-IoT.uf2`)
 The Pico W firmware runs a FreeRTOS-based MQTT-SN client over Wi-Fi (UDP). Once connected, it registers and uses the following topics:
 **Button controls (physical buttons on the breadboard):**
-- **GP20** — Publish a message on the currently selected topic
-- **GP21** — Cycle through QoS levels (0 → 1 → 2) for outgoing publishes
-- **GP22** — Switch the active publish topic between `sensors/data` and `sensors/pico/data`
+- **GP20** - Publish a message on the currently selected topic
+- **GP21** - Cycle through QoS levels (0 → 1 → 2) for outgoing publishes
+- **GP22** - Switch the active publish topic between `sensors/data` and `sensors/pico/data`
 
 **Topics registered:**
 | Topic | Role | QoS |
 | `sensors/data` | Publish (switchable via GP22) | Selectable via GP21 |
 | `sensors/pico/data` | Publish (switchable via GP22) | Selectable via GP21 |
-| `sensors/cmd` | Subscribe — receives commands | 1 |
-| `sensors/pico/cmd` | Subscribe — receives Pico-specific commands | 2 |
+| `sensors/cmd` | Subscribe - receives commands | 1 |
+| `sensors/pico/cmd` | Subscribe - receives Pico-specific commands | 2 |
 > If multiple Pico W devices are deployed, ensure each has a unique `MQTT_SN_CLIENT_ID` in `config.h` to avoid client ID conflicts on the broker.
 
 ---
@@ -299,21 +289,22 @@ Payload: "<client_id> <pub_count>"
 
 **Topics registered:**
 | Topic | Role | QoS |
-| `sensors/data` | Publish — general sensor readings | 1 |
-| `sensors/arduino/data` | Publish — Arduino-specific sensor readings | 0 |
-| `sensors/cmd` | Subscribe — receives commands for all nodes | 1 |
-| `sensors/arduino/cmd` | Subscribe — receives Arduino-specific commands | 2 |
-> Each Arduino node must have a unique `LORA_MY_NODE_ID` and `MQTT_SN_CLIENT_ID` in `config.h`.
+| `sensors/data` | Publish - general sensor readings | 1 |
+| `sensors/arduino/data` | Publish - Arduino-specific sensor readings | 0 |
+| `sensors/cmd` | Subscribe - receives commands for all nodes | 1 |
+| `sensors/arduino/cmd` | Subscribe - receives Arduino-specific commands | 2 |
+> Each Arduino node must have a unique `LORA_MY_NODE_ID` and `MQTT_SN_CLIENT_ID` in set with the presets`config.h`.
+> Every Arduino node must have a the same  `MESH_MODE` in set with the presets`config.h`.
 
 ## MQTT Topic Structure
 
 | Topic | Publisher | Subscriber | Purpose | QoS |
 | `sensors/data` | Pico W / Arduino | Broker / Dashboard | General sensor data from any node | Selectable |
 | `sensors/pico/data` | Pico W | Broker / Dashboard | Pico-specific sensor data | Selectable |
-| `sensors/arduino/data` | Arduino | Broker / Dashboard | Arduino-specific sensor data | — |
+| `sensors/arduino/data` | Arduino | Broker / Dashboard | Arduino-specific sensor data | - |
 | `sensors/cmd` | Broker / Dashboard | Pico W + Arduino | Commands to all nodes | 1 |
 | `sensors/pico/cmd` | Broker / Dashboard | Pico W | Commands to Pico nodes only | 2 |
-| `sensors/arduino/cmd` | Broker / Dashboard | Arduino | Commands to Arduino nodes only | — |
+| `sensors/arduino/cmd` | Broker / Dashboard | Arduino | Commands to Arduino nodes only | - |
 
 ### Testing MQTT Topics (run on CLI on RPI4)
 
@@ -382,10 +373,10 @@ This project uses components under multiple licenses:
 
 ## Authors & Credits
 
-- **CSC2106 Project Team** — MQTT-SN and LoRa implementation
-- **Eclipse Paho** — MQTT-SN library and gateway
-- **Raspberry Pi Foundation** — Pico SDK and FreeRTOS kernel port
-- **FreeRTOS.org** — Real-time operating system kernel
+- **CSC2106 Project Team 11** - MQTT-SN and LoRa implementation
+- **Eclipse Paho** - MQTT-SN library and gateway
+- **Raspberry Pi Foundation** - Pico SDK and FreeRTOS kernel port
+- **FreeRTOS.org** - Real-time operating system kernel
 
 ---
 
@@ -399,5 +390,5 @@ This project uses components under multiple licenses:
 
 ---
 
-**Last Updated**: March 4, 2026
+**Last Updated**: March 5, 2026
 
