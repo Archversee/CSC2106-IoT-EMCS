@@ -38,7 +38,7 @@ static state_t g_state = STATE_INIT;
 static uint32_t g_state_ms = 0;
 
 #define CONNECT_TIMEOUT_MS 20000UL
-#define REGISTER_TIMEOUT_MS 120000UL
+#define REGISTER_TIMEOUT_MS 20000UL
 #define CMD_DISPLAY_MS 5000UL
 
 // OLED

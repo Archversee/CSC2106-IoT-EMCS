@@ -494,6 +494,11 @@ uint8_t mqttsn_transport_recv(uint8_t *buf, uint8_t buf_size, uint32_t timeout_m
             Serial.println(F("[relay] TTL=0, drop"));
             continue;
         }
+        /* Clear gateway dedup entries so repeated CONNACKs aren't dropped */
+        for (uint8_t i = 0; i < MESH_DEDUP_CACHE_SIZE; i++) {
+            if (s_dedup[i].valid && s_dedup[i].src_id == MESH_ADDR_GATEWAY)
+                s_dedup[i].valid = false;
+        }
 
 #if MESH_MODE == MESH_MODE_ROUTING
         uint8_t next_hop = mesh_next_hop(dst);
